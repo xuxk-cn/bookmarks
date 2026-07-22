@@ -5,13 +5,14 @@ import ssl
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 # 导入自定义的本地模块
 import ai_client
+import favicon_fetcher
 from bookmark_parser import BookmarkItem, parse_netscape_bookmarks, read_text_file, resolve_item_icon
 
 DEFAULT_UA = (
@@ -20,6 +21,7 @@ DEFAULT_UA = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 MAX_BYTES_TO_PARSE = 200_000
+MAX_ICON_BYTES = favicon_fetcher.MAX_ICON_BYTES
 
 def _make_request(url: str, method: str = "GET") -> Request:
     return Request(
@@ -33,11 +35,24 @@ def _make_request(url: str, method: str = "GET") -> Request:
         },
     )
 
-def _safe_urlopen(req: Request, timeout: int):
-    ctx = ssl.create_default_context()
+def _make_ssl_context() -> ssl.SSLContext:
+    """创建兼容性最强的 SSL context，应对各种服务器 TLS 配置"""
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE  # 略过SSL证书校验，提高抓取通过率
-    return urlopen(req, timeout=timeout, context=ctx)
+    ctx.verify_mode = ssl.CERT_NONE
+    # 允许旧版 TLS，兼容部分服务器
+    ctx.options &= ~getattr(ssl, "OP_NO_SSLv3", 0)
+    ctx.options &= ~getattr(ssl, "OP_NO_TLSv1", 0)
+    ctx.options &= ~getattr(ssl, "OP_NO_TLSv1_1", 0)
+    # 放宽密码套件限制，解决 SSLV3_ALERT_HANDSHAKE_FAILURE
+    try:
+        ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
+    except ssl.SSLError:
+        pass
+    return ctx
+
+def _safe_urlopen(req: Request, timeout: int):
+    return urlopen(req, timeout=timeout, context=_make_ssl_context())
 
 def validate_url(url: str, timeout: int) -> Tuple[bool, str, int]:
     """验证链接有效性"""
@@ -53,6 +68,9 @@ def validate_url(url: str, timeout: int) -> Tuple[bool, str, int]:
                 return True, "", status
             if status == 405:
                 raise HTTPError(url, status, "Method Not Allowed", hdrs=None, fp=None)
+            # 503/502 等服务端暂时错误不算死链
+            if status in (502, 503, 504):
+                return True, "", status
             return False, f"HTTP {status}", status
     except HTTPError as e:
         if e.code in (405, 403, 401, 404):
@@ -62,16 +80,29 @@ def validate_url(url: str, timeout: int) -> Tuple[bool, str, int]:
                     status = getattr(resp, "status", 200)
                     if 200 <= status < 400 or status in (401, 403):
                         return True, "", status
+                    if status in (502, 503, 504):
+                        return True, "", status
                     return False, f"HTTP {status}", status
             except Exception as e2:
-                # 🔴 关键修复：如果 GET 请求也报错，但错误码是 403 或 401，
-                # 说明链接是存在的，只是服务器防火墙（如 Cloudflare）拦截了 Python 爬虫。
-                # 这种情况下不应将其视为“死链”，而应允许其保留在导航页中。
+                # GET 也报 SSL/超时，保留链接
                 if isinstance(e2, HTTPError) and e2.code in (401, 403):
                     return True, "", e2.code
+                e2_str = str(e2)
+                if any(h in e2_str for h in ("SSL", "ssl", "handshake", "EOF occurred", "timed out", "UNEXPECTED_EOF", "SSLV3")):
+                    return True, "", 0
                 return False, f"{type(e2).__name__}: {e2}", 0
+        # 502/503 不是死链
+        if e.code in (502, 503, 504):
+            return True, "", e.code
         return False, f"HTTP {e.code}", int(e.code)
     except (URLError, ValueError, TimeoutError) as e:
+        err_str = str(e)
+        # SSL 握手/协议错误或超时：链接本身可能有效，只是 Python 与服务器 TLS 不兼容
+        ssl_hints = ("SSL", "ssl", "handshake", "HANDSHAKE", "EOF occurred", "timed out", "UNEXPECTED_EOF", "SSLV3")
+        if any(h in err_str for h in ssl_hints):
+            return True, "", 0
+        if isinstance(e, TimeoutError) or "timed out" in err_str.lower():
+            return True, "", 0
         return False, f"{type(e).__name__}: {e}", 0
     except Exception as e:
         return False, f"{type(e).__name__}: {e}", 0
@@ -93,6 +124,29 @@ def _decode_html_bytes(data: bytes, content_type: str = "") -> str:
         except Exception:
             pass
     return data.decode("utf-8", errors="ignore")
+
+def _fetch_icon_bytes(url: str, timeout: int) -> Optional[bytes]:
+    try:
+        req = _make_request(url, method="GET")
+        req.add_header("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8")
+        with _safe_urlopen(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", 200)
+            if status >= 400:
+                return None
+            data = resp.read(MAX_ICON_BYTES)
+        return data if data else None
+    except Exception:
+        return None
+
+def _fetch_page_html(url: str, timeout: int) -> str:
+    try:
+        req = _make_request(url, method="GET")
+        with _safe_urlopen(req, timeout=timeout) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            raw = resp.read(MAX_BYTES_TO_PARSE)
+        return _decode_html_bytes(raw, content_type=content_type)
+    except Exception:
+        return ""
 
 def google_search_link(url: str) -> str:
     q = (url or "").strip()
@@ -175,6 +229,38 @@ def generate_html_pure(template_path: str, output_path: str, categories: list):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(final_html)
 
+def _write_recognized_list(path: str, items: List[BookmarkItem], duration: float) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"识别成功列表（共 {len(items)} 条）\n")
+        f.write(f"耗时: {duration:.2f}s\n\n")
+        if not items:
+            f.write("（无识别成功项）\n")
+            return
+        for idx, it in enumerate(items, 1):
+            title = _normalize_title(it.title, it.url)
+            f.write(f"{idx}. {title}\n")
+            f.write(f"   分类: {it.folder_path}\n")
+            f.write(f"   链接: {it.url}\n")
+            f.write(f"   说明: {it.desc}\n")
+            f.write(f"   说明来源: {it.hover_source}\n")
+            f.write(f"   图标来源: {it.icon_source}\n\n")
+
+
+def _write_failed_list(path: str, rows: List[Tuple[BookmarkItem, str]], duration: float) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"识别失败列表（共 {len(rows)} 条）\n")
+        f.write(f"耗时: {duration:.2f}s\n\n")
+        if not rows:
+            f.write("（无失败项）\n")
+            return
+        for idx, (it, reason) in enumerate(rows, 1):
+            title = _normalize_title(it.title, it.url)
+            f.write(f"{idx}. {title}\n")
+            f.write(f"   分类: {it.folder_path}\n")
+            f.write(f"   链接: {it.url}\n")
+            f.write(f"   原因: {reason}\n\n")
+
+
 def load_config() -> dict:
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     if os.path.exists(config_path):
@@ -195,6 +281,8 @@ def main():
     template_path = os.path.join("templates", "index.html")
     output_html_path = os.path.join("output", "my_nav.html")
     report_path = os.path.join("output", "report.txt")
+    recognized_path = os.path.join("output", "recognized.txt")
+    failed_path = os.path.join("output", "failed.txt")
 
     os.makedirs("output", exist_ok=True)
 
@@ -215,27 +303,31 @@ def main():
     invalid_rows: List[Tuple[BookmarkItem, str]] = []
 
     def process_one(it: BookmarkItem) -> Tuple[BookmarkItem, bool, str]:
-        # 1. 默认先进行链接连通性及死链验证 (可在原有逻辑基础上选择性开关)
         ok, reason, _ = validate_url(it.url, timeout=timeout_seconds)
         if not ok:
+            # 解析失败也保留，icon 置空
+            it.icon = ""
+            it.icon_source = "failed"
+            it.desc = it.desc or ""
+            it.hover_source = "failed"
             return it, False, reason
 
-        # 2. 如果书签原本就已经自带了非空的有效简介，保留之
+        bookmark_icon = it.icon
+        html = _fetch_page_html(it.url, timeout=timeout_seconds)
+
+        def fetch_icon(url: str) -> Optional[bytes]:
+            return _fetch_icon_bytes(url, timeout=timeout_seconds)
+
+        icon_uri, icon_src = favicon_fetcher.resolve_favicon(
+            it.url, html, bookmark_icon, fetch_icon
+        )
+        it.icon = icon_uri
+        it.icon_source = icon_src
+
         if it.desc.strip():
             it.hover_source = "bookmark"
             return it, True, ""
 
-        # 3. 网络并发抓取源码
-        try:
-            req = _make_request(it.url, method="GET")
-            with _safe_urlopen(req, timeout=timeout_seconds) as resp:
-                content_type = resp.headers.get("Content-Type", "")
-                raw = resp.read(MAX_BYTES_TO_PARSE)
-            html = _decode_html_bytes(raw, content_type=content_type)
-        except Exception:
-            html = ""
-
-        # 4. 🔴 核心演进：若源码抓取成功，优先投递给本地大模型获取精准摘要
         if html:
             ai_summary = ai_client.request_gemma_summary(html, config)
             if ai_summary:
@@ -243,14 +335,12 @@ def main():
                 it.hover_source = "local_gemma_server"
                 return it, True, ""
 
-        # 5. 🟢 优化：若直接抓取失败或 AI 提取失败，尝试从 Google 搜索结果中获取摘要
         google_snippet = fetch_google_snippet(it.url, timeout=timeout_seconds)
         if google_snippet:
             it.desc = google_snippet
             it.hover_source = "google_snippet"
             return it, True, ""
 
-        # 6. 🟡 智能兜底：利用 AI 根据标题和 URL 推测站点功能（优化版）
         guess_prompt = (
             f"你是一个书签助手。请根据以下网站信息，给出一句 15-30 字的中文说明，描述其核心功能。\n"
             f"网站标题：{it.title}\n"
@@ -263,7 +353,6 @@ def main():
             it.hover_source = "ai_inference"
             return it, True, ""
 
-        # 7. 最终方案：若以上全部失败，提供简洁的默认说明
         it.desc = f"优质收藏站点：{it.title}。点击即可访问。"
         it.hover_source = "default_text"
         return it, True, ""
@@ -275,12 +364,14 @@ def main():
             it, ok, reason = fut.result()
             if ok:
                 valid_items.append(it)
-                print(f"[{idx}/{len(raw_items)}] 成功 -> {it.title[:15]} ({it.hover_source})")
+                print(f"[{idx}/{len(raw_items)}] 成功 -> {it.title[:15]} ({it.hover_source}/{it.icon_source})")
             else:
                 invalid_rows.append((it, reason))
-                print(f"[{idx}/{len(raw_items)}] 失败 -> {it.title[:15]} 原因: {reason}")
+                valid_items.append(it)  # 失败的也保留，icon 为空
+                print(f"[{idx}/{len(raw_items)}] 失败(保留) -> {it.title[:15]} 原因: {reason}")
 
     valid_items.sort(key=lambda x: x.order)
+    invalid_rows.sort(key=lambda r: r[0].order)
     categories = build_categories(valid_items)
     
     print("正在向前端模板安全注入数据...")
@@ -289,38 +380,19 @@ def main():
     duration = time.time() - start_time
     print(f"\n任务全部处理完毕！总耗时: {duration:.2f}秒。")
     
-    # 写报告
+    # 写报告与识别结果文本
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(f"总计书签: {len(raw_items)}\n有效留存: {len(valid_items)}\n死链剔除: {len(invalid_rows)}\n耗时: {duration:.2f}s\n\n[精选留存数据]\n")
         for it in valid_items:
-            f.write(f"- [{it.folder_path}] {it.title} | {it.url} | ({it.hover_source}) {it.desc}\n")
+            f.write(f"- [{it.folder_path}] {it.title} | {it.url} | ({it.hover_source}/{it.icon_source}) {it.desc}\n")
+
+    _write_recognized_list(recognized_path, valid_items, duration)
+    _write_failed_list(failed_path, invalid_rows, duration)
 
     print(f"成果站点已生成在: {output_html_path}")
     print(f"详细处理报告保存在: {report_path}")
+    print(f"识别成功列表保存在: {recognized_path}")
+    print(f"识别失败列表保存在: {failed_path}")
 
 if __name__ == "__main__":
     main()
-def generate_html_pure(template_path: str, output_path: str, categories: list):
-    """安全读取前端模板，通过独一无二的占位符将数据和完整的精美 UI 融合"""
-    try:
-        with open(template_path, "r", encoding="utf-8") as f:
-            template_content = f.read()
-    except Exception as e:
-        print(f"读取前端模板失败，请检查路径: {template_path}, 错误: {e}")
-        return
-
-    # 将分类数据转化为安全的 JSON 字符串
-    data_json_str = json.dumps({"categories": categories}, ensure_ascii=False, indent=2)
-    
-    # 🔴 关键核心：将前端模板中的占位符直接替换为真实数据，同时保留所有 CSS 样式和 JS 渲染逻辑！
-    if "" in template_content:
-        final_html = template_content.replace("", data_json_str)
-    else:
-        # 如果模板里找不到占位符，做个健壮性兼容兜底
-        print("警告: 未在模板中找到特定的占位符，将尝试默认注入到 body...")
-        final_html = template_content.replace('</script>', f'\nconst data = {data_json_str};\n</script>', 1)
-    
-    # 写入最终的成品导航网页
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(final_html)
-    print(f"✨ 现代化导航页面成功生成至: {output_path}")

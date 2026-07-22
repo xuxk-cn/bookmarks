@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>图标编辑器</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --accent: #38bdf8; --text: #f8fafc; --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 2rem; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+  /* 顶部工具栏 */
+  .toolbar { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 2rem; }
+  .toolbar input[type=file] { display: none; }
+  button, label.btn {
+    background: var(--accent); color: var(--bg); border: none;
+    padding: 0.5rem 1.2rem; border-radius: 0.5rem; cursor: pointer;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  button.sec { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  button:hover { opacity: 0.85; }
+  #search-input {
+    flex: 1; min-width: 200px; padding: 0.5rem 1rem;
+    border-radius: 0.5rem; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 0.9rem;
+  }
+
+  /* 分类导航 */
+  #cats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+  #cats button {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); font-weight: 400; font-size: 0.85rem;
+  }
+  #cats button.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+
+  /* 卡片列表 */
+  #list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+
+  .item-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 0.75rem; padding: 1rem; display: flex; gap: 1rem; align-items: flex-start;
+  }
+  .item-card.changed { border-color: #4ade80; }
+
+  .icon-wrap {
+    flex-shrink: 0; width: 64px; height: 64px;
+    background: #fff; border-radius: 0.5rem; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; font-size: 2rem;
+  }
+  .icon-wrap img { width: 64px; height: 64px; object-fit: contain; }
+
+  .item-info { flex: 1; min-width: 0; }
+  .item-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-url { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-cat { font-size: 0.7rem; color: var(--accent); margin-bottom: 0.5rem; }
+
+  .paste-area {
+    width: 100%; padding: 0.4rem 0.6rem; font-size: 0.75rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 0.4rem; color: var(--muted); resize: none; height: 56px;
+    font-family: monospace;
+  }
+  .paste-area:focus { outline: none; border-color: var(--accent); color: var(--text); }
+  .paste-area.ok { border-color: #4ade80; color: #4ade80; }
+  .paste-area.err { border-color: #f87171; }
+
+  .btn-row { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .btn-sm {
+    font-size: 0.75rem; padding: 0.25rem 0.6rem;
+    border-radius: 0.4rem; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg); color: var(--muted);
+  }
+  .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.danger:hover { border-color: #f87171; color: #f87171; }
+
+  #status { color: #4ade80; font-size: 0.85rem; }
+  #empty { color: var(--muted); padding: 2rem; text-align: center; display: none; }
+</style>
+</head>
+<body>
+
+<h1>图标编辑器</h1>
+<p class="sub">加载 my_nav.html，修改书签图标后导出新文件。粘贴 base64 字符串（带或不带 data:image/xxx;base64, 前缀均可）。</p>
+
+<div class="toolbar">
+  <label class="btn" for="file-input">📂 加载 my_nav.html</label>
+  <input type="file" id="file-input" accept=".html">
+  <input type="text" id="search-input" placeholder="搜索书签标题 / 网址..." oninput="renderList()">
+  <button class="sec" onclick="clearAll()">重置所有修改</button>
+  <button onclick="exportFile()">💾 导出修改后的文件</button>
+  <span id="status"></span>
+</div>
+
+<div id="cats"></div>
+<div id="list"></div>
+<div id="empty">未找到匹配书签</div>
+
+<script>
+let navData = null;       // 原始 JSON {categories:[...]}
+let rawHtml = '';         // 原始 HTML 字符串
+let currentCat = null;   // 当前分类标题
+// 修改记录 key = "catIndex_itemIndex"
+let changes = {};
+
+// ── 加载文件 ──────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    rawHtml = ev.target.result;
+    const m = rawHtml.match(/<script[^>]+id="data"[^>]*>([\s\S]*?)<\/script>/);
+    if (!m) { alert('未找到数据块，请确认是由 app.py 生成的 my_nav.html'); return; }
+    try {
+      navData = JSON.parse(m[1].trim());
+    } catch(err) {
+      alert('JSON 解析失败: ' + err.message);
+      return;
+    }
+    changes = {};
+    buildCatNav();
+    setStatus(`已加载 ${file.name}，共 ${navData.categories.reduce((s,c)=>s+c.items.length,0)} 个书签`);
+  };
+  reader.readAsText(file, 'utf-8');
+});
+
+// ── 分类导航 ──────────────────────────────────────────────
+function buildCatNav() {
+  const catsEl = document.getElementById('cats');
+  catsEl.innerHTML = '';
+  navData.categories.forEach((cat, ci) => {
+    const btn = document.createElement('button');
+    btn.textContent = `${cat.title} (${cat.items.length})`;
+    btn.onclick = () => { currentCat = cat.title; renderCatBtns(); renderList(); };
+    catsEl.appendChild(btn);
+  });
+  currentCat = navData.categories[0]?.title || null;
+  renderCatBtns();
+  renderList();
+}
+
+function renderCatBtns() {
+  document.querySelectorAll('#cats button').forEach((btn, i) => {
+    btn.classList.toggle('active', navData.categories[i].title === currentCat);
+  });
+}
+
+// ── 渲染列表 ──────────────────────────────────────────────
+function renderList() {
+  if (!navData) return;
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  const listEl = document.getElementById('list');
+  const emptyEl = document.getElementById('empty');
+  listEl.innerHTML = '';
+  let count = 0;
+
+  navData.categories.forEach((cat, ci) => {
+    if (!q && cat.title !== currentCat) return;
+    cat.items.forEach((item, ii) => {
+      if (q && !item.title.toLowerCase().includes(q) && !item.url.toLowerCase().includes(q)) return;
+      listEl.appendChild(makeCard(item, ci, ii, cat.title));
+      count++;
+    });
+  });
+
+  emptyEl.style.display = count === 0 ? 'block' : 'none';
+}
+
+// ── 生成卡片 ──────────────────────────────────────────────
+function makeCard(item, ci, ii, catTitle) {
+  const key = `${ci}_${ii}`;
+  const currentIcon = changes[key] !== undefined ? changes[key] : item.icon;
+  const isChanged = changes[key] !== undefined;
+
+  const card = document.createElement('div');
+  card.className = 'item-card' + (isChanged ? ' changed' : '');
+  card.dataset.key = key;
+
+  // 图标预览
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'icon-wrap';
+  iconWrap.id = `icon-wrap-${key}`;
+  if (currentIcon) {
+    iconWrap.innerHTML = `<img src="${currentIcon}" alt="">`;
+  } else {
+    iconWrap.textContent = '🔗';
+  }
+
+  // 信息区
+  const info = document.createElement('div');
+  info.className = 'item-info';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'item-title';
+  titleEl.title = item.title;
+  titleEl.textContent = item.title;
+
+  const urlEl = document.createElement('div');
+  urlEl.className = 'item-url';
+  urlEl.title = item.url;
+  urlEl.textContent = item.url;
+
+  const catEl = document.createElement('div');
+  catEl.className = 'item-cat';
+  catEl.textContent = catTitle;
+
+  // 粘贴框
+  const textarea = document.createElement('textarea');
+  textarea.className = 'paste-area';
+  textarea.placeholder = '粘贴 base64 字符串（有无前缀均可）...';
+  if (isChanged && changes[key]) {
+    textarea.value = changes[key];
+    textarea.classList.add('ok');
+  }
+  textarea.addEventListener('input', () => handlePaste(textarea, key, ci, ii, iconWrap, card));
+
+  // 按钮行
+  const btnRow = document.createElement('div');
+  btnRow.className = 'btn-row';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-sm';
+  copyBtn.textContent = '复制当前图标';
+  copyBtn.onclick = () => {
+    const icon = changes[key] !== undefined ? changes[key] : item.icon;
+    if (!icon) { setStatus('该书签暂无图标'); return; }
+    navigator.clipboard.writeText(icon).then(() => setStatus('已复制到剪贴板'));
+  };
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn-sm danger';
+  clearBtn.textContent = '撤销修改';
+  clearBtn.onclick = () => {
+    delete changes[key];
+    textarea.value = '';
+    textarea.className = 'paste-area';
+    card.classList.remove('changed');
+    const orig = item.icon;
+    iconWrap.innerHTML = orig ? `<img src="${orig}" alt="">` : '🔗';
+    setStatus('已撤销');
+  };
+
+  btnRow.append(copyBtn, clearBtn);
+  info.append(titleEl, urlEl, catEl, textarea, btnRow);
+  card.append(iconWrap, info);
+  return card;
+}
+
+// ── 处理粘贴 ──────────────────────────────────────────────
+function handlePaste(textarea, key, ci, ii, iconWrap, card) {
+  let val = textarea.value.trim();
+  if (!val) {
+    delete changes[key];
+    textarea.className = 'paste-area';
+    card.classList.remove('changed');
+    const orig = navData.categories[ci].items[ii].icon;
+    iconWrap.innerHTML = orig ? `<img src="${orig}" alt="">` : '🔗';
+    return;
+  }
+
+  // 自动补全前缀
+  if (!val.startsWith('data:')) {
+    // 检测图片类型
+    let mime = 'image/png';
+    if (val.startsWith('/9j/')) mime = 'image/jpeg';
+    else if (val.startsWith('R0lG')) mime = 'image/gif';
+    else if (val.startsWith('PHN2')) mime = 'image/svg+xml';
+    val = `data:${mime};base64,${val}`;
+  }
+
+  // 验证
+  const img = new Image();
+  img.onload = () => {
+    changes[key] = val;
+    textarea.value = val;
+    textarea.className = 'paste-area ok';
+    card.classList.add('changed');
+    iconWrap.innerHTML = `<img src="${val}" alt="">`;
+    setStatus(`✓ 图标已更新`);
+  };
+  img.onerror = () => {
+    textarea.className = 'paste-area err';
+    setStatus('⚠ 无法识别该图片，请检查 base64 内容');
+  };
+  img.src = val;
+}
+
+// ── 重置 ──────────────────────────────────────────────────
+function clearAll() {
+  if (!navData) return;
+  changes = {};
+  renderList();
+  setStatus('已重置所有修改');
+}
+
+// ── 导出 ──────────────────────────────────────────────────
+function exportFile() {
+  if (!navData || !rawHtml) { alert('请先加载文件'); return; }
+  if (Object.keys(changes).length === 0) { setStatus('没有任何修改，无需导出'); return; }
+
+  // 深拷贝数据，应用修改
+  const exportData = JSON.parse(JSON.stringify(navData));
+  Object.entries(changes).forEach(([key, newIcon]) => {
+    const [ci, ii] = key.split('_').map(Number);
+    exportData.categories[ci].items[ii].icon = newIcon;
+  });
+
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  // 替换原始 HTML 里的数据块
+  const newHtml = rawHtml.replace(
+    /(<script[^>]+id="data"[^>]*>)([\s\S]*?)(<\/script>)/,
+    (_, open, _old, close) => `${open}\n${jsonStr}\n${close}`
+  );
+
+  const blob = new Blob([newHtml], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my_nav.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus(`✓ 已导出，共修改 ${Object.keys(changes).length} 个图标`);
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+</script>
+</body>
+</html>

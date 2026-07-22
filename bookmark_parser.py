@@ -14,6 +14,7 @@ class BookmarkItem:
     order: int
     desc: str = ""
     hover_source: str = ""
+    icon_source: str = ""
 
 def read_text_file(path: str) -> str:
     """读取文本文件，自动探测并兼容常见编码，防止乱码"""
@@ -122,10 +123,8 @@ def favicon_url(url: str, size: int = FAVICON_SIZE) -> str:
 
 
 def resolve_item_icon(url: str, icon: str = "", size: int = FAVICON_SIZE) -> str:
-    """书签内嵌图标多为 16x16，统一改用更高清的 favicon 服务。"""
+    """仅作兜底：优先使用 process 阶段已抓取的 icon。"""
     icon = (icon or "").strip()
-    if icon.startswith("data:image"):
-        return favicon_url(url, size)
-    if icon.startswith(("http://", "https://")):
+    if icon:
         return icon
     return favicon_url(url, size)
