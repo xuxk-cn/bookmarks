@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+backend/.pycache/
+
+# Node
+node_modules/
+.next/
+output/
+
+# App data
+backend/data/uploads/
+backend/data/tasks/
+backend/data/outputs/
+
+# Env
+.env
+bookmarks.html
+操作说明.txt
