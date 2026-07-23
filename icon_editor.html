@@ -60,6 +60,14 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item-cat { font-size: 0.7rem; color: var(--accent); margin-bottom: 0.5rem; }
 
+  .edit-input {
+    width: 100%; padding: 0.4rem 0.6rem; font-size: 0.8rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 0.4rem; color: var(--text); margin-bottom: 0.5rem;
+  }
+  .edit-input:focus { outline: none; border-color: var(--accent); }
+  .edit-input.changed { border-color: #4ade80; }
+
   .paste-area {
     width: 100%; padding: 0.4rem 0.6rem; font-size: 0.75rem;
     background: var(--bg); border: 1px solid var(--border);
@@ -105,7 +113,7 @@
 let navData = null;       // 原始 JSON {categories:[...]}
 let rawHtml = '';         // 原始 HTML 字符串
 let currentCat = null;   // 当前分类标题
-// 修改记录 key = "catIndex_itemIndex"
+// 修改记录 key = "catIndex_itemIndex", value = {icon, title, url, hover}
 let changes = {};
 
 // ── 加载文件 ──────────────────────────────────────────────
@@ -175,7 +183,11 @@ function renderList() {
 // ── 生成卡片 ──────────────────────────────────────────────
 function makeCard(item, ci, ii, catTitle) {
   const key = `${ci}_${ii}`;
-  const currentIcon = changes[key] !== undefined ? changes[key] : item.icon;
+  const change = changes[key] || {};
+  const currentIcon = change.icon !== undefined ? change.icon : item.icon;
+  const currentTitle = change.title !== undefined ? change.title : item.title;
+  const currentUrl = change.url !== undefined ? change.url : item.url;
+  const currentHover = change.hover !== undefined ? change.hover : item.hover;
   const isChanged = changes[key] !== undefined;
 
   const card = document.createElement('div');
@@ -196,26 +208,40 @@ function makeCard(item, ci, ii, catTitle) {
   const info = document.createElement('div');
   info.className = 'item-info';
 
-  const titleEl = document.createElement('div');
-  titleEl.className = 'item-title';
-  titleEl.title = item.title;
-  titleEl.textContent = item.title;
-
-  const urlEl = document.createElement('div');
-  urlEl.className = 'item-url';
-  urlEl.title = item.url;
-  urlEl.textContent = item.url;
-
   const catEl = document.createElement('div');
   catEl.className = 'item-cat';
   catEl.textContent = catTitle;
 
-  // 粘贴框
+  // 标题编辑框
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'edit-input' + (change.title !== undefined ? ' changed' : '');
+  titleInput.placeholder = '标题';
+  titleInput.value = currentTitle;
+  titleInput.addEventListener('input', () => handleFieldChange(key, 'title', titleInput.value, item.title, card));
+
+  // URL 编辑框
+  const urlInput = document.createElement('input');
+  urlInput.type = 'text';
+  urlInput.className = 'edit-input' + (change.url !== undefined ? ' changed' : '');
+  urlInput.placeholder = '链接地址';
+  urlInput.value = currentUrl;
+  urlInput.addEventListener('input', () => handleFieldChange(key, 'url', urlInput.value, item.url, card));
+
+  // 悬停内容编辑框
+  const hoverInput = document.createElement('input');
+  hoverInput.type = 'text';
+  hoverInput.className = 'edit-input' + (change.hover !== undefined ? ' changed' : '');
+  hoverInput.placeholder = '悬停介绍';
+  hoverInput.value = currentHover || '';
+  hoverInput.addEventListener('input', () => handleFieldChange(key, 'hover', hoverInput.value, item.hover || '', card));
+
+  // 图标粘贴框
   const textarea = document.createElement('textarea');
   textarea.className = 'paste-area';
   textarea.placeholder = '粘贴 base64 字符串（有无前缀均可）...';
-  if (isChanged && changes[key]) {
-    textarea.value = changes[key];
+  if (change.icon !== undefined && change.icon) {
+    textarea.value = change.icon;
     textarea.classList.add('ok');
   }
   textarea.addEventListener('input', () => handlePaste(textarea, key, ci, ii, iconWrap, card));
@@ -228,7 +254,7 @@ function makeCard(item, ci, ii, catTitle) {
   copyBtn.className = 'btn-sm';
   copyBtn.textContent = '复制当前图标';
   copyBtn.onclick = () => {
-    const icon = changes[key] !== undefined ? changes[key] : item.icon;
+    const icon = change.icon !== undefined ? change.icon : item.icon;
     if (!icon) { setStatus('该书签暂无图标'); return; }
     navigator.clipboard.writeText(icon).then(() => setStatus('已复制到剪贴板'));
   };
@@ -238,6 +264,12 @@ function makeCard(item, ci, ii, catTitle) {
   clearBtn.textContent = '撤销修改';
   clearBtn.onclick = () => {
     delete changes[key];
+    titleInput.value = item.title;
+    titleInput.className = 'edit-input';
+    urlInput.value = item.url;
+    urlInput.className = 'edit-input';
+    hoverInput.value = item.hover || '';
+    hoverInput.className = 'edit-input';
     textarea.value = '';
     textarea.className = 'paste-area';
     card.classList.remove('changed');
@@ -247,18 +279,48 @@ function makeCard(item, ci, ii, catTitle) {
   };
 
   btnRow.append(copyBtn, clearBtn);
-  info.append(titleEl, urlEl, catEl, textarea, btnRow);
+  info.append(catEl, titleInput, urlInput, hoverInput, textarea, btnRow);
   card.append(iconWrap, info);
   return card;
+}
+
+// ── 处理字段修改 ──────────────────────────────────────────
+function handleFieldChange(key, field, newVal, origVal, card) {
+  if (!changes[key]) changes[key] = {};
+  
+  if (newVal.trim() === origVal.trim()) {
+    delete changes[key][field];
+    if (Object.keys(changes[key]).length === 0) {
+      delete changes[key];
+      card.classList.remove('changed');
+    }
+  } else {
+    changes[key][field] = newVal.trim();
+    card.classList.add('changed');
+  }
+  
+  // 更新输入框样式
+  const inputs = card.querySelectorAll('.edit-input');
+  inputs.forEach(inp => {
+    const fieldName = inp.placeholder === '标题' ? 'title' : inp.placeholder === '链接地址' ? 'url' : 'hover';
+    if (changes[key] && changes[key][fieldName] !== undefined) {
+      inp.classList.add('changed');
+    } else {
+      inp.classList.remove('changed');
+    }
+  });
 }
 
 // ── 处理粘贴 ──────────────────────────────────────────────
 function handlePaste(textarea, key, ci, ii, iconWrap, card) {
   let val = textarea.value.trim();
+  if (!changes[key]) changes[key] = {};
+  
   if (!val) {
-    delete changes[key];
+    delete changes[key].icon;
+    if (Object.keys(changes[key]).length === 0) delete changes[key];
     textarea.className = 'paste-area';
-    card.classList.remove('changed');
+    card.classList.toggle('changed', changes[key] !== undefined);
     const orig = navData.categories[ci].items[ii].icon;
     iconWrap.innerHTML = orig ? `<img src="${orig}" alt="">` : '🔗';
     return;
@@ -266,7 +328,6 @@ function handlePaste(textarea, key, ci, ii, iconWrap, card) {
 
   // 自动补全前缀
   if (!val.startsWith('data:')) {
-    // 检测图片类型
     let mime = 'image/png';
     if (val.startsWith('/9j/')) mime = 'image/jpeg';
     else if (val.startsWith('R0lG')) mime = 'image/gif';
@@ -277,7 +338,7 @@ function handlePaste(textarea, key, ci, ii, iconWrap, card) {
   // 验证
   const img = new Image();
   img.onload = () => {
-    changes[key] = val;
+    changes[key].icon = val;
     textarea.value = val;
     textarea.className = 'paste-area ok';
     card.classList.add('changed');
@@ -306,9 +367,13 @@ function exportFile() {
 
   // 深拷贝数据，应用修改
   const exportData = JSON.parse(JSON.stringify(navData));
-  Object.entries(changes).forEach(([key, newIcon]) => {
+  Object.entries(changes).forEach(([key, changeObj]) => {
     const [ci, ii] = key.split('_').map(Number);
-    exportData.categories[ci].items[ii].icon = newIcon;
+    const item = exportData.categories[ci].items[ii];
+    if (changeObj.icon !== undefined) item.icon = changeObj.icon;
+    if (changeObj.title !== undefined) item.title = changeObj.title;
+    if (changeObj.url !== undefined) item.url = changeObj.url;
+    if (changeObj.hover !== undefined) item.hover = changeObj.hover;
   });
 
   const jsonStr = JSON.stringify(exportData, null, 2);
@@ -324,7 +389,7 @@ function exportFile() {
   a.download = 'my_nav.html';
   a.click();
   URL.revokeObjectURL(a.href);
-  setStatus(`✓ 已导出，共修改 ${Object.keys(changes).length} 个图标`);
+  setStatus(`✓ 已导出，共修改 ${Object.keys(changes).length} 个书签`);
 }
 
 function setStatus(msg) {
