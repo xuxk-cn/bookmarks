@@ -2,17 +2,61 @@ import json
 import re
 from urllib.request import Request, urlopen
 
-def clean_html_to_text(html_content: str, max_len: int = 4000) -> str:
-    """过滤掉无用的样式和脚本，只留下核心文本，防止爆大模型上下文"""
+def extract_site_info(html_content: str, url: str = "", title: str = "") -> str:
+    """从 HTML 中提取最有价值的内容片段，优先级：meta description > og:description > title + h1/h2 > 正文"""
     if not html_content:
         return ""
-    # 过滤 script 和 style
-    text = re.sub(r'<(script|style)\b[^>]*>.*?</\1>', '', html_content, flags=re.IGNORECASE | re.DOTALL)
-    # 过滤普通 HTML 标签
-    text = re.sub(r'<.*?>', ' ', text, flags=re.DOTALL)
-    # 压缩空白字符
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text[:max_len]
+
+    parts = []
+
+    # 1. meta description / og:description — 网站自己写的，最权威
+    for pattern in (
+        r'<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']{10,})["\']',
+        r'<meta[^>]+content=["\']([^"\']{10,})["\'][^>]+name=["\']description["\']',
+        r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']{10,})["\']',
+        r'<meta[^>]+content=["\']([^"\']{10,})["\'][^>]+property=["\']og:description["\']',
+    ):
+        m = re.search(pattern, html_content, flags=re.IGNORECASE | re.DOTALL)
+        if m:
+            desc = m.group(1).strip()
+            if desc:
+                parts.append(f"网站描述：{desc}")
+                break
+
+    # 2. og:title 或 <title>
+    og_title = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']', html_content, flags=re.IGNORECASE)
+    page_title = og_title.group(1).strip() if og_title else ""
+    if not page_title:
+        t = re.search(r'<title[^>]*>(.*?)</title>', html_content, flags=re.IGNORECASE | re.DOTALL)
+        page_title = re.sub(r'\s+', ' ', t.group(1)).strip() if t else ""
+    if page_title:
+        parts.append(f"页面标题：{page_title}")
+
+    # 3. h1 / h2 标题
+    headings = re.findall(r'<h[12][^>]*>(.*?)</h[12]>', html_content, flags=re.IGNORECASE | re.DOTALL)
+    clean_headings = []
+    for h in headings[:4]:
+        h = re.sub(r'<.*?>', '', h)
+        h = re.sub(r'\s+', ' ', h).strip()
+        if h and len(h) < 80:
+            clean_headings.append(h)
+    if clean_headings:
+        parts.append("主要标题：" + " / ".join(clean_headings))
+
+    # 4. 如果以上都没拿到有效内容，退化为正文前 300 字
+    if len(parts) <= 1:
+        body = re.sub(r'<(script|style|nav|footer|header)\b[^>]*>.*?</\1>', '', html_content, flags=re.IGNORECASE | re.DOTALL)
+        body = re.sub(r'<.*?>', ' ', body, flags=re.DOTALL)
+        body = re.sub(r'\s+', ' ', body).strip()
+        if body:
+            parts.append(f"页面内容：{body[:300]}")
+
+    return "\n".join(parts)
+
+
+def clean_html_to_text(html_content: str, max_len: int = 4000) -> str:
+    """兼容旧调用，内部走 extract_site_info"""
+    return extract_site_info(html_content)
 
 def request_gemma_summary(content: str, config: dict, is_full_prompt: bool = False) -> str:
     """请求本地运行的 Gemma 服务器。content 可以是 HTML 源码，也可以是已经构造好的完整提示词。"""
@@ -26,9 +70,9 @@ def request_gemma_summary(content: str, config: dict, is_full_prompt: bool = Fal
 
     # 构造消息列表，增加 one-shot 示例以强制模型遵循格式
     messages = [
-        {"role": "system", "content": "你是一个专业的网页摘要助手。你的任务是根据提供的网页内容或信息，直接输出一句 15-30 字的中文摘要。禁止包含任何思考过程、分析步骤、引言、换行或解释。直接给出最终结果。"},
-        {"role": "user", "content": "网站标题：百度，网址：https://www.baidu.com/\n网页内容：百度一下，你就知道。全球最大的中文搜索引擎。"},
-        {"role": "assistant", "content": "全球领先的中文搜索引擎，提供精准的信息检索、新闻资讯及各类生活服务。"},
+        {"role": "system", "content": "你是一个网站介绍助手。我会给你提供网站的标题、meta描述、页面标题等关键信息，你只需根据这些真实内容，输出一句15-30字的中文介绍，直接描述该网站的核心用途。禁止编造、禁止废话、禁止任何前缀，直接给结果。"},
+        {"role": "user", "content": "网站描述：Search the world's information, including webpages, images, videos and more.\n页面标题：Google"},
+        {"role": "assistant", "content": "全球最大搜索引擎，可搜索网页、图片、视频等各类信息。"},
         {"role": "user", "content": full_prompt}
     ]
 

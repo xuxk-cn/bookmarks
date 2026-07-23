@@ -329,11 +329,13 @@ def main():
             return it, True, ""
 
         if html:
-            ai_summary = ai_client.request_gemma_summary(html, config)
-            if ai_summary:
-                it.desc = ai_summary
-                it.hover_source = "local_gemma_server"
-                return it, True, ""
+            site_info = ai_client.extract_site_info(html, url=it.url, title=it.title)
+            if site_info:
+                ai_summary = ai_client.request_gemma_summary(site_info, config, is_full_prompt=False)
+                if ai_summary:
+                    it.desc = ai_summary
+                    it.hover_source = "local_gemma_server"
+                    return it, True, ""
 
         google_snippet = fetch_google_snippet(it.url, timeout=timeout_seconds)
         if google_snippet:
@@ -341,20 +343,8 @@ def main():
             it.hover_source = "google_snippet"
             return it, True, ""
 
-        guess_prompt = (
-            f"你是一个书签助手。请根据以下网站信息，给出一句 15-30 字的中文说明，描述其核心功能。\n"
-            f"网站标题：{it.title}\n"
-            f"网址：{it.url}\n"
-            f"请直接给出描述，不要包含任何前缀。"
-        )
-        ai_guess = ai_client.request_gemma_summary(guess_prompt, config, is_full_prompt=True)
-        if ai_guess and len(ai_guess) > 5 and "错误" not in ai_guess:
-            it.desc = ai_guess
-            it.hover_source = "ai_inference"
-            return it, True, ""
-
-        it.desc = f"优质收藏站点：{it.title}。点击即可访问。"
-        it.hover_source = "default_text"
+        it.desc = ""
+        it.hover_source = "none"
         return it, True, ""
 
     print(f"正在开启线程池（并发数: {config['max_workers']}）抓取并交由本地大模型处理...")
