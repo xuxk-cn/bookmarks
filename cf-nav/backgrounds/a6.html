@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Ocean Terrain GLSL 控制台</title>
+
+<style>
+html,body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#000;
+}
+
+canvas{
+    width:100vw;
+    height:100vh;
+    display:block;
+}
+
+
+/* 控制台 */
+#panel{
+    position:absolute;
+    top:30px;
+    left:30px;
+    width:300px;
+    background:rgba(15,20,30,.92);
+    color:#fff;
+    border:1px solid #4da3ff;
+    border-radius:12px;
+    font-family:"Microsoft YaHei",sans-serif;
+    user-select:none;
+    backdrop-filter:blur(10px);
+    box-shadow:0 0 20px #000;
+}
+
+
+/* 标题栏 */
+#title{
+    height:40px;
+    line-height:40px;
+    padding-left:15px;
+    background:#12345a;
+    cursor:move;
+    border-radius:12px 12px 0 0;
+}
+
+
+#buttons{
+    float:right;
+    margin-right:10px;
+}
+
+button{
+    background:none;
+    color:white;
+    border:0;
+    cursor:pointer;
+    font-size:18px;
+}
+
+
+#body{
+    padding:15px;
+}
+
+
+.item{
+    margin-bottom:12px;
+}
+
+
+label{
+    display:block;
+    font-size:14px;
+    margin-bottom:5px;
+}
+
+
+input[type=range]{
+    width:100%;
+}
+
+
+.value{
+    float:right;
+    color:#6cf;
+}
+
+
+
+.hide{
+    display:none;
+}
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<canvas id="glcanvas"></canvas>
+
+
+<div id="panel">
+
+
+<div id="title">
+🌊 Ocean Terrain 控制台
+
+<span id="buttons">
+<button id="fold">−</button>
+</span>
+
+</div>
+
+
+
+<div id="body">
+
+
+<div class="item">
+<label>
+海水颜色
+<span class="value" id="waterColorV">0.55</span>
+</label>
+<input id="waterColor"
+type="range"
+min="0"
+max="1"
+step="0.01"
+value="0.55">
+</div>
+
+
+
+<div class="item">
+<label>
+海浪强度
+<span class="value" id="waveV">0.50</span>
+</label>
+<input id="wave"
+type="range"
+min="0"
+max="2"
+step="0.01"
+value="0.5">
+</div>
+
+
+
+<div class="item">
+<label>
+海浪速度
+<span class="value" id="speedV">1.0</span>
+</label>
+<input id="speed"
+type="range"
+min="0"
+max="5"
+step="0.1"
+value="1">
+</div>
+
+
+
+<div class="item">
+<label>
+水面高度
+<span class="value" id="heightV">0.0</span>
+</label>
+<input id="height"
+type="range"
+min="-1"
+max="1"
+step="0.01"
+value="0">
+</div>
+
+
+
+<div class="item">
+<label>
+太阳强度
+<span class="value" id="sunV">1.0</span>
+</label>
+<input id="sun"
+type="range"
+min="0"
+max="5"
+step="0.1"
+value="1">
+</div>
+
+
+
+<div class="item">
+<label>
+雾强度
+<span class="value" id="fogV">0.3</span>
+</label>
+<input id="fog"
+type="range"
+min="0"
+max="2"
+step="0.01"
+value="0.3">
+</div>
+
+
+
+<div class="item">
+<label>
+反射强度
+<span class="value" id="reflectV">0.8</span>
+</label>
+<input id="reflect"
+type="range"
+min="0"
+max="2"
+step="0.01"
+value="0.8">
+</div>
+
+
+
+<div class="item">
+<label>
+Ray March质量
+<span class="value" id="qualityV">64</span>
+</label>
+<input id="quality"
+type="range"
+min="16"
+max="128"
+step="1"
+value="64">
+</div>
+
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+const canvas=document.getElementById("glcanvas");
+
+const gl=canvas.getContext("webgl2");
+
+
+if(!gl)
+{
+alert("浏览器不支持 WebGL2");
+}
+
+
+
+
+function resize()
+{
+canvas.width=innerWidth;
+canvas.height=innerHeight;
+gl.viewport(
+0,
+0,
+canvas.width,
+canvas.height
+);
+}
+
+resize();
+
+window.onresize=resize;
+
+
+
+/***************
+ 参数系统
+****************/
+
+
+let params={
+
+waterColor:.55,
+wave:.5,
+speed:1,
+height:0,
+sun:1,
+fog:.3,
+reflect:.8,
+quality:64
+
+};
+
+
+
+function bind(id,key)
+{
+
+let e=document.getElementById(id);
+let v=document.getElementById(id+"V");
+
+
+e.oninput=()=>{
+
+params[key]=parseFloat(e.value);
+
+v.innerHTML=e.value;
+
+};
+
+}
+
+
+bind("waterColor","waterColor");
+bind("wave","wave");
+bind("speed","speed");
+bind("height","height");
+bind("sun","sun");
+bind("fog","fog");
+bind("reflect","reflect");
+bind("quality","quality");
+
+
+
+
+
+/***************
+ Alt+H隐藏控制台
+****************/
+
+window.addEventListener(
+"keydown",
+e=>{
+
+if(e.altKey && e.key.toLowerCase()=="h")
+{
+document.getElementById("panel")
+.classList.toggle("hide");
+}
+
+});
+
+
+
+
+
+/***************
+ 折叠
+****************/
+
+
+fold.onclick=()=>{
+
+body.style.display=
+body.style.display=="none"
+?"block"
+:"none";
+
+fold.innerHTML=
+body.style.display=="none"
+?"+":"−";
+
+};
+
+
+
+
+
+/***************
+ 拖动面板
+****************/
+
+
+let panel=document.getElementById("panel");
+let title=document.getElementById("title");
+
+let dragging=false;
+let ox,oy;
+
+
+title.onmousedown=e=>{
+
+dragging=true;
+
+ox=e.clientX-panel.offsetLeft;
+oy=e.clientY-panel.offsetTop;
+
+};
+
+
+document.onmousemove=e=>{
+
+if(dragging)
+{
+
+panel.style.left=
+(e.clientX-ox)+"px";
+
+panel.style.top=
+(e.clientY-oy)+"px";
+
+}
+
+};
+
+
+document.onmouseup=()=>dragging=false;
+
+
+
+
+
+/***************
+ Shader工具
+****************/
+
+
+function createShader(type,src)
+{
+
+let s=gl.createShader(type);
+
+gl.shaderSource(s,src);
+
+gl.compileShader(s);
+
+
+if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))
+{
+
+console.error(
+gl.getShaderInfoLog(s)
+);
+
+}
+
+
+return s;
+
+}
+
+
+
+function createProgram(vs,fs)
+{
+
+let p=gl.createProgram();
+
+gl.attachShader(
+p,
+createShader(
+gl.VERTEX_SHADER,
+vs
+));
+
+gl.attachShader(
+p,
+createShader(
+gl.FRAGMENT_SHADER,
+fs
+));
+
+
+gl.linkProgram(p);
+
+
+if(!gl.getProgramParameter(p,gl.LINK_STATUS))
+{
+    console.error(
+        gl.getProgramInfoLog(p)
+    );
+}
+
+
+return p;
+
+}
+
+
+
+
+const vertexShader=`
+
+#version 300 es
+
+in vec2 position;
+
+out vec2 uv;
+
+void main()
+{
+uv=position*0.5+0.5;
+
+gl_Position=
+vec4(position,0,1);
+}
+
+`;
+
+
+
+/*
+
+下一部分：
+完整 Fragment Shader
+
+*/
+const fragmentShader=`
+
+#version 300 es
+precision highp float;
+
+
+out vec4 fragColor;
+
+in vec2 uv;
+
+
+uniform float iTime;
+uniform vec2 iResolution;
+uniform sampler2D iChannel0;
+
+uniform float uDark;
+
+
+/* 控制参数 */
+
+uniform float waterColor;
+uniform float wave;
+uniform float speed;
+uniform float height;
+uniform float sun;
+uniform float fog;
+uniform float reflect;
+
+
+/********************************
+ 基础函数
+********************************/
+
+
+float hash(vec2 p)
+{
+    return fract(
+        sin(dot(p,vec2(127.1,311.7)))
+        *43758.5453
+    );
+}
+
+
+
+float noise(vec2 p)
+{
+    vec2 i=floor(p);
+    vec2 f=fract(p);
+
+    f=f*f*(3.0-2.0*f);
+
+
+    return mix(
+        mix(
+            hash(i),
+            hash(i+vec2(1,0)),
+            f.x),
+        mix(
+            hash(i+vec2(0,1)),
+            hash(i+vec2(1,1)),
+            f.x),
+        f.y);
+}
+
+
+
+float fbm(vec2 p)
+{
+
+float v=0.0;
+
+float a=.5;
+
+
+for(int i=0;i<5;i++)
+{
+
+v+=noise(p)*a;
+
+p*=2.0;
+
+a*=0.5;
+
+}
+
+
+return v;
+
+}
+
+
+
+
+/********************************
+ 海面高度
+********************************/
+
+
+float sea(vec2 p)
+{
+
+float t=iTime*speed;
+
+
+float h=0.0;
+
+
+h+=sin(
+p.x*2.0+t
+)*0.08;
+
+
+h+=sin(
+p.y*3.0-t*1.3
+)*0.05;
+
+
+
+h+=fbm(
+p*1.8+t*.1
+)
+*wave
+*.15;
+
+
+
+return h+height;
+
+}
+
+
+
+
+/********************************
+ 地形
+********************************/
+
+
+float terrain(vec2 p)
+{
+
+float h=
+fbm(p*1.2);
+
+return h*.3-0.25;
+
+}
+
+
+
+
+/********************************
+ 法线
+********************************/
+
+
+vec3 normalSea(vec2 p)
+{
+
+float e=.002;
+
+
+float h=sea(p);
+
+vec3 n=vec3(
+
+sea(p+vec2(e,0))-h,
+
+e,
+
+sea(p+vec2(0,e))-h
+
+);
+
+
+return normalize(n);
+
+}
+
+
+
+/********************************
+ 相机
+********************************/
+
+
+mat3 camera(
+vec3 ro,
+vec3 ta
+)
+{
+
+vec3 z=
+normalize(ta-ro);
+
+vec3 x=
+normalize(
+cross(vec3(0,1,0),z)
+);
+
+vec3 y=
+cross(z,x);
+
+
+return mat3(x,y,z);
+
+}
+
+
+
+
+/********************************
+ Ray March
+********************************/
+
+
+float march(
+vec3 ro,
+vec3 rd,
+out vec3 hit
+)
+{
+
+float t=0.0;
+
+
+for(int i=0;i<80;i++)
+{
+
+vec3 p=
+ro+rd*t;
+
+
+float h=
+p.y-sea(p.xz);
+
+
+
+if(h<0.0)
+{
+hit=p;
+return t;
+}
+
+
+t+=max(
+0.02,
+h*.5
+);
+
+
+if(t>50.0)
+break;
+
+
+}
+
+
+
+return -1.0;
+
+}
+
+
+
+
+
+/********************************
+ 天空
+********************************/
+
+
+vec3 sky(vec3 rd)
+{
+
+float s=
+pow(
+max(rd.y,0.0),
+0.5
+);
+
+
+return mix(
+
+vec3(.02,.05,.12),
+
+vec3(.3,.55,1.0),
+
+s
+
+);
+
+}
+
+
+
+
+/********************************
+ 主渲染
+********************************/
+
+
+void main()
+{
+
+vec2 p=
+(uv*2.0-1.0);
+
+
+p.x*=iResolution.x/iResolution.y;
+
+
+
+vec3 ro=
+vec3(
+0.0,
+0.8,
+3.5
+);
+
+
+
+vec3 ta=
+vec3(
+0,
+0,
+0
+);
+
+
+
+mat3 cam=
+camera(ro,ta);
+
+
+
+vec3 rd=
+normalize(
+cam*
+vec3(
+p,
+-1.5
+)
+);
+
+
+
+vec3 color;
+
+
+
+vec3 hit;
+
+
+
+float t=
+march(
+ro,
+rd,
+hit
+);
+
+
+
+if(t>0.0)
+{
+
+vec3 n=
+normalSea(
+hit.xz
+);
+
+
+
+float light=
+dot(
+n,
+normalize(
+vec3(-.5,1,.3)
+)
+);
+
+
+
+light=
+max(
+light,
+0.0
+);
+
+
+
+vec3 water=
+mix(
+
+vec3(
+0.01,
+0.12,
+0.18
+),
+
+vec3(
+0.05,
+0.6,
+0.8
+),
+
+waterColor
+
+);
+
+
+
+color=
+water
+*
+(
+0.3+
+light*sun
+);
+
+
+
+vec3 r=
+reflect(
+rd,
+n
+);
+
+
+
+color+=
+sky(r)
+*
+reflect;
+
+
+}
+
+
+
+else
+{
+
+color=
+sky(rd);
+
+
+}
+
+
+
+
+/***************
+ 雾
+****************/
+
+
+if(t>0.0)
+{
+    color=
+    mix(
+        color,
+        sky(rd),
+        1.0-exp(-t*fog*.03)
+    );
+
+
+
+/***************
+ 色调
+****************/
+
+
+color=
+pow(
+color,
+vec3(
+0.4545
+)
+);
+
+
+
+fragColor=
+vec4(
+color,
+1
+);
+
+
+
+}
+
+`;
+
+
+
+
+
+/********************************
+ 创建程序
+********************************/
+
+
+const program=createProgram(
+vertexShader,
+fragmentShader
+);
+
+
+gl.useProgram(program);
+
+
+
+/********************************
+ 顶点
+********************************/
+
+
+const buffer=
+gl.createBuffer();
+
+
+gl.bindBuffer(
+gl.ARRAY_BUFFER,
+buffer
+);
+
+
+gl.bufferData(
+gl.ARRAY_BUFFER,
+new Float32Array([
+
+-1,-1,
+1,-1,
+-1,1,
+
+-1,1,
+1,-1,
+1,1
+
+]),
+gl.STATIC_DRAW
+);
+
+
+
+const loc=
+gl.getAttribLocation(
+program,
+"position"
+);
+
+
+gl.enableVertexAttribArray(loc);
+
+
+gl.vertexAttribPointer(
+loc,
+2,
+gl.FLOAT,
+false,
+0,
+0
+);
+
+
+
+
+
+/********************************
+ Uniform
+********************************/
+
+
+const uniforms={};
+
+
+[
+"iTime",
+"iResolution",
+"waterColor",
+"wave",
+"speed",
+"height",
+"sun",
+"fog",
+"reflect"
+
+].forEach(n=>{
+
+uniforms[n]=
+gl.getUniformLocation(
+program,
+n
+);
+
+});
+
+
+
+
+
+
+/********************************
+ 动画
+********************************/
+
+
+function render(t)
+{
+
+gl.useProgram(program);
+
+
+gl.uniform1f(
+uniforms.iTime,
+t*0.001
+);
+
+
+
+gl.uniform2f(
+uniforms.iResolution,
+canvas.width,
+canvas.height
+);
+
+
+
+gl.uniform1f(
+uniforms.waterColor,
+params.waterColor
+);
+
+
+gl.uniform1f(
+uniforms.wave,
+params.wave
+);
+
+
+gl.uniform1f(
+uniforms.speed,
+params.speed
+);
+
+
+gl.uniform1f(
+uniforms.height,
+params.height
+);
+
+
+gl.uniform1f(
+uniforms.sun,
+params.sun
+);
+
+
+gl.uniform1f(
+uniforms.fog,
+params.fog
+);
+
+
+gl.uniform1f(
+uniforms.reflect,
+params.reflect
+);
+
+
+
+gl.drawArrays(
+gl.TRIANGLES,
+0,
+6
+);
+
+
+requestAnimationFrame(render);
+
+}
+
+
+
+requestAnimationFrame(render);
+
+
+</script>
+
+
+</body>
+</html>

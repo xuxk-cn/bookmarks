@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{SITE_NAME}}</title>
+<meta name="description" content="{{SITE_DESC}}">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+
+<!-- 背景层 -->
+<canvas id="bg-canvas"></canvas>
+<div id="bg-image"></div>
+
+<div id="app">
+  <header>
+    <h1>{{SITE_NAME}}</h1>
+    <p class="site-desc">{{SITE_DESC}}</p>
+    <div class="topbar">
+      <label class="toggle-label">
+        <input type="checkbox" id="sound-toggle"> 悬停音效
+      </label>
+      <div class="topbar-right">
+        <select id="bg-select" title="背景选择" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);border-radius:0.4rem;padding:0.25rem 0.5rem;font-size:0.8rem;cursor:pointer;">
+          <option value="none">无背景</option>
+        </select>
+        <select id="style-select" title="卡片风格" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);border-radius:0.4rem;padding:0.25rem 0.5rem;font-size:0.8rem;cursor:pointer;">
+          <option value="1">风格一</option>
+          <option value="2">风格二</option>
+          <option value="3">风格三</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <nav class="navbar" id="navbar"></nav>
+
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="搜索书签...">
+    <button class="search-clear" id="search-clear">✕</button>
+  </div>
+  <div class="search-info" id="search-info"></div>
+
+  <main class="container" id="main"></main>
+</div>
+
+<div id="tooltip">
+  <div class="tt-url" id="tt-url"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+</div>
+
+<!-- 数据由 SSR 注入 -->
+<script id="nav-data" type="application/json">{{NAV_DATA}}</script>
+<script id="nav-settings" type="application/json">{{NAV_SETTINGS}}</script>
+
+<script type="module" src="/js/sound.js"></script>
+<script type="module" src="/js/background.js"></script>
+<script type="module" src="/js/search.js"></script>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

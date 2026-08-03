@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实地面透视降雨模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #020617;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #bgCanvas {
+            z-index: 1;
+        }
+        #rainCanvas {
+            z-index: 2;
+            pointer-events: none;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        input[type=range] {
+            accent-color: #38bdf8;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-100 antialiased">
+
+    <!-- Background Canvas for Photo/Ground Perspective -->
+    <canvas id="bgCanvas"></canvas>
+    <!-- Rain Layers Canvas -->
+    <canvas id="rainCanvas"></canvas>
+
+    <!-- Floating Trigger Button when Panel is Hidden -->
+    <button id="showConsoleBtn" class="fixed top-4 left-4 z-20 px-3.5 py-2.5 rounded-2xl glass-panel shadow-xl hover:bg-slate-800/90 text-sky-400 transition-all duration-300 hidden flex items-center justify-center gap-2 group backdrop-blur-md cursor-pointer border border-sky-500/30" title="打开控制台 (快捷键 H)">
+        <svg class="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        </svg>
+        <span class="text-xs font-semibold tracking-wider text-slate-200">控制台 (H)</span>
+    </button>
+
+    <!-- UI Control Panel -->
+    <div class="fixed top-4 left-4 z-10 max-w-sm w-full p-5 rounded-2xl glass-panel shadow-2xl transition-all duration-300 max-h-[92vh] overflow-y-auto custom-scroll" id="controlPanel">
+        <div class="flex items-center justify-between mb-4">
+            <h1 class="text-base font-semibold tracking-wide text-sky-400 flex items-center gap-2">
+                <svg class="w-5 h-5 animate-pulse text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                </svg>
+                地面透视雨景控制台
+            </h1>
+            <div class="flex items-center gap-1.5">
+                <button id="toggleUI" class="text-xs px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700" title="折叠内容">
+                    折叠
+                </button>
+                <button id="hideConsoleBtn" class="text-xs p-1 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition border border-slate-700" title="隐藏控制台 (快捷键 H)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="panelContent" class="space-y-4 text-xs sm:text-sm">
+            <!-- Preset Themes -->
+            <div>
+                <label class="block text-slate-400 mb-1 font-medium">无人无车·成排树木林荫街道</label>
+                <select id="themeSelect" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-sky-500 transition">
+                    <option value="treeAvenue">静谧成排林荫街道 (Tree-Lined Street)</option>
+                    <option value="forestRoad">无人深山树林道路 (Empty Forest Road)</option>
+                    <option value="wetStreet">雨后湿润沥青小道 (Quiet Asphalt Lane)</option>
+                    <option value="stonePavement">幽静林荫石板步道 (Quiet Stone Path)</option>
+                </select>
+            </div>
+
+            <!-- Ground Alignment Controls -->
+            <div class="p-3 bg-sky-950/40 rounded-xl border border-sky-500/30 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sky-300 font-medium text-xs flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        地面与视角透视对齐
+                    </span>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="showGridToggle" class="sr-only peer">
+                        <div class="w-7 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-sky-500"></div>
+                        <span class="ml-1.5 text-[11px] text-slate-400">辅助线</span>
+                    </label>
+                </div>
+
+                <!-- Horizon Y Slider -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-300">地面/水平线位置 (Horizon Y)</span>
+                        <span id="horizonVal" class="text-sky-400 font-mono">48%</span>
+                    </div>
+                    <input type="range" id="horizonSlider" min="10" max="85" value="48" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- Perspective Tilt Slider -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-300">地面透视俯视角度 (Tilt)</span>
+                        <span id="tiltVal" class="text-sky-400 font-mono">0.38</span>
+                    </div>
+                    <input type="range" id="tiltSlider" min="0.15" max="0.80" step="0.01" value="0.38" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Custom Background Photo -->
+            <div class="p-3 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <label class="text-slate-300 font-medium">自定义街道照片</label>
+                    <label for="bgFileInput" class="text-xs text-sky-400 hover:text-sky-300 cursor-pointer underline flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        上传照片
+                    </label>
+                    <input type="file" id="bgFileInput" accept="image/*" class="hidden">
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="bgUrlInput" placeholder="粘贴图片 URL..." class="flex-1 bg-slate-950/80 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
+                    <button id="applyBgUrlBtn" class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs rounded-lg transition font-medium">应用</button>
+                </div>
+            </div>
+
+            <!-- Rain Density Slider -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300 font-medium">雨量大小</span>
+                    <span id="densityVal" class="text-sky-400 font-mono">280</span>
+                </div>
+                <input type="range" id="densitySlider" min="20" max="600" value="280" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Rain Thickness Slider -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300 font-medium">雨丝粗细与立体厚度</span>
+                    <span id="thicknessVal" class="text-sky-400 font-mono">1.8x</span>
+                </div>
+                <input type="range" id="thicknessSlider" min="0.8" max="4.0" step="0.2" value="1.8" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Wind Slider -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300">风向与雨丝倾角</span>
+                    <span id="windVal" class="text-sky-400 font-mono">-2.5</span>
+                </div>
+                <input type="range" id="windSlider" min="-8.0" max="8.0" step="0.5" value="-2.5" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Toggles & Buttons -->
+            <div class="pt-2 flex flex-col gap-2">
+                <button id="audioBtn" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl font-medium text-xs sm:text-sm text-sky-300 flex items-center justify-center gap-2 transition shadow-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                    <span id="audioText">开启立体声雨音</span>
+                </button>
+
+                <button id="lightningBtn" class="w-full py-2 px-4 bg-slate-900/80 hover:bg-slate-800/90 border border-amber-500/30 text-amber-300 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition">
+                    <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    模拟夜空闪电
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Logic Script -->
+    <script>
+        const config = {
+            theme: 'treeAvenue',
+            horizonY: 0.48,
+            perspectiveTilt: 0.38,
+            showGrid: false,
+            density: 280,
+            wind: -2.5,
+            thicknessMultiplier: 1.8
+        };
+
+        // Quiet tree-lined streets with NO people and NO cars
+        const themes = {
+            treeAvenue: {
+                bgUrl: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=1920&q=80',
+                horizonY: 0.48,
+                tilt: 0.38
+            },
+            forestRoad: {
+                bgUrl: 'https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1?auto=format&fit=crop&w=1920&q=80',
+                horizonY: 0.52,
+                tilt: 0.40
+            },
+            wetStreet: {
+                bgUrl: 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?auto=format&fit=crop&w=1920&q=80',
+                horizonY: 0.45,
+                tilt: 0.35
+            },
+            stonePavement: {
+                bgUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1920&q=80',
+                horizonY: 0.38,
+                tilt: 0.30
+            }
+        };
+
+        // DOM elements
+        let bgCanvas, bgCtx;
+        let rainCanvas, rainCtx;
+        let currentBgImage = new Image();
+        let isImageLoaded = false;
+        let lightningAlpha = 0.0;
+
+        // Raindrop collection
+        let raindrops = [];
+
+        class Raindrop {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                const w = Math.max(1, rainCanvas.width);
+                const h = Math.max(1, rainCanvas.height);
+                const horizonPixel = h * config.horizonY;
+
+                // 4 Parallax layers: 0 (distant mist curtain), 1 (mid-far), 2 (mid-close), 3 (thick foreground)
+                this.layer = Math.floor(Math.random() * 4);
+                
+                // Spawn position
+                this.x = Math.random() * (w + 600) - 300;
+                this.y = initial ? Math.random() * h : -100 - Math.random() * 200;
+
+                // Layer depth scaling
+                const depthRatio = (this.layer + 1) / 4;
+                
+                // Fast rain physics: High fall speed & long motion-blur streaks (NOT slow floating snow)
+                this.speed = (28 + Math.random() * 28) * depthRatio;
+                this.length = (55 + Math.random() * 75) * depthRatio;
+
+                // Crisp physical streak width
+                const baseWidth = (this.layer === 3) ? (1.4 + Math.random() * 0.8) :
+                                  (this.layer === 2) ? (1.0 + Math.random() * 0.5) :
+                                  (this.layer === 1) ? (0.6 + Math.random() * 0.4) : (0.4 + Math.random() * 0.3);
+                
+                this.thickness = baseWidth * (0.6 + config.thicknessMultiplier * 0.3);
+
+                // Target ground impact line (bottom terrain/perspective boundary)
+                this.impactY = horizonPixel + Math.random() * (h - horizonPixel);
+                this.alpha = (0.3 + Math.random() * 0.5) * depthRatio;
+            }
+
+            update() {
+                this.x += config.wind;
+                this.y += this.speed;
+
+                // When rain hits ground level
+                if (this.y >= this.impactY) {
+                    this.reset();
+                }
+
+                // Screen bounds recycle
+                if (this.y > rainCanvas.height + 120 || this.x < -400 || this.x > rainCanvas.width + 400) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                // Precise motion blur streak calculations
+                const windOffset = config.wind * (this.length / this.speed);
+                const startX = this.x - windOffset;
+                const startY = this.y - this.length;
+
+                // Linear gradient tail for realistic rain streak motion blur (bright head, fading tail)
+                const grad = rainCtx.createLinearGradient(startX, startY, this.x, this.y);
+                grad.addColorStop(0, `rgba(200, 230, 255, 0)`);
+                grad.addColorStop(0.7, `rgba(225, 242, 255, ${this.alpha * 0.6})`);
+                grad.addColorStop(1, `rgba(255, 255, 255, ${this.alpha})`);
+
+                rainCtx.beginPath();
+                rainCtx.strokeStyle = grad;
+                rainCtx.lineWidth = this.thickness;
+                rainCtx.lineCap = 'butt'; // Sharp streaks, no rounded snow dots
+                rainCtx.moveTo(startX, startY);
+                rainCtx.lineTo(this.x, this.y);
+                rainCtx.stroke();
+            }
+        }
+
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let rainGainNode = null;
+        let rainFilterNode = null;
+        let pitterPatterTimer = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            // 1. Organic Stereo Pink/Brown Rain Noise Buffer
+            const bufferSize = 3 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(2, bufferSize, audioCtx.sampleRate);
+            const left = noiseBuffer.getChannelData(0);
+            const right = noiseBuffer.getChannelData(1);
+
+            let b0L=0, b1L=0, b2L=0, b3L=0, b4L=0, b5L=0;
+            let b0R=0, b1R=0, b2R=0, b3R=0, b4R=0, b5R=0;
+
+            for (let i = 0; i < bufferSize; i++) {
+                let whiteL = Math.random() * 2 - 1;
+                b0L = 0.99886 * b0L + whiteL * 0.0555179;
+                b1L = 0.99332 * b1L + whiteL * 0.0750759;
+                b2L = 0.96900 * b2L + whiteL * 0.1538520;
+                b3L = 0.86650 * b3L + whiteL * 0.3104856;
+                b4L = 0.55000 * b4L + whiteL * 0.5329522;
+                b5L = -0.7616 * b5L - whiteL * 0.0168980;
+                left[i] = (b0L + b1L + b2L + b3L + b4L + b5L + whiteL * 0.5362) * 0.032;
+
+                let whiteR = Math.random() * 2 - 1;
+                b0R = 0.99886 * b0R + whiteR * 0.0555179;
+                b1R = 0.99332 * b1R + whiteR * 0.0750759;
+                b2R = 0.96900 * b2R + whiteR * 0.1538520;
+                b3R = 0.86650 * b3R + whiteR * 0.3104856;
+                b4R = 0.55000 * b4R + whiteR * 0.5329522;
+                b5R = -0.7616 * b5R - whiteR * 0.0168980;
+                right[i] = (b0R + b1R + b2R + b3R + b4R + b5R + whiteR * 0.5362) * 0.032;
+            }
+
+            const noiseNode = audioCtx.createBufferSource();
+            noiseNode.buffer = noiseBuffer;
+            noiseNode.loop = true;
+
+            // 2. High Pass Filter
+            const hpFilter = audioCtx.createBiquadFilter();
+            hpFilter.type = 'highpass';
+            hpFilter.frequency.setValueAtTime(180, audioCtx.currentTime);
+
+            // 3. Low Pass Dynamic Filter (Frequency maps to rain density)
+            rainFilterNode = audioCtx.createBiquadFilter();
+            rainFilterNode.type = 'lowpass';
+            const initialFreq = 900 + (config.density / 600) * 2600;
+            rainFilterNode.frequency.setValueAtTime(initialFreq, audioCtx.currentTime);
+
+            // 4. Peaking Filter for rain crispness
+            const crispFilter = audioCtx.createBiquadFilter();
+            crispFilter.type = 'peaking';
+            crispFilter.frequency.setValueAtTime(3200, audioCtx.currentTime);
+            crispFilter.gain.setValueAtTime(2.2, audioCtx.currentTime);
+
+            // 5. Rain Swell LFO Modulation (Wind gusts)
+            const lfo = audioCtx.createOscillator();
+            lfo.frequency.setValueAtTime(0.12, audioCtx.currentTime);
+            const lfoGain = audioCtx.createGain();
+            lfoGain.gain.setValueAtTime(200, audioCtx.currentTime);
+            lfo.connect(lfoGain);
+            lfoGain.connect(rainFilterNode.frequency);
+            lfo.start();
+
+            // 6. Master Volume Gain
+            rainGainNode = audioCtx.createGain();
+            const initialGain = 0.08 + (config.density / 600) * 0.22;
+            rainGainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime);
+
+            // Connections
+            noiseNode.connect(hpFilter);
+            hpFilter.connect(rainFilterNode);
+            rainFilterNode.connect(crispFilter);
+            crispFilter.connect(rainGainNode);
+            rainGainNode.connect(audioCtx.destination);
+
+            noiseNode.start();
+
+            // Start subtle pitter-patter drop synthesizer loop
+            startPitterPatterLoop();
+        }
+
+        function updateAudioIntensity(density) {
+            if (!audioCtx || !isAudioPlaying) return;
+            const norm = Math.min(1, Math.max(0, density / 600));
+            const targetFreq = 900 + norm * 2600;
+            const targetGain = 0.08 + norm * 0.22;
+
+            rainFilterNode.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.1);
+            rainGainNode.gain.setTargetAtTime(targetGain, audioCtx.currentTime, 0.1);
+        }
+
+        function startPitterPatterLoop() {
+            if (pitterPatterTimer) clearInterval(pitterPatterTimer);
+            pitterPatterTimer = setInterval(() => {
+                if (!isAudioPlaying || !audioCtx) return;
+                const prob = 0.25 + (config.density / 600) * 0.65;
+                if (Math.random() < prob) {
+                    playMicroPatterDrop();
+                }
+            }, 45);
+        }
+
+        function playMicroPatterDrop() {
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                const filter = audioCtx.createBiquadFilter();
+
+                const baseFreq = 1400 + Math.random() * 2600;
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.35, audioCtx.currentTime + 0.02);
+
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+                filter.Q.setValueAtTime(2.8, audioCtx.currentTime);
+
+                const dropVol = 0.003 + Math.random() * 0.010;
+                gain.gain.setValueAtTime(dropVol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.022);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.022);
+            } catch (e) {}
+        }
+
+        function loadBackgroundImage(url) {
+            isImageLoaded = false;
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                currentBgImage = img;
+                isImageLoaded = true;
+                drawBackground();
+            };
+            img.onerror = () => {
+                isImageLoaded = false;
+                drawBackground();
+            };
+            img.src = url;
+        }
+
+        function resizeCanvases() {
+            const w = Math.max(1, window.innerWidth);
+            const h = Math.max(1, window.innerHeight);
+
+            bgCanvas.width = w;
+            bgCanvas.height = h;
+            rainCanvas.width = w;
+            rainCanvas.height = h;
+
+            drawBackground();
+            syncRaindropsCount();
+        }
+
+        function drawBackground() {
+            const w = bgCanvas.width;
+            const h = bgCanvas.height;
+
+            if (w === 0 || h === 0) return;
+
+            bgCtx.clearRect(0, 0, w, h);
+
+            if (isImageLoaded && currentBgImage.width > 0) {
+                // Cover fit background image
+                const imgRatio = currentBgImage.width / currentBgImage.height;
+                const canvasRatio = w / h;
+                let renderW, renderH, offsetX, offsetY;
+
+                if (canvasRatio > imgRatio) {
+                    renderW = w;
+                    renderH = w / imgRatio;
+                    offsetX = 0;
+                    offsetY = (h - renderH) / 2;
+                } else {
+                    renderH = h;
+                    renderW = h * imgRatio;
+                    offsetX = (w - renderW) / 2;
+                    offsetY = 0;
+                }
+                bgCtx.drawImage(currentBgImage, offsetX, offsetY, renderW, renderH);
+            } else {
+                // Default Dark Moody Gradient
+                const grad = bgCtx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, '#020617');
+                grad.addColorStop(config.horizonY, '#0f172a');
+                grad.addColorStop(1, '#1e293b');
+                bgCtx.fillStyle = grad;
+                bgCtx.fillRect(0, 0, w, h);
+            }
+
+            // Ground perspective dark overlay
+            const horizonY = h * config.horizonY;
+            const groundGrad = bgCtx.createLinearGradient(0, horizonY, 0, h);
+            groundGrad.addColorStop(0, 'rgba(15, 23, 42, 0.2)');
+            groundGrad.addColorStop(1, 'rgba(2, 6, 23, 0.6)');
+            bgCtx.fillStyle = groundGrad;
+            bgCtx.fillRect(0, horizonY, w, h - horizonY);
+
+            // Optional Alignment Grid
+            if (config.showGrid) {
+                drawPerspectiveGrid(horizonY);
+            }
+        }
+
+        function drawPerspectiveGrid(horizonY) {
+            const w = bgCanvas.width;
+            const h = bgCanvas.height;
+
+            bgCtx.save();
+            bgCtx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            bgCtx.lineWidth = 1;
+
+            // Horizon Line
+            bgCtx.beginPath();
+            bgCtx.moveTo(0, horizonY);
+            bgCtx.lineTo(w, horizonY);
+            bgCtx.stroke();
+
+            // Perspective Rays
+            const vanishX = w / 2;
+            const rayCount = 16;
+            for (let i = -rayCount; i <= rayCount; i++) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(vanishX, horizonY);
+                bgCtx.lineTo(vanishX + i * (w / 6), h);
+                bgCtx.stroke();
+            }
+
+            // Horizontal Perspective Steps
+            let currY = horizonY;
+            let step = 15;
+            for (let i = 0; i < 20; i++) {
+                currY += step;
+                if (currY > h) break;
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, currY);
+                bgCtx.lineTo(w, currY);
+                bgCtx.stroke();
+                step *= (1 + config.perspectiveTilt * 0.8);
+            }
+
+            bgCtx.restore();
+        }
+
+        function syncRaindropsCount() {
+            while (raindrops.length < config.density) {
+                raindrops.push(new Raindrop());
+            }
+            if (raindrops.length > config.density) {
+                raindrops.length = config.density;
+            }
+        }
+
+        function animate() {
+            const w = rainCanvas.width;
+            const h = rainCanvas.height;
+
+            rainCtx.clearRect(0, 0, w, h);
+
+            // Volumetric Ground Rain Haze / Mist Layer
+            const horizonPixel = h * config.horizonY;
+            if (horizonPixel < h) {
+                const mistGrad = rainCtx.createLinearGradient(0, horizonPixel - 40, 0, horizonPixel + 160);
+                const hazeAlpha = 0.04 + (config.density / 600) * 0.08;
+                mistGrad.addColorStop(0, 'rgba(180, 215, 235, 0)');
+                mistGrad.addColorStop(0.4, `rgba(170, 210, 230, ${hazeAlpha})`);
+                mistGrad.addColorStop(1, 'rgba(180, 215, 235, 0)');
+                rainCtx.fillStyle = mistGrad;
+                rainCtx.fillRect(0, horizonPixel - 40, w, 200);
+            }
+
+            // Lightning Effect
+            if (lightningAlpha > 0) {
+                rainCtx.fillStyle = `rgba(240, 248, 255, ${lightningAlpha})`;
+                rainCtx.fillRect(0, 0, w, h);
+                lightningAlpha -= 0.04;
+            }
+
+            // Update & Draw Raindrops
+            for (let i = 0; i < raindrops.length; i++) {
+                raindrops[i].update();
+                raindrops[i].draw();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = () => {
+            bgCanvas = document.getElementById('bgCanvas');
+            bgCtx = bgCanvas.getContext('2d');
+            rainCanvas = document.getElementById('rainCanvas');
+            rainCtx = rainCanvas.getContext('2d');
+
+            window.addEventListener('resize', resizeCanvases);
+            resizeCanvases();
+
+            // Load Default Quiet Tree Avenue Theme
+            const t = themes[config.theme];
+            config.horizonY = t.horizonY;
+            config.perspectiveTilt = t.tilt;
+            document.getElementById('horizonSlider').value = t.horizonY * 100;
+            document.getElementById('horizonVal').innerText = Math.round(t.horizonY * 100) + '%';
+            document.getElementById('tiltSlider').value = t.tilt;
+            document.getElementById('tiltVal').innerText = t.tilt.toFixed(2);
+
+            loadBackgroundImage(t.bgUrl);
+            animate();
+        };
+
+        // UI Controls
+        document.getElementById('themeSelect').addEventListener('change', (e) => {
+            config.theme = e.target.value;
+            const t = themes[config.theme];
+            config.horizonY = t.horizonY;
+            config.perspectiveTilt = t.tilt;
+            document.getElementById('horizonSlider').value = t.horizonY * 100;
+            document.getElementById('horizonVal').innerText = Math.round(t.horizonY * 100) + '%';
+            document.getElementById('tiltSlider').value = t.tilt;
+            document.getElementById('tiltVal').innerText = t.tilt.toFixed(2);
+            loadBackgroundImage(t.bgUrl);
+        });
+
+        document.getElementById('horizonSlider').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            config.horizonY = val / 100.0;
+            document.getElementById('horizonVal').innerText = val + '%';
+            drawBackground();
+        });
+
+        document.getElementById('tiltSlider').addEventListener('input', (e) => {
+            config.perspectiveTilt = parseFloat(e.target.value);
+            document.getElementById('tiltVal').innerText = config.perspectiveTilt.toFixed(2);
+            drawBackground();
+        });
+
+        document.getElementById('showGridToggle').addEventListener('change', (e) => {
+            config.showGrid = e.target.checked;
+            drawBackground();
+        });
+
+        document.getElementById('densitySlider').addEventListener('input', (e) => {
+            config.density = parseInt(e.target.value);
+            document.getElementById('densityVal').innerText = config.density;
+            syncRaindropsCount();
+            updateAudioIntensity(config.density);
+        });
+
+        document.getElementById('thicknessSlider').addEventListener('input', (e) => {
+            config.thicknessMultiplier = parseFloat(e.target.value);
+            document.getElementById('thicknessVal').innerText = config.thicknessMultiplier.toFixed(1) + 'x';
+            for (let r of raindrops) {
+                r.reset(true);
+            }
+        });
+
+        document.getElementById('windSlider').addEventListener('input', (e) => {
+            config.wind = parseFloat(e.target.value);
+            document.getElementById('windVal').innerText = config.wind.toFixed(1);
+        });
+
+        document.getElementById('bgFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (evt) => loadBackgroundImage(evt.target.result);
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('applyBgUrlBtn').addEventListener('click', () => {
+            const url = document.getElementById('bgUrlInput').value.trim();
+            if (url) loadBackgroundImage(url);
+        });
+
+        const audioBtn = document.getElementById('audioBtn');
+        audioBtn.addEventListener('click', () => {
+            if (!isAudioPlaying) {
+                initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                isAudioPlaying = true;
+                document.getElementById('audioText').innerText = "关闭雨音";
+                audioBtn.classList.replace('bg-slate-800', 'bg-sky-600');
+            } else {
+                isAudioPlaying = false;
+                document.getElementById('audioText').innerText = "开启立体声雨音";
+                audioBtn.classList.replace('bg-sky-600', 'bg-slate-800');
+            }
+        });
+
+        document.getElementById('lightningBtn').addEventListener('click', () => {
+            lightningAlpha = 0.85;
+        });
+
+        // Console Visibility Controls
+        const controlPanel = document.getElementById('controlPanel');
+        const showConsoleBtn = document.getElementById('showConsoleBtn');
+        const hideConsoleBtn = document.getElementById('hideConsoleBtn');
+        const toggleUIBtn = document.getElementById('toggleUI');
+        const panelContent = document.getElementById('panelContent');
+        let uiExpanded = true;
+
+        function setConsoleVisible(visible) {
+            if (visible) {
+                controlPanel.classList.remove('hidden');
+                showConsoleBtn.classList.add('hidden');
+            } else {
+                controlPanel.classList.add('hidden');
+                showConsoleBtn.classList.remove('hidden');
+            }
+        }
+
+        toggleUIBtn.addEventListener('click', () => {
+            uiExpanded = !uiExpanded;
+            panelContent.classList.toggle('hidden', !uiExpanded);
+            toggleUIBtn.innerText = uiExpanded ? '折叠' : '展开';
+        });
+
+        hideConsoleBtn.addEventListener('click', () => setConsoleVisible(false));
+        showConsoleBtn.addEventListener('click', () => setConsoleVisible(true));
+
+        // Keyboard Shortcut 'H' to toggle Console
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'h' || e.key === 'H') {
+                if (document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+                const isHidden = controlPanel.classList.contains('hidden');
+                setConsoleVisible(isHidden);
+            }
+        });
+    </script>
+</body>
+</html>

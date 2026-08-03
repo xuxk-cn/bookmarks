@@ -1,0 +1,7 @@
+name = "cf-nav"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "NAV_KV"
+id = "YOUR_KV_NAMESPACE_ID"

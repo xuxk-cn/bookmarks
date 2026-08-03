@@ -1,0 +1,14 @@
+{
+  "name": "cf-nav",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "一键部署到 Cloudflare 的个人书签导航站",
+  "scripts": {
+    "dev": "wrangler pages dev public --compatibility-date=2024-09-23 --kv=NAV_KV",
+    "init": "node scripts/init-local.js",
+    "deploy": "wrangler pages deploy public"
+  },
+  "devDependencies": {
+    "wrangler": "^4.118.0"
+  }
+}

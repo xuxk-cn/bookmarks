@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>背景预览</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#f8fafc;font-family:system-ui,sans-serif;height:100vh;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.ui{position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;
+  background:rgba(15,23,42,.85);padding:.75rem 1rem;border-radius:.75rem;
+  backdrop-filter:blur(8px);border:1px solid #334155}
+select,button{background:#1e293b;color:#f8fafc;border:1px solid #334155;
+  padding:.4rem .8rem;border-radius:.4rem;cursor:pointer;font-size:.875rem}
+button.active{background:#38bdf8;color:#0f172a;border-color:#38bdf8;font-weight:600}
+.label{color:#94a3b8;font-size:.8rem;align-self:center}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="ui">
+  <span class="label">背景预览器</span>
+  <button onclick="switchBg('rain')" id="btn-rain">🌧 下雨</button>
+  <button onclick="switchBg('snow')" id="btn-snow">❄️ 下雪</button>
+  <button onclick="switchBg('forest')" id="btn-forest">🌿 落叶</button>
+  <button onclick="switchBg('stream')" id="btn-stream">🌊 海浪</button>
+  <button onclick="switchBg('stars')" id="btn-stars">🌌 星空</button>
+  <button onclick="switchBg('aurora')" id="btn-aurora">🌈 极光</button>
+  <button onclick="switchBg('particles')" id="btn-particles">✨ 粒子</button>
+  <button onclick="switchBg('matrix')" id="btn-matrix">💻 矩阵</button>
+  <button onclick="switchBg('sakura')" id="btn-sakura">🌸 樱花</button>
+  <button onclick="switchBg('none')" id="btn-none">✕ 关闭</button>
+</div>
+
+<script type="module">
+const canvas = document.getElementById('bg-canvas');
+
+const MODULES = {
+  rain:      () => import('./backgrounds/rain.js'),
+  snow:      () => import('./backgrounds/snow.js'),
+  forest:    () => import('./backgrounds/forest.js'),
+  stream:    () => import('./backgrounds/stream.js'),
+  stars:     () => import('./backgrounds/stars.js'),
+  aurora:    () => import('./backgrounds/aurora.js'),
+  particles: () => import('./backgrounds/particles.js'),
+  matrix:    () => import('./backgrounds/matrix.js'),
+  sakura:    () => import('./backgrounds/sakura.js'),
+};
+
+let current = null, currentName = 'none';
+
+window.switchBg = async function(name) {
+  // 清理当前
+  if (current?.stop) try { current.stop(); } catch(e) {}
+  current = null;
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 更新按钮状态
+  document.querySelectorAll('.ui button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + name)?.classList.add('active');
+  currentName = name;
+
+  if (name === 'none') return;
+  if (!MODULES[name]) return;
+
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  try {
+    const mod = await MODULES[name]();
+    current = mod;
+    mod.start(canvas);
+    console.log(`✓ ${name} 启动成功`);
+  } catch(e) {
+    console.error(`✗ ${name} 加载失败:`, e);
+    alert(`${name} 加载失败: ${e.message}\n\n请确认用 HTTP 服务器打开此页面（不能直接双击打开）`);
+  }
+};
+
+window.addEventListener('resize', () => {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// 默认展示下雨
+switchBg('rain');
+</script>
+</body>
+</html>

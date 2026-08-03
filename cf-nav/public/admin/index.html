@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>后台管理 - {{SITE_NAME}}</title>
+<meta name="csrf-token" content="{{CSRF_TOKEN}}">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--accent:#38bdf8;--text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171;--yellow:#fbbf24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;display:flex;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+
+/* 侧边栏 */
+.sidebar{width:200px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);padding:1.5rem 0;display:flex;flex-direction:column}
+.sidebar h2{color:var(--accent);font-size:1rem;padding:0 1.25rem;margin-bottom:1.5rem}
+.nav-item{padding:0.6rem 1.25rem;cursor:pointer;color:var(--muted);font-size:0.9rem;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(56,189,248,.05);color:var(--text)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(56,189,248,.08)}
+.sidebar-bottom{margin-top:auto;padding:1rem 1.25rem}
+.logout-btn{width:100%;padding:.4rem;background:none;border:1px solid var(--border);color:var(--muted);border-radius:.4rem;cursor:pointer;font-size:.8rem}
+.logout-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* 主区域 */
+.main{flex:1;overflow-y:auto;padding:1.5rem}
+.page{display:none}.page.active{display:block}
+.page-title{font-size:1.2rem;font-weight:600;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+
+/* 通用组件 */
+button{cursor:pointer;border:none;border-radius:.4rem;font-size:.85rem;font-weight:600;padding:.4rem .9rem;transition:opacity .2s}
+button:hover{opacity:.85}
+.btn-primary{background:var(--accent);color:var(--bg)}
+.btn-sec{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:#7f1d1d;color:var(--red);border:1px solid var(--red)}
+.btn-sm{font-size:.75rem;padding:.25rem .6rem}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:.4rem;padding:.45rem .65rem;font-size:.875rem;font-family:inherit;outline:none;transition:border .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.field{margin-bottom:.85rem}
+.field label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.25rem}
+.field input,.field select,.field textarea{width:100%}
+
+/* 卡片 */
+.card{background:var(--card);border:1px solid var(--border);border-radius:.6rem;padding:1rem;margin-bottom:.75rem}
+
+/* 工具栏 */
+.toolbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem}
+.tbl th{text-align:left;padding:.5rem .75rem;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500}
+.tbl td{padding:.5rem .75rem;border-bottom:1px solid rgba(51,65,85,.5);vertical-align:middle}
+.tbl tr:hover td{background:rgba(30,41,59,.5)}
+.tbl .url-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.78rem}
+.tbl .title-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 进度条 */
+.progress-wrap{background:var(--border);border-radius:9999px;height:6px;margin:.5rem 0}
+.progress-bar{background:var(--accent);height:6px;border-radius:9999px;transition:width .3s;width:0%}
+
+/* toast */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--card);border:1px solid var(--border);padding:.65rem 1rem;border-radius:.5rem;font-size:.85rem;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:300px}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* 弹窗 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:.75rem;padding:1.5rem;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.modal-close{cursor:pointer;font-size:1.4rem;color:var(--muted);background:none;border:none;padding:0}
+.modal-ft{display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem}
+
+@media(max-width:640px){.sidebar{width:160px}.main{padding:1rem}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <h2>⚙ 后台管理</h2>
+  <div class="nav-item active" data-page="bookmarks">📚 书签管理</div>
+  <div class="nav-item" data-page="categories">📂 分类管理</div>
+  <div class="nav-item" data-page="ai">🤖 AI 补描述</div>
+  <div class="nav-item" data-page="pending">📥 投稿审核</div>
+  <div class="nav-item" data-page="import">📤 导入导出</div>
+  <div class="nav-item" data-page="settings">⚙️ 站点设置</div>
+  <div class="sidebar-bottom">
+    <button class="logout-btn" onclick="logout()">退出登录</button>
+  </div>
+</aside>
+
+<main class="main">
+  <!-- 书签管理 -->
+  <div class="page active" id="page-bookmarks">
+    <div class="page-title">书签管理</div>
+    <div class="toolbar">
+      <select id="cat-filter" onchange="loadBookmarks()"></select>
+      <button class="btn-primary" onclick="openAddBookmark()">+ 新增书签</button>
+      <button class="btn-sec" onclick="batchAiSelected()">🤖 AI补选中</button>
+      <button class="btn-sec" onclick="batchFaviconSelected()">🖼 抓取图标</button>
+      <button class="btn-sec" onclick="fetchAllFavicons()">🖼 批量抓取全部</button>
+      <button class="btn-sec" id="select-all-btn" onclick="toggleSelectAll()">全选</button>
+      <input type="text" id="bm-search" placeholder="搜索..." style="margin-left:auto;width:180px" oninput="filterBookmarks()">
+    </div>
+    <table class="tbl">
+      <thead><tr><th><input type="checkbox" id="master-cb"></th><th>图标</th><th>标题</th><th>链接</th><th>介绍</th><th>操作</th></tr></thead>
+      <tbody id="bm-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- 分类管理 -->
+  <div class="page" id="page-categories">
+    <div class="page-title">分类管理</div>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="openAddCat()">+ 新增分类</button>
+    </div>
+    <div id="cat-list"></div>
+  </div>
+
+  <!-- AI 补描述 -->
+  <div class="page" id="page-ai">
+    <div class="page-title">AI 批量补描述</div>
+    <div class="card">
+      <div class="field"><label>选择板块</label>
+        <select id="ai-cat-sel" style="width:200px"></select>
+      </div>
+      <div class="field"><label>AI Provider</label>
+        <select id="ai-provider">
+          <option value="workers">CF Workers AI（免费）</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+      <div class="field" id="ai-key-wrap" style="display:none">
+        <label>API Key</label><input type="password" id="ai-key" placeholder="sk-...">
+      </div>
+      <div class="field"><label>模型（留空使用默认）</label>
+        <input type="text" id="ai-model" placeholder="默认模型">
+      </div>
+      <div style="display:flex;gap:.6rem;margin-top:.5rem">
+        <button class="btn-primary" onclick="runAiBatch()">▶ 开始生成</button>
+        <button class="btn-sec" onclick="stopAi = true">⏹ 停止</button>
+      </div>
+    </div>
+    <div id="ai-progress-wrap" style="display:none">
+      <div class="progress-wrap"><div class="progress-bar" id="ai-bar"></div></div>
+      <div id="ai-log" style="font-size:.8rem;color:var(--muted);margin-top:.5rem;max-height:200px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- 投稿审核 -->
+  <div class="page" id="page-pending">
+    <div class="page-title">投稿审核</div>
+    <div id="pending-list"></div>
+  </div>
+
+  <!-- 导入导出 -->
+  <div class="page" id="page-import">
+    <div class="page-title">导入 / 导出</div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:.75rem">导入书签</div>
+      <div class="field"><label>选择文件（浏览器导出的 HTML）</label>
+        <input type="file" id="import-file" accept=".html">
+      </div>
+      <div class="field"><label>导入模式</label>
+        <select id="import-mode">
+          <option value="merge">合并（同名分类追加，去重）</option>
+          <option value="replace">覆盖（清空现有数据）</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="doImport()">开始导入</button>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div style="font-weight:600;margin-bottom:.75rem">导出书签</div>
+      <div style="display:flex;gap:.75rem">
+        <button class="btn-sec" onclick="doExport('json')">导出 JSON</button>
+        <button class="btn-sec" onclick="doExport('html')">导出书签 HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 站点设置 -->
+  <div class="page" id="page-settings">
+    <div class="page-title">站点设置</div>
+    <div class="card">
+      <div class="field"><label>站点名称</label><input type="text" id="s-name"></div>
+      <div class="field"><label>副标题</label><input type="text" id="s-desc"></div>
+      <div class="field"><label>页脚文案</label><input type="text" id="s-footer"></div>
+      <div class="field"><label>默认卡片风格</label>
+        <select id="s-style">
+          <option value="1">风格一（图标居中）</option>
+          <option value="2">风格二（图标左侧+介绍）</option>
+          <option value="3">风格三（大图标）</option>
+        </select>
+      </div>
+      <div class="field"><label>默认背景</label>
+        <select id="s-bg">
+          <option value="none">无</option>
+        </select>
+      </div>
+      <div class="field"><label>Favicon 接口</label><input type="text" id="s-favicon"></div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-submit" style="width:16px;height:16px">
+        <label for="s-submit" style="margin:0;font-size:.875rem">开放用户投稿</label>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.6rem">
+        <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div style="font-weight:600;margin-bottom:.75rem">AI 配置</div>
+      <div class="field"><label>Provider</label>
+        <select id="s-ai-provider">
+          <option value="workers">CF Workers AI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+      <div class="field"><label>API Key（留空使用 Workers AI）</label>
+        <input type="password" id="s-ai-key" placeholder="留空则使用 CF Workers AI">
+      </div>
+      <div class="field"><label>模型</label><input type="text" id="s-ai-model"></div>
+      <div class="field"><label>批量请求间隔（毫秒）</label>
+        <input type="number" id="s-ai-delay" min="500" max="10000" step="100">
+      </div>
+      <button class="btn-primary" onclick="saveAiSettings()">保存 AI 配置</button>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div style="font-weight:600;margin-bottom:.75rem">修改管理员密码</div>
+      <div class="field"><label>新密码</label><input type="password" id="new-pass"></div>
+      <div class="field"><label>确认新密码</label><input type="password" id="new-pass2"></div>
+      <button class="btn-danger" onclick="changePassword()">修改密码</button>
+    </div>
+  </div>
+</main>
+
+<!-- 新增/编辑书签弹窗 -->
+<div class="modal" id="bm-modal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <span id="bm-modal-title">新增书签</span>
+      <button class="modal-close" onclick="closeModal('bm-modal')">×</button>
+    </div>
+    <div class="field"><label>分类</label><select id="bm-cat" style="width:100%"></select></div>
+    <div class="field"><label>标题 *</label><input type="text" id="bm-title"></div>
+    <div class="field"><label>链接 *</label><input type="url" id="bm-url"></div>
+    <div class="field"><label>悬停介绍</label><textarea id="bm-hover" rows="3"></textarea></div>
+    <div class="modal-ft">
+      <button class="btn-sec" onclick="closeModal('bm-modal')">取消</button>
+      <button class="btn-primary" onclick="saveBm()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/编辑分类弹窗 -->
+<div class="modal" id="cat-modal">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <span id="cat-modal-title">新增分类</span>
+      <button class="modal-close" onclick="closeModal('cat-modal')">×</button>
+    </div>
+    <div class="field"><label>分类名称 *</label><input type="text" id="cat-name"></div>
+    <div class="modal-ft">
+      <button class="btn-sec" onclick="closeModal('cat-modal')">取消</button>
+      <button class="btn-primary" onclick="saveCat()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+// ── 工具 ──────────────────────────────────────────────
+function api(path, opts = {}) {
+  return fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF, ...(opts.headers || {}) },
+    body: opts.body ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : undefined,
+  }).then(r => r.json());
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+
+// ── 导航切换 ──────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-' + el.dataset.page).classList.add('active');
+    if (el.dataset.page === 'bookmarks') loadBookmarks();
+    if (el.dataset.page === 'categories') loadCategories();
+    if (el.dataset.page === 'pending') loadPending();
+    if (el.dataset.page === 'settings') loadSettings();
+    if (el.dataset.page === 'ai') loadAiCats();
+  });
+});
+
+// ── 书签管理 ──────────────────────────────────────────
+let allData = { categories: [] };
+let editingBm = null; // {ci, ii} or null
+
+async function loadBookmarks() {
+  allData = await api('/api/bookmarks');
+  const sel = document.getElementById('cat-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">全部分类</option>' +
+    allData.categories.map((c, i) => `<option value="${i}">${c.title} (${c.items.length})</option>`).join('');
+  if (cur) sel.value = cur;
+  renderBmTable();
+}
+
+function filterBookmarks() { renderBmTable(); }
+
+function renderBmTable() {
+  const ci  = document.getElementById('cat-filter').value;
+  const q   = document.getElementById('bm-search').value.toLowerCase();
+  const tbody = document.getElementById('bm-tbody');
+  tbody.innerHTML = '';
+
+  allData.categories.forEach((cat, catIdx) => {
+    if (ci !== '' && catIdx !== parseInt(ci)) return;
+    cat.items.forEach((item, itmIdx) => {
+      if (q && !item.title.toLowerCase().includes(q) && !item.url.toLowerCase().includes(q)) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" data-ci="${catIdx}" data-ii="${itmIdx}"></td>
+        <td>${item.icon ? `<img src="${item.icon}" style="width:24px;height:24px;object-fit:contain;background:#fff;border-radius:3px;padding:1px">` : '🔗'}</td>
+        <td class="title-cell" title="${escH(item.title)}">${escH(item.title)}</td>
+        <td class="url-cell" title="${escH(item.url)}">${escH(item.url)}</td>
+        <td style="max-width:200px;font-size:.78rem;color:var(--muted)">${escH((item.hover||'').slice(0,40))}${item.hover?.length>40?'…':''}</td>
+        <td style="white-space:nowrap">
+          <button class="btn-sec btn-sm" onclick="editBm(${catIdx},${itmIdx})">编辑</button>
+          <button class="btn-danger btn-sm" style="margin-left:.25rem" onclick="deleteBm(${catIdx},${itmIdx})">删除</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function escH(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function openAddBookmark() {
+  editingBm = null;
+  document.getElementById('bm-modal-title').textContent = '新增书签';
+  document.getElementById('bm-title').value = '';
+  document.getElementById('bm-url').value = '';
+  document.getElementById('bm-hover').value = '';
+  const sel = document.getElementById('bm-cat');
+  sel.innerHTML = allData.categories.map((c, i) => `<option value="${i}">${c.title}</option>`).join('');
+  openModal('bm-modal');
+}
+
+function editBm(ci, ii) {
+  editingBm = { ci, ii };
+  const item = allData.categories[ci].items[ii];
+  document.getElementById('bm-modal-title').textContent = '编辑书签';
+  document.getElementById('bm-title').value = item.title;
+  document.getElementById('bm-url').value   = item.url;
+  document.getElementById('bm-hover').value = item.hover || '';
+  const sel = document.getElementById('bm-cat');
+  sel.innerHTML = allData.categories.map((c, i) => `<option value="${i}">${c.title}</option>`).join('');
+  sel.value = ci;
+  openModal('bm-modal');
+}
+
+async function saveBm() {
+  const title = document.getElementById('bm-title').value.trim();
+  const url   = document.getElementById('bm-url').value.trim();
+  const hover = document.getElementById('bm-hover').value.trim();
+  const ci    = parseInt(document.getElementById('bm-cat').value);
+  if (!title || !url) return toast('标题和链接不能为空', 'err');
+
+  if (editingBm) {
+    await api(`/api/bookmarks/${editingBm.ci}-${editingBm.ii}`, { method: 'PUT', body: { title, url, hover } });
+  } else {
+    await api('/api/bookmarks', { method: 'POST', body: { title, url, hover, catIndex: ci } });
+  }
+  closeModal('bm-modal');
+  await loadBookmarks();
+  toast('已保存');
+}
+
+async function deleteBm(ci, ii) {
+  if (!confirm('确定删除该书签？')) return;
+  await api(`/api/bookmarks/${ci}-${ii}`, { method: 'DELETE' });
+  await loadBookmarks();
+  toast('已删除');
+}
+
+function toggleSelectAll() {
+  const cbs = document.querySelectorAll('#bm-tbody input[type=checkbox]');
+  const allChecked = [...cbs].every(c => c.checked);
+  cbs.forEach(c => c.checked = !allChecked);
+}
+
+async function batchAiSelected() {
+  const checked = [...document.querySelectorAll('#bm-tbody input[type=checkbox]:checked')];
+  if (!checked.length) return toast('请先选择书签', 'err');
+  const items = checked.map(c => ({ catIndex: parseInt(c.dataset.ci), itemIndex: parseInt(c.dataset.ii) }));
+  const res = await api('/api/ai', { method: 'POST', body: { items } });
+  await loadBookmarks();
+  toast(`完成，${res.results?.filter(r=>r.ok).length} 条成功`);
+}
+
+async function batchFaviconSelected() {
+  const checked = [...document.querySelectorAll('#bm-tbody input[type=checkbox]:checked')];
+  if (!checked.length) return toast('请先选择书签', 'err');
+  const urls = checked.map(c => {
+    const ci = parseInt(c.dataset.ci), ii = parseInt(c.dataset.ii);
+    return allData.categories[ci]?.items[ii]?.url;
+  }).filter(Boolean);
+  const res = await api('/api/favicon', { method: 'POST', body: { urls } });
+  await loadBookmarks();
+  toast(`完成，${res.updated} 个图标已更新`);
+}
+
+async function fetchAllFavicons() {
+  if (!confirm('将抓取所有空图标的书签，可能需要较长时间，确定吗？')) return;
+  const res = await api('/api/favicon', { method: 'POST', body: { all: true } });
+  await loadBookmarks();
+  toast(`完成，${res.updated}/${res.total} 个图标已更新`);
+}
+
+// ── 分类管理 ──────────────────────────────────────────
+let editingCat = null;
+
+async function loadCategories() {
+  const cats = await api('/api/categories');
+  const list = document.getElementById('cat-list');
+  list.innerHTML = '';
+  cats.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.display = 'flex';
+    div.style.alignItems = 'center';
+    div.innerHTML = `
+      <span style="flex:1;font-weight:500">${escH(c.title)}</span>
+      <span style="color:var(--muted);font-size:.8rem;margin-right:1rem">${c.count} 个书签</span>
+      <button class="btn-sec btn-sm" onclick="editCat(${c.index},'${escH(c.title)}')">编辑</button>
+      <button class="btn-danger btn-sm" style="margin-left:.4rem" onclick="deleteCat(${c.index})">删除</button>`;
+    list.appendChild(div);
+  });
+}
+
+function openAddCat() {
+  editingCat = null;
+  document.getElementById('cat-modal-title').textContent = '新增分类';
+  document.getElementById('cat-name').value = '';
+  openModal('cat-modal');
+}
+
+function editCat(i, title) {
+  editingCat = i;
+  document.getElementById('cat-modal-title').textContent = '编辑分类';
+  document.getElementById('cat-name').value = title;
+  openModal('cat-modal');
+}
+
+async function saveCat() {
+  const title = document.getElementById('cat-name').value.trim();
+  if (!title) return toast('分类名不能为空', 'err');
+  if (editingCat !== null) {
+    await api(`/api/categories/${editingCat}`, { method: 'PUT', body: { title } });
+  } else {
+    await api('/api/categories', { method: 'POST', body: { title } });
+  }
+  closeModal('cat-modal');
+  await loadCategories();
+  toast('已保存');
+}
+
+async function deleteCat(i) {
+  if (!confirm('确定删除该分类？其下所有书签也会被删除！')) return;
+  await api(`/api/categories/${i}`, { method: 'DELETE' });
+  await loadCategories();
+  toast('已删除');
+}
+
+// ── AI 批量补描述 ─────────────────────────────────────
+let stopAi = false;
+
+async function loadAiCats() {
+  const cats = await api('/api/categories');
+  const sel = document.getElementById('ai-cat-sel');
+  sel.innerHTML = cats.map(c => `<option value="${c.index}">${c.title} (${c.count})</option>`).join('');
+}
+
+document.getElementById('ai-provider').addEventListener('change', function() {
+  document.getElementById('ai-key-wrap').style.display = this.value !== 'workers' ? '' : 'none';
+});
+
+async function runAiBatch() {
+  stopAi = false;
+  const ci       = parseInt(document.getElementById('ai-cat-sel').value);
+  const provider = document.getElementById('ai-provider').value;
+  const apiKey   = document.getElementById('ai-key').value.trim();
+  const model    = document.getElementById('ai-model').value.trim();
+
+  const data = await api('/api/bookmarks');
+  const cat  = data.categories[ci];
+  if (!cat) return toast('分类不存在', 'err');
+
+  const items = cat.items.map((_, ii) => ({ catIndex: ci, itemIndex: ii }));
+  const wrap  = document.getElementById('ai-progress-wrap');
+  const bar   = document.getElementById('ai-bar');
+  const log   = document.getElementById('ai-log');
+  wrap.style.display = '';
+  log.innerHTML = '';
+
+  for (let i = 0; i < items.length; i++) {
+    if (stopAi) { toast('已停止'); break; }
+    bar.style.width = ((i + 1) / items.length * 100) + '%';
+    const item = cat.items[i];
+    const res = await api('/api/ai', {
+      method: 'POST',
+      body: { items: [items[i]], provider, ...(apiKey && { apiKey }), ...(model && { model }) },
+    });
+    const r = res.results?.[0];
+    log.innerHTML += `<div style="color:${r?.ok?'var(--green)':'var(--red)'}">${i+1}. ${escH(item.title)}: ${r?.ok ? r.hover.slice(0,40)+'…' : r?.error}</div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+  toast('AI 补描述完成');
+}
+
+// ── 投稿审核 ──────────────────────────────────────────
+async function loadPending() {
+  const list = await api('/api/pending');
+  const el   = document.getElementById('pending-list');
+  if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center">暂无待审核投稿</div>'; return; }
+  el.innerHTML = '';
+  list.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <div style="font-weight:600;margin-bottom:.25rem">${escH(item.title)}</div>
+      <div style="font-size:.8rem;color:var(--accent);margin-bottom:.25rem">${escH(item.url)}</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:.75rem">${escH(item.hover||'')}</div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-primary btn-sm" onclick="approvePending('${item.id}')">✓ 通过</button>
+        <button class="btn-danger btn-sm" onclick="rejectPending('${item.id}')">✕ 拒绝</button>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+async function approvePending(id) {
+  await api(`/api/pending/${id}`, { method: 'PUT' });
+  await loadPending();
+  toast('已通过');
+}
+async function rejectPending(id) {
+  await api(`/api/pending/${id}`, { method: 'DELETE' });
+  await loadPending();
+  toast('已拒绝');
+}
+
+// ── 导入导出 ──────────────────────────────────────────
+async function doImport() {
+  const file = document.getElementById('import-file').files[0];
+  const mode = document.getElementById('import-mode').value;
+  if (!file) return toast('请选择文件', 'err');
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('mode', mode);
+  const res = await fetch('/api/import', { method: 'POST', headers: { 'X-CSRF-Token': CSRF }, body: fd }).then(r => r.json());
+  if (res.ok) toast(`导入成功：${res.categories} 个分类，${res.items} 个书签`);
+  else toast(res.error || '导入失败', 'err');
+}
+
+function doExport(format) {
+  window.open(`/api/export?format=${format}`, '_blank');
+}
+
+// ── 站点设置 ──────────────────────────────────────────
+async function loadSettings() {
+  const s = await api('/api/settings');
+  // 同时加载背景列表
+  try {
+    const bgRes = await fetch('/api/backgrounds');
+    const bgData = await bgRes.json();
+    const sel = document.getElementById('s-bg');
+    sel.innerHTML = '<option value="none">无</option>';
+    const cg = document.createElement('optgroup');
+    cg.label = 'Canvas 动画';
+    [['rain','下雨'],['snow','下雪'],['forest','落叶']].forEach(([v,t]) => {
+      const o = document.createElement('option'); o.value=v; o.textContent=t; cg.appendChild(o);
+    });
+    sel.appendChild(cg);
+    if (bgData.backgrounds?.length) {
+      const sg = document.createElement('optgroup'); sg.label = 'Shader 特效';
+      bgData.backgrounds.forEach(({file,name}) => {
+        const o = document.createElement('option'); o.value=file; o.textContent=name; sg.appendChild(o);
+      });
+      sel.appendChild(sg);
+    }
+  } catch(e) {}
+
+  document.getElementById('s-name').value    = s.siteName    || '';
+  document.getElementById('s-desc').value    = s.siteDesc    || '';
+  document.getElementById('s-footer').value  = s.footerText  || '';
+  document.getElementById('s-style').value   = s.defaultStyle|| '1';
+  document.getElementById('s-bg').value      = s.defaultBg   || 'none';
+  document.getElementById('s-favicon').value = s.faviconApi  || '';
+  document.getElementById('s-submit').checked= !!s.enableSubmit;
+  document.getElementById('s-ai-provider').value = s.aiProvider||'workers';
+  document.getElementById('s-ai-model').value    = s.aiModel   ||'';
+  document.getElementById('s-ai-delay').value    = s.aiDelay   ||1500;
+}
+
+async function saveSettings() {
+  await api('/api/settings', { method: 'POST', body: {
+    siteName:    document.getElementById('s-name').value.trim(),
+    siteDesc:    document.getElementById('s-desc').value.trim(),
+    footerText:  document.getElementById('s-footer').value.trim(),
+    defaultStyle:document.getElementById('s-style').value,
+    defaultBg:   document.getElementById('s-bg').value,
+    faviconApi:  document.getElementById('s-favicon').value.trim(),
+    enableSubmit:document.getElementById('s-submit').checked,
+  }});
+  toast('设置已保存');
+}
+
+async function saveAiSettings() {
+  await api('/api/settings', { method: 'POST', body: {
+    aiProvider: document.getElementById('s-ai-provider').value,
+    aiApiKey:   document.getElementById('s-ai-key').value.trim(),
+    aiModel:    document.getElementById('s-ai-model').value.trim(),
+    aiDelay:    parseInt(document.getElementById('s-ai-delay').value),
+  }});
+  toast('AI 配置已保存');
+}
+
+async function changePassword() {
+  const p1 = document.getElementById('new-pass').value;
+  const p2 = document.getElementById('new-pass2').value;
+  if (!p1) return toast('密码不能为空', 'err');
+  if (p1 !== p2) return toast('两次密码不一致', 'err');
+  await api('/api/settings', { method: 'POST', body: { _changePassword: p1 } });
+  toast('密码已修改');
+}
+
+function logout() {
+  fetch('/admin/logout', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } })
+    .then(() => { window.location.href = '/admin/login'; });
+}
+
+// 初始加载
+loadBookmarks();
+</script>
+</body>
+</html>
