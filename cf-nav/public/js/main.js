@@ -1,5 +1,4 @@
 // ── 主逻辑模块 ────────────────────────────────────────
-import { playDing } from '/js/sound.js';
 import { search, highlight, escHtml } from '/js/search.js';
 
 // ── 数据 ──────────────────────────────────────────────
@@ -22,24 +21,11 @@ const searchInfo  = document.getElementById('search-info');
 const tooltip     = document.getElementById('tooltip');
 const ttUrl       = document.getElementById('tt-url');
 const ttDesc      = document.getElementById('tt-desc');
-const styleSelect = document.getElementById('style-select');
 
 // ── 状态 ──────────────────────────────────────────────
 let currentCat  = categories[0]?.title || null;
 let cardStyle   = parseInt(localStorage.getItem('cardStyle') || navSettings.defaultStyle || '1');
 let searchTimer = null;
-
-// ── 初始化风格选择 ────────────────────────────────────
-styleSelect.value = String(cardStyle);
-styleSelect.addEventListener('change', () => {
-  cardStyle = parseInt(styleSelect.value);
-  localStorage.setItem('cardStyle', cardStyle);
-  if (searchInput.value.trim()) {
-    renderSearch(searchInput.value);
-  } else {
-    renderCategory();
-  }
-});
 
 // ── 初始化导航栏 ──────────────────────────────────────
 categories.forEach((cat, i) => {
@@ -90,7 +76,6 @@ function makeCard(item, words = [], showCat = false) {
   card.onclick = () => window.open(item.url, '_blank');
 
   card.addEventListener('mouseenter', (e) => {
-    playDing();
     ttUrl.textContent  = item.url;
     ttDesc.textContent = item.hover || '';
     ttDesc.style.display = item.hover ? '' : 'none';

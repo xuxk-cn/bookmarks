@@ -17,6 +17,12 @@ export async function onRequestPost({ request, env }) {
   const body = await request.json().catch(() => null);
   if (!body) return err('无效请求体');
 
+  // 处理密码修改：直接更新独立 KV 条目，不写入 nav_settings
+  if (body._changePassword) {
+    await env.NAV_KV.put('admin_password', body._changePassword.trim());
+  }
+  delete body._changePassword;
+
   const current = await getSettings(env);
   const updated = { ...current, ...body };
 

@@ -18,21 +18,6 @@
   <header>
     <h1>{{SITE_NAME}}</h1>
     <p class="site-desc">{{SITE_DESC}}</p>
-    <div class="topbar">
-      <label class="toggle-label">
-        <input type="checkbox" id="sound-toggle"> 悬停音效
-      </label>
-      <div class="topbar-right">
-        <select id="bg-select" title="背景选择" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);border-radius:0.4rem;padding:0.25rem 0.5rem;font-size:0.8rem;cursor:pointer;">
-          <option value="none">无背景</option>
-        </select>
-        <select id="style-select" title="卡片风格" style="background:var(--card-bg);color:var(--muted);border:1px solid var(--border);border-radius:0.4rem;padding:0.25rem 0.5rem;font-size:0.8rem;cursor:pointer;">
-          <option value="1">风格一</option>
-          <option value="2">风格二</option>
-          <option value="3">风格三</option>
-        </select>
-      </div>
-    </div>
   </header>
 
   <nav class="navbar" id="navbar"></nav>
@@ -55,8 +40,6 @@
 <script id="nav-data" type="application/json">{{NAV_DATA}}</script>
 <script id="nav-settings" type="application/json">{{NAV_SETTINGS}}</script>
 
-<script type="module" src="/js/sound.js"></script>
-<script type="module" src="/js/background.js"></script>
 <script type="module" src="/js/search.js"></script>
 <script type="module" src="/js/main.js"></script>
 </body>

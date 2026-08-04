@@ -55,16 +55,9 @@ h1 {
 
 /* ── 顶部工具栏 ───────────────────────────────────── */
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  flex-wrap: wrap;
-}
-.topbar-right {
-  display: flex; gap: 0.75rem; align-items: center;
-  margin-left: auto;
+  position: relative;
+  padding: 0.5rem 1.25rem;
+  min-height: 44px;
 }
 
 /* ── 分类导航 ─────────────────────────────────────── */
@@ -291,14 +284,6 @@ h1 {
 #tooltip .tt-url { color: var(--accent); font-size: 0.75rem; margin-bottom: 4px; word-break: break-all; }
 #tooltip .tt-desc { color: var(--text); }
 
-/* ── 开关控件 ─────────────────────────────────────── */
-.toggle-label {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  cursor: pointer; font-size: 0.8rem; color: var(--muted);
-  user-select: none;
-}
-.toggle-label input { accent-color: var(--accent); width: 14px; height: 14px; }
-
 /* ── 空状态 ───────────────────────────────────────── */
 .empty-state {
   grid-column: 1/-1;
@@ -315,5 +300,255 @@ h1 {
   .cards-style1 { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
   .cards-style2 { grid-template-columns: 1fr; }
   .cards-style3 { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
-  .topbar-right { margin-left: 0; }
 }
+
+/* ── 设置按钮 ────────────────────────────────────── */
+.settings-wrap {
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.settings-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.02em;
+}
+.settings-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+/* ── 设置模态窗口 ────────────────────────────────── */
+.settings-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.settings-modal-box {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.settings-modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: color 0.2s;
+}
+.settings-modal-close:hover { color: var(--text); }
+
+.settings-modal-body {
+  padding: 0.75rem 1.25rem 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.settings-modal-body::-webkit-scrollbar { width: 4px; }
+.settings-modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.settings-group { margin-bottom: 0.5rem; }
+
+.settings-group-title {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 0 0.3rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+}
+
+.settings-label {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.25rem 0;
+}
+
+/* 音乐 URL 输入 */
+.settings-music-url {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.settings-music-url input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.settings-music-url input:focus { border-color: var(--accent); }
+.settings-music-url button {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+.settings-music-url button:hover { opacity: 0.85; }
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-switch input { display: none; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
+
+/* 背景列表 */
+.settings-bg-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.1rem 0;
+}
+.settings-bg-list::-webkit-scrollbar { width: 4px; }
+.settings-bg-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.settings-bg-group {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  color: var(--muted);
+  padding: 0.3rem 0 0.1rem;
+  opacity: 0.7;
+}
+
+.settings-bg-item {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(255,255,255,0.03);
+}
+.settings-bg-item:hover { background: var(--hover-bg); }
+.settings-bg-item.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+/* 风格选择 */
+.settings-style-list {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0 0.25rem;
+}
+
+.settings-style-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: rgba(255,255,255,0.02);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.settings-style-item:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.settings-style-item.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 189, 248, 0.07);
+}
+.style-icon { font-size: 1.1rem; }
