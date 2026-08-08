@@ -1,0 +1,412 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>show_widget</title>
+</head>
+<body>
+<style>
+:root{
+--bg:#0a0e14;
+--panel:#161b22;
+--card:#161b22;
+--card-hover:#1c2128;
+--border:rgba(255,255,255,0.06);
+--border-hover:rgba(255,255,255,0.12);
+--text:#e6edf3;
+--text-secondary:#8b949e;
+--text-tertiary:#6e7681;
+--accent:#ff6b6b;
+--radius:14px;
+font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);min-height:100vh;padding:16px 20px 40px}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:600;color:var(--text)}
+.brand-icon{color:#ff6b6b;font-size:22px}
+.brand-star{color:#f2cc60;font-size:18px}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text-secondary);cursor:pointer;transition:all 0.15s;font-size:16px}
+.icon-btn:hover{background:var(--card-hover);color:var(--text);border-color:var(--border-hover)}
+
+.search-wrap{margin-bottom:16px}
+.search-input{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.search-input:focus{border-color:var(--accent)}
+
+.main-col{min-width:0}
+
+.section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;position:relative}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.section-title{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.section-title-heart{color:#ff6b6b;font-size:14px}
+.section-title-wand{font-size:14px}
+.settings-btn{color:var(--text-tertiary);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:all 0.15s}
+.settings-btn:hover{color:var(--text);background:rgba(255,255,255,0.06)}
+
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(120px,1fr);gap:8px;overflow-x:auto;padding-bottom:4px}
+.row::-webkit-scrollbar{height:6px}
+.row::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+
+.tile{background:transparent;border:1px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:10px;min-width:0;position:relative}
+.tile:hover{background:var(--card-hover);border-color:var(--border-hover)}
+.tile-icon{width:36px;height:36px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;overflow:hidden;font-size:16px;color:#333}
+.tile-icon img{width:100%;height:100%;object-fit:contain}
+.tile-icon-fallback{background:rgba(255,255,255,0.08);color:var(--text-secondary);font-weight:600}
+.tile-text{min-width:0;flex:1}
+.tile-title{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.tile-url{font-size:11px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+
+.hidden{display:none!important}
+
+.tooltip{position:fixed;background:rgba(22,27,34,0.97);color:var(--text);padding:10px 12px;border-radius:8px;font-size:12px;max-width:280px;pointer-events:none;z-index:9999;display:none;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid var(--accent);backdrop-filter:blur(4px);line-height:1.5}
+.tooltip-url{color:var(--accent);font-size:11px;margin-bottom:4px;word-break:break-all;font-weight:500}
+.tooltip-desc{color:var(--text-secondary);font-size:11px}
+
+@media (max-width:640px){
+.row{grid-auto-flow:row;grid-template-columns:1fr 1fr}
+}
+</style>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-icon">👑</span>
+    <span>我的导航</span>
+    <span class="brand-star">⭐</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="icon-btn" title="Exit and Save">💾</button>
+    <button class="icon-btn" title="Add">➕</button>
+    <button class="icon-btn">☰</button>
+  </div>
+</div>
+
+<div class="search-wrap">
+  <input type="text" class="search-input" id="searchInput" placeholder="搜索书签...">
+</div>
+
+<div class="main-col" id="mainCol"></div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const data = {
+  categories: [
+    { title: "resourse", items: [
+      { title: "doyoudo官网", url: "https://www.doyoudo.com/", desc: "doy ou do 是一个在线设计与视频制作学习平台。" },
+      { title: "Panzoid", url: "https://panzoid.com/", desc: "Panzoid 是在线视频动画制作平台。" },
+      { title: "耳聆网-音效素材库", url: "https://www.ear0.com/", desc: "耳聆网是免费音效素材库。" },
+      { title: "免费字体", url: "https://www.hellofont.cn/", desc: "HelloFont 是中文字体服务平台。" },
+      { title: "矢量图标库", url: "https://www.iconfont.cn/", desc: "Iconfont 是阿里巴巴旗下矢量图标库。" },
+      { title: "大众脸影视后期特效", url: "https://www.lookae.com/", desc: "LookAE 提供AE插件、PR插件、教程、模板。" }
+    ]},
+    { title: "tools", items: [
+      { title: "字幕- SubHD", url: "https://subhd.tv/", desc: "SubHD 是字幕资源搜索与下载网站。" },
+      { title: "免费字体", url: "https://www.maoken.com/", desc: "猫啃网是免费字体资源网站。" },
+      { title: "Magic Studio", url: "https://magicstudio.com/zh/", desc: "Magic Studio 是AI图像处理平台。" },
+      { title: "书法欣赏", url: "http://www.yac8.com/", desc: "书法欣赏网提供中国书法作品展示。" },
+      { title: "大叔汁源", url: "https://www.kdocs.cn/l/ceZS4cRWJBxs", desc: "大叔汁源是资源分享链接集合。" },
+      { title: "Colab", url: "https://colab.research.google.com/", desc: "Google Colab 是云端Python编程环境。" }
+    ]},
+    { title: "视频", heart: true, items: [
+      { title: "快手", url: "https://www.kuaishou.com/new-reco", desc: "快手是短视频和直播平台。" },
+      { title: "小红书", url: "https://www.xiaohongshu.com/", desc: "小红书是生活方式内容社区。" },
+      { title: "哔哩哔哩", url: "https://www.bilibili.com/", desc: "哔哩哔哩是综合视频社区。" },
+      { title: "X.COM", url: "https://x.com/xuxk17125", desc: "X（原Twitter）是全球社交信息平台。" },
+      { title: "西瓜创作平台", url: "https://studio.ixigua.com/", desc: "西瓜创作平台是字节跳动视频创作者后台。" },
+      { title: "今日头条", url: "https://www.toutiao.com/", desc: "今日头条是资讯内容平台。" }
+    ]},
+    { title: "AIGC", items: [
+      { title: "GitHub", url: "https://github.com/", desc: "GitHub 是全球最大的代码托管平台。" },
+      { title: "魔搭社区", url: "https://modelscope.cn/models", desc: "魔搭社区是阿里推出的AI模型开放平台。" },
+      { title: "Hugging Face", url: "https://huggingface.co/", desc: "Hugging Face 是AI模型共享平台。" },
+      { title: "Civitai Models", url: "https://civitai.com/models", desc: "Civitai 是AI绘画模型分享社区。" },
+      { title: "LiblibAI", url: "https://www.liblib.art/", desc: "LiblibAI 是国内AI绘画模型分享平台。" },
+      { title: "cobalt", url: "https://cobalt.tools/", desc: "cobalt 是开源媒体下载工具。" }
+    ]},
+    { title: "AI", items: [
+      { title: "硅基", url: "https://cloud.siliconflow.cn/", desc: "硅基流动是AI模型服务平台。" },
+      { title: "蓝鲸", url: "https://lanjing.ai/", desc: "蓝鲸AI是人工智能工具平台。" },
+      { title: "AI 智慧岛", url: "https://chat.lify.vip/chat", desc: "AI智慧岛是AI聊天助手平台。" },
+      { title: "AI Plus", url: "https://www.yixiaai.com/", desc: "AI Plus 是人工智能应用平台。" },
+      { title: "星火绘镜", url: "https://typemovie.art/", desc: "星火绘镜是讯飞AI视频创作工具。" },
+      { title: "开拍", url: "https://www.kaipai.com/", desc: "开拍是AI视频创作工具。" }
+    ]},
+    { title: "AI大语言", items: [
+      { title: "通义", url: "https://tongyi.aliyun.com/", desc: "通义是阿里云推出的大模型AI平台。" },
+      { title: "OpenAI", url: "https://openai.com/", desc: "OpenAI 是AI研究与产品开发机构。" },
+      { title: "百灵大模型", url: "https://ling.tbox.cn/chat", desc: "百灵大模型是AI对话服务。" },
+      { title: "文心一言", url: "https://yiyan.baidu.com/", desc: "文心一言是百度推出的生成式AI助手。" },
+      { title: "跃问", url: "https://yuewen.cn/chats/new", desc: "跃问是阶跃星辰推出的AI助手。" },
+      { title: "bolt.new", url: "https://bolt.new/", desc: "bolt.new 是AI编程开发平台。" }
+    ]},
+    { title: "AI声音", items: [
+      { title: "AI声音生成", url: "https://musichero.ai/zh-CN/sound-effect", desc: "AI声音生成是在线AI音效生成工具。" },
+      { title: "Stable Audio", url: "https://stability.ai/stable-audio", desc: "Stable Audio 是AI音频生成服务。" },
+      { title: "Beatoven.ai", url: "https://www.beatoven.ai/", desc: "Beatoven.ai 是AI背景音乐生成平台。" },
+      { title: "Free TTS", url: "https://freetts.com/text-to-speech", desc: "Free TTS 是在线文字转语音工具。" },
+      { title: "马克配音", url: "https://ttsmaker.cn/", desc: "马克配音是在线AI配音平台。" },
+      { title: "Fish Audio", url: "https://fish.audio/zh-CN/", desc: "Fish Audio 是AI语音生成平台。" }
+    ]},
+    { title: "反推提示词", items: [
+      { title: "视频下载", url: "https://y2mp3.net/", desc: "Y2MP3 是在线视频转换工具。" },
+      { title: "Medio AI", url: "https://medio.cool/en/", desc: "Medio AI 是AI视频下载和处理工具。" },
+      { title: "去文字-下视频", url: "https://vgo.pub/", desc: "VGO 是在线视频处理工具。" },
+      { title: "小红书下载", url: "https://dy.kukutool.com/xiaohongshu", desc: "Kukutool小红书下载工具。" },
+      { title: "TikTok水印去除", url: "https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal", desc: "WatermarkRemover 是AI视频水印去除工具。" },
+      { title: "飞影数字人", url: "https://hifly.cc/", desc: "飞影数字人是AI数字人创作平台。" }
+    ]},
+    { title: "YouTube", items: [
+      { title: "FMHY", url: "https://fmhy.pages.dev/", desc: "FMHY 是综合资源导航社区。" },
+      { title: "SkyReels", url: "https://www.skyreels.ai/home/", desc: "SkyReels 是AI视频生成平台。" },
+      { title: "无版权图", url: "https://pixabay.com/", desc: "Pixabay 是综合免费素材库。" },
+      { title: "Adobe Photoshop", url: "https://photoshop.adobe.com/", desc: "Adobe Photoshop 是专业图像编辑软件。" },
+      { title: "Animagraffs", url: "https://animagraffs.com/", desc: "Animagraffs 是动画信息图网站。" },
+      { title: "一致性好伙伴", url: "https://ideogram.ai/character", desc: "Ideogram Character 是角色一致性功能。" }
+    ]},
+    { title: "Google", items: [
+      { title: "google安全性", url: "https://myaccount.google.com/security", desc: "Google 账号安全管理中心。" },
+      { title: "NotebookLM", url: "https://notebooklm.google.com/", desc: "NotebookLM 是Google推出的AI笔记助手。" },
+      { title: "Genie 3", url: "https://deepmind.google/models/genie/", desc: "Genie 是Google DeepMind开发的AI世界模型。" },
+      { title: "Imagen", url: "https://deepmind.google/models/imagen/", desc: "Imagen 是Google DeepMind的图像生成模型。" },
+      { title: "Firebase Studio", url: "https://idx.google.com/", desc: "Firebase Studio 是AI辅助应用开发环境。" },
+      { title: "OpenRouter", url: "https://openrouter.ai/", desc: "OpenRouter 是AI模型API聚合平台。" }
+    ]},
+    { title: "电影", items: [
+      { title: "奈飞工厂", url: "https://www.netflixgc.com/", desc: "奈飞工厂是影视在线播放聚合网站。" },
+      { title: "音范丝", url: "https://www.yinfans.net/", desc: "音范丝是高清影视资源整理站。" },
+      { title: "低端影视", url: "https://www.hjdpj.com/", desc: "低端影视是影视内容在线播放平台。" },
+      { title: "大米星球", url: "https://www.5zsz.net/", desc: "大米星球是在线视频影视资源站。" },
+      { title: "剧圈圈", url: "https://www.jqqzx.me/", desc: "剧圈圈是影视播放与资源整理网站。" },
+      { title: "南瓜影院", url: "http://www.tjwqjz.com/", desc: "南瓜影院是在线视频影视平台。" }
+    ]},
+    { title: "身份", items: [
+      { title: "IP优选", url: "http://ip.flares.cloud/", desc: "Cloudflare IP测试和筛选工具。" },
+      { title: "fofa.info", url: "https://fofa.info/", desc: "FOFA 是网络空间搜索引擎。" },
+      { title: "5订单", url: "https://5sim.net/zh/login", desc: "5sim 是在线短信验证码服务平台。" },
+      { title: "Psiphon", url: "https://psiphon.ca/zh/", desc: "Psiphon 是开源网络代理工具。" },
+      { title: "nthLink", url: "https://www.nthlink.com/zh/", desc: "nthLink 是网络连接工具。" },
+      { title: "全球主机监控", url: "https://stock.hostmonit.com/CloudFlareYes", desc: "全球主机监控IP优选网站。" }
+    ]},
+    { title: "壁纸", items: [
+      { title: "Pexels", url: "https://www.pexels.com/zh-cn/", desc: "Pexels 是免费图片和视频素材共享平台。" },
+      { title: "Unsplash", url: "https://unsplash.com/", desc: "Unsplash 是免费高质量图片素材平台。" },
+      { title: "Wallhaven", url: "https://wallhaven.cc/", desc: "Wallhaven 是高清壁纸资源网站。" },
+      { title: "WallpapersCraft", url: "https://wallpaperscraft.com/", desc: "WallpapersCraft 是壁纸下载网站。" },
+      { title: "Freepik", url: "https://www.freepik.com/", desc: "Freepik 是综合设计素材平台。" },
+      { title: "位图转矢量图", url: "https://vectorizer.ai/", desc: "Vectorizer.ai 是位图转矢量图工具。" }
+    ]},
+    { title: "API-VPS", items: [
+      { title: "OpenRouter", url: "https://openrouter.ai/", desc: "OpenRouter 是AI模型API聚合平台。" },
+      { title: "ClawCloud", url: "https://us-east-1.run.claw.cloud/", desc: "ClawCloud Run 是云端应用运行平台。" },
+      { title: "智谱API", url: "https://bigmodel.cn/usercenter/proj-mgmt/apikeys", desc: "智谱API是大语言模型开放接口平台。" },
+      { title: "阿里云百炼", url: "https://bailian.console.aliyun.com/cn-beijing/", desc: "阿里云百炼是生成式AI应用开发平台。" },
+      { title: "阶跃星辰API", url: "https://platform.stepfun.com/", desc: "阶跃星辰是大模型开放平台。" },
+      { title: "HubuHost", url: "https://hubuhost.com/", desc: "HubuHost 是虚拟主机服务平台。" }
+    ]},
+    { title: "AI-3D", items: [
+      { title: "HYPER-3D", url: "https://hyper3d.ai/", desc: "HYPER3D 是AI 3D内容生成工具。" },
+      { title: "Meshy", url: "https://www.meshy.ai/", desc: "Meshy 是AI 3D模型生成平台。" },
+      { title: "腾讯混元3D", url: "https://3d.hunyuan.tencent.com/", desc: "腾讯混元3D 是AI三维内容生成平台。" },
+      { title: "MakerWorld", url: "https://makerworld.com/zh", desc: "MakerWorld 是3D打印模型分享平台。" },
+      { title: "Kinetix", url: "https://www.kinetix.tech/", desc: "Kinetix 是AI角色动画生成平台。" },
+      { title: "NexodusAI", url: "https://nexodusai.com/", desc: "NexodusAI 是图片转3D模型工具。" }
+    ]},
+    { title: "APK-Proxy", items: [
+      { title: "Aptoide", url: "https://cn.aptoide.com/", desc: "Aptoide 是Android应用分发平台。" },
+      { title: "APKPure", url: "https://apkpure.com/cn/", desc: "APKPure 是Android APK下载平台。" },
+      { title: "APKMirror", url: "https://www.apkmirror.com/", desc: "APKMirror 是Android应用APK下载站。" },
+      { title: "APKCombo", url: "https://apkcombo.com/zh/", desc: "APKCombo 是Android应用资源下载平台。" },
+      { title: "ITDOG测速", url: "https://www.itdog.cn/ping/", desc: "ITDOG 是网络检测工具平台。" },
+      { title: "DNS Checker", url: "https://dnschecker.org/", desc: "DNS Checker 是DNS查询工具。" }
+    ]},
+    { title: "Nano Banana", items: [
+      { title: "小云雀网页版", url: "https://xyq.jianying.com/home?tab_name=home", desc: "小云雀是剪映推出的AI创作工具。" },
+      { title: "小云雀国际版", url: "https://www.pippit.ai/home?", desc: "小云雀国际版Pippit AI。" },
+      { title: "LMArena", url: "https://lmarena.ai/", desc: "LMArena 是大语言模型评测平台。" },
+      { title: "Nano Banana", url: "https://nanobananafree.ai/", desc: "Nano Banana Free 是AI图像生成工具。" },
+      { title: "RunningHub", url: "https://www.runninghub.cn/quick-create", desc: "RunningHub 是AI工作流创作平台。" },
+      { title: "Vibe Banana", url: "https://intent.app/banana/", desc: "Vibe Banana 是AI图像创作工具。" }
+    ]},
+    { title: "Blog", items: [
+      { title: "IP地址查询", url: "https://ip.sb/", desc: "IP.sb 是IP地址查询工具。" },
+      { title: "IP风险度", url: "https://ping0.cc/", desc: "ping0.cc 是IP风险检测工具。" },
+      { title: "Windsurf", url: "https://windsurf.com/account/register", desc: "Windsurf 是AI编程开发工具。" },
+      { title: "Fast.com", url: "https://fast.com/zh/cn", desc: "Fast.com 是网络速度测试网站。" },
+      { title: "果汁排行榜", url: "http://www.guozhivip.com/rank/", desc: "果汁排行榜是综合榜单信息网站。" },
+      { title: "ManyChat", url: "https://manychat.com/", desc: "ManyChat 是聊天机器人自动化平台。" }
+    ]},
+    { title: "mail", items: [
+      { title: "One.IDkey", url: "https://one.idkey.cc/", desc: "One.IDkey 是身份验证服务平台。" },
+      { title: "MoeMail", url: "https://moemail.app/zh-CN", desc: "MoeMail 是在线邮箱服务平台。" },
+      { title: "Outlook", url: "https://outlook.live.com/mail/", desc: "Outlook 是微软电子邮件服务。" },
+      { title: "临时邮箱", url: "https://linshiyouxiang.net/", desc: "临时邮箱是一次性邮箱服务。" },
+      { title: "临时Gmail", url: "https://emailtick.com/zh", desc: "临时 Gmail 是短期邮箱服务。" },
+      { title: "1.1.1.1 WARP", url: "https://one.one.one.one/", desc: "1.1.1.1 WARP 是网络连接服务。" }
+    ]},
+    { title: "soft", items: [
+      { title: "万能命令", url: "https://wannengrun.com/zh/", desc: "万能命令是在线工具导航平台。" },
+      { title: "3D模型", url: "http://www.gfxcamp.com/", desc: "GFXCamp 是CG资源分享网站。" },
+      { title: "文件共享", url: "https://blaze.vercel.app/", desc: "Blaze 是在线文件共享工具。" },
+      { title: "AE模板免费", url: "https://www.newcger.com/", desc: "NewCGer 是CG资源分享网站。" },
+      { title: "100font", url: "https://www.100font.com/", desc: "100font 是免费字体资源网站。" },
+      { title: "佛系软件", url: "https://foxirj.com/", desc: "佛系软件是软件分享网站。" }
+    ]},
+    { title: "ai", items: [
+      { title: "Invideo AI", url: "https://invideo.io/", desc: "Invideo AI 是AI视频创作平台。" },
+      { title: "Vheer", url: "https://vheer.com/", desc: "Vheer 是AI图像生成与编辑平台。" },
+      { title: "Fliki", url: "https://fliki.ai/", desc: "Fliki 是AI视频制作工具。" },
+      { title: "Krea", url: "https://www.krea.ai/home", desc: "Krea AI 是实时AI创作平台。" },
+      { title: "PixVerse", url: "https://app.pixverse.ai/onboard", desc: "PixVerse AI 是AI视频生成平台。" },
+      { title: "RenderNet", url: "https://rendernet.ai/", desc: "RenderNet AI 是AI人物生成平台。" }
+    ]},
+    { title: "Media Suite", wand: true, items: [
+      { title: "Radarr", url: "https://radarr.video/", desc: "Radarr 是电影管理工具。" },
+      { title: "Sonarr", url: "https://sonarr.tv/", desc: "Sonarr 是电视剧管理工具。" },
+      { title: "Readarr", url: "https://readarr.com/", desc: "Readarr 是电子书管理工具。" },
+      { title: "Bazarr", url: "https://www.bazarr.media/", desc: "Bazarr 是字幕管理工具。" },
+      { title: "Prowlarr", url: "https://prowlarr.com/", desc: "Prowlarr 是索引器管理工具。" },
+      { title: "qBittorrent", url: "https://qbittorrent.org/", desc: "qBittorrent 是BT下载客户端。" }
+    ]},
+    { title: "Self-Hosted Apps", items: [
+      { title: "Portainer", url: "https://www.portainer.io/", desc: "Portainer 是容器管理平台。" },
+      { title: "AdGuard", url: "https://adguard.com/", desc: "AdGuard 是广告拦截工具。" },
+      { title: "Jellyfin", url: "https://jellyfin.org/", desc: "Jellyfin 是媒体服务器。" },
+      { title: "Nextcloud", url: "https://nextcloud.com/", desc: "Nextcloud 是云存储平台。" },
+      { title: "Grafana", url: "https://grafana.com/", desc: "Grafana 是可视化监控平台。" },
+      { title: "Linkding", url: "https://linkding.link/", desc: "Linkding 是书签管理工具。" }
+    ]}
+  ]
+};
+
+function getHostname(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch(e) { return ''; }
+}
+
+function getInitial(text) {
+  if (!text) return '?';
+  const cleaned = text.replace(/^(https?:\/\/)/, '').replace(/^www\./, '');
+  return cleaned.charAt(0).toUpperCase();
+}
+
+const mainCol = document.getElementById('mainCol');
+const tooltip = document.getElementById('tooltip');
+
+function createSection(cat) {
+  const sec = document.createElement('div');
+  sec.className = 'section';
+  sec.dataset.title = cat.title.toLowerCase();
+
+  const titleSuffix = cat.heart ? '<span class="section-title-heart">♥</span>' : (cat.wand ? '<span class="section-title-wand">🪄</span>' : '');
+
+  let itemsHTML = '<div class="row">';
+  cat.items.forEach(it => {
+    const hostname = getHostname(it.url);
+    const iconUrl = 'https://www.google.com/s2/favicons?domain=' + hostname + '&sz=64';
+    const initial = getInitial(it.title);
+    itemsHTML += `<div class="tile" data-name="${(it.title + ' ' + it.url + ' ' + (it.desc||'')).toLowerCase()}" data-url="${it.url}" data-desc="${it.desc || ''}">
+      <div class="tile-icon">
+        <img src="${iconUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt="">
+        <div class="tile-icon-fallback" style="display:none">${initial}</div>
+      </div>
+      <div class="tile-text">
+        <div class="tile-title">${it.title}</div>
+        <div class="tile-url">${hostname}</div>
+      </div>
+    </div>`;
+  });
+  itemsHTML += '</div>';
+
+  sec.innerHTML = `
+    <div class="section-header">
+      <div class="section-title">${cat.title} ${titleSuffix}</div>
+      <div class="settings-btn">⚙</div>
+    </div>
+    ${itemsHTML}
+  `;
+  return sec;
+}
+
+data.categories.forEach(cat => mainCol.appendChild(createSection(cat)));
+
+mainCol.addEventListener('click', (e) => {
+  const tile = e.target.closest('.tile');
+  if (tile && tile.dataset.url) {
+    window.open(tile.dataset.url, '_blank');
+  }
+});
+
+const updateTooltipPos = (e) => {
+  const x = e.clientX + 15, y = e.clientY + 15;
+  const rect = tooltip.getBoundingClientRect();
+  tooltip.style.left = (x + rect.width > window.innerWidth ? e.clientX - rect.width - 15 : x) + 'px';
+  tooltip.style.top = (y + rect.height > window.innerHeight ? e.clientY - rect.height - 15 : y) + 'px';
+};
+
+mainCol.addEventListener('mouseover', (e) => {
+  const tile = e.target.closest('.tile');
+  if (!tile) return;
+  const url = tile.dataset.url;
+  const desc = tile.dataset.desc || '';
+  tooltip.innerHTML = `<div class="tooltip-url">${url}</div>${desc ? `<div class="tooltip-desc">${desc}</div>` : ''}`;
+  tooltip.style.display = 'block';
+  updateTooltipPos(e);
+});
+mainCol.addEventListener('mousemove', updateTooltipPos);
+mainCol.addEventListener('mouseout', (e) => {
+  if (!e.target.closest('.tile')) tooltip.style.display = 'none';
+});
+
+const searchInput = document.getElementById('searchInput');
+let searchTimer;
+searchInput.addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.toLowerCase().trim();
+  searchTimer = setTimeout(() => {
+    document.querySelectorAll('.section').forEach(sec => {
+      let visibleItems = 0;
+      sec.querySelectorAll('.tile').forEach(tile => {
+        const match = tile.dataset.name.includes(q);
+        tile.classList.toggle('hidden', q && !match);
+        if (match) visibleItems++;
+      });
+      sec.classList.toggle('hidden', q && visibleItems === 0);
+    });
+  }, 200);
+});
+</script><script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Shader Viewer with Controls</title>
+    <!-- Tailwind CSS for basic styling outside canvas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        #glcanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background-color: rgba(30, 30, 30, 0.9);
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            color: #ddd;
+            font-family: 'Inter', sans-serif;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        #control-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+        }
+
+        #panel-header {
+            padding: 10px 15px;
+            background-color: rgba(50, 50, 50, 0.8);
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            user-select: none;
+        }
+
+        #toggle-collapse {
+            cursor: pointer;
+            padding: 2px 8px;
+            background: #555;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        #toggle-collapse:hover {
+            background: #666;
+        }
+
+        #panel-content {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            max-height: calc(100vh - 100px);
+        }
+        
+        #panel-content.collapsed {
+            display: none;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .control-value {
+            font-family: monospace;
+            color: #4ade80; /* Tailwind green-400 */
+        }
+
+        /* Styling range inputs */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #4ade80;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #555;
+            border-radius: 2px;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+        
+        .shortcut-hint {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 5px;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="glcanvas"></canvas>
+
+<div id="control-panel">
+    <div id="panel-header">
+        <span>控制台 (参数调节)</span>
+        <span id="toggle-collapse">折叠</span>
+    </div>
+    <div id="panel-content">
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label for="speed">动画速度 (Speed)</label>
+                <span class="control-value" id="val-speed">1.00</span>
+            </div>
+            <input type="range" id="speed" min="0.0" max="5.0" step="0.1" value="1.0">
+        </div>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label for="iter1">层1 迭代次数 (Iter 1)</label>
+                <span class="control-value" id="val-iter1">26</span>
+            </div>
+            <input type="range" id="iter1" min="5" max="40" step="1" value="26">
+        </div>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label for="iter2">层2 迭代次数 (Iter 2)</label>
+                <span class="control-value" id="val-iter2">18</span>
+            </div>
+            <input type="range" id="iter2" min="5" max="40" step="1" value="18">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="colorR">颜色 - 红 (Color R)</label>
+                <span class="control-value" id="val-colorR">1.50</span>
+            </div>
+            <input type="range" id="colorR" min="0.0" max="3.0" step="0.1" value="1.5">
+        </div>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label for="colorG">颜色 - 绿 (Color G)</label>
+                <span class="control-value" id="val-colorG">1.20</span>
+            </div>
+            <input type="range" id="colorG" min="0.0" max="3.0" step="0.1" value="1.2">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="colorB">颜色 - 蓝 (Color B)</label>
+                <span class="control-value" id="val-colorB">1.00</span>
+            </div>
+            <input type="range" id="colorB" min="0.0" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="starIntensity">星星亮度 (Star Intensity)</label>
+                <span class="control-value" id="val-starIntensity">40.0</span>
+            </div>
+            <input type="range" id="starIntensity" min="10.0" max="100.0" step="1.0" value="40.0">
+        </div>
+
+        <div class="shortcut-hint">按 Alt + H 隐藏/显示控制台</div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+    if (!gl) {
+        alert('Unable to initialize WebGL. Your browser or machine may not support it.');
+    }
+
+    // Vertex shader program
+    const vsSource = `
+        attribute vec4 aVertexPosition;
+        void main(void) {
+            gl_Position = aVertexPosition;
+        }
+    `;
+
+    // Fragment shader program (modified from user provided code to accept uniforms)
+    const fsSource = `
+        precision highp float;
+        
+        uniform vec2 iResolution;
+        uniform float iTime;
+        
+        // Custom uniforms from control panel
+        uniform float uSpeed;
+        uniform int uIter1;
+        uniform int uIter2;
+        uniform vec3 uColorMult;
+        uniform float uStarIntensity;
+
+        // Mocking iChannel0 texture lookup with a simulated frequency response
+        float getFreq(float x) {
+            // Simple deterministic pseudo-random function based on time and x
+            return 0.5 + 0.3 * sin(iTime * 2.0 + x * 10.0) + 0.2 * cos(iTime * 5.0 - x * 5.0);
+        }
+
+        float field(in vec3 p, float s) {
+            float strength = 7. + .03 * log(1.e-6 + fract(sin(iTime) * 4373.11));
+            float accum = s/4.;
+            float prev = 0.;
+            float tw = 0.;
+            // Use uniform for loop bound (needs a workaround in webgl1 if loop bound isn't const, 
+            // but we'll use a fixed max and break, or use WebGL2 features if available.
+            // For max compatibility, we'll loop to a fixed max and check condition)
+            for (int i = 0; i < 40; ++i) {
+                if(i >= uIter1) break;
+                float mag = dot(p, p);
+                p = abs(p) / mag + vec3(-.5, -.4, -1.5);
+                float w = exp(-float(i) / 7.);
+                accum += w * exp(-strength * pow(abs(mag - prev), 2.2));
+                tw += w;
+                prev = mag;
+            }
+            return max(0., 5. * accum / tw - .7);
+        }
+
+        float field2(in vec3 p, float s) {
+            float strength = 7. + .03 * log(1.e-6 + fract(sin(iTime) * 4373.11));
+            float accum = s/4.;
+            float prev = 0.;
+            float tw = 0.;
+            for (int i = 0; i < 40; ++i) {
+                if(i >= uIter2) break;
+                float mag = dot(p, p);
+                p = abs(p) / mag + vec3(-.5, -.4, -1.5);
+                float w = exp(-float(i) / 7.);
+                accum += w * exp(-strength * pow(abs(mag - prev), 2.2));
+                tw += w;
+                prev = mag;
+            }
+            return max(0., 5. * accum / tw - .7);
+        }
+
+        vec3 nrand3( vec2 co )
+        {
+            vec3 a = fract( cos( co.x*8.3e-3 + co.y )*vec3(1.3e5, 4.7e5, 2.9e5) );
+            vec3 b = fract( sin( co.x*0.3e-3 + co.y )*vec3(8.1e5, 1.0e5, 0.1e5) );
+            vec3 c = mix(a, b, 0.5);
+            return c;
+        }
+
+        void main() {
+            vec2 fragCoord = gl_FragCoord.xy;
+            vec2 uv = 2. * fragCoord.xy / iResolution.xy - 1.;
+            vec2 uvs = uv * iResolution.xy / max(iResolution.x, iResolution.y);
+            vec3 p = vec3(uvs / 4., 0) + vec3(1., -1.3, 0.);
+            p += .2 * vec3(sin(iTime / 16.), sin(iTime / 12.),  sin(iTime / 128.));
+            
+            float freqs[4];
+            // Simulate sound texture
+            freqs[0] = getFreq(0.01);
+            freqs[1] = getFreq(0.07);
+            freqs[2] = getFreq(0.15);
+            freqs[3] = getFreq(0.30);
+
+            float t = field(p,freqs[2]);
+            float v = (1. - exp((abs(uv.x) - 1.) * 6.)) * (1. - exp((abs(uv.y) - 1.) * 6.));
+            
+            //Second Layer
+            vec3 p2 = vec3(uvs / (4.+sin(iTime*0.11)*0.2+0.2+sin(iTime*0.15)*0.3+0.4), 1.5) + vec3(2., -1.3, -1.);
+            p2 += 0.25 * vec3(sin(iTime / 16.), sin(iTime / 12.),  sin(iTime / 128.));
+            float t2 = field2(p2,freqs[3]);
+            vec4 c2 = mix(.4, 1., v) * vec4(1.3 * t2 * t2 * t2 ,1.8  * t2 * t2 , t2* freqs[0], t2);
+            
+            //Stars
+            vec2 seed = p.xy * 2.0;    
+            seed = floor(seed * iResolution.x);
+            vec3 rnd = nrand3( seed );
+            vec4 starcolor = vec4(pow(rnd.y, uStarIntensity));
+            
+            //Second Layer Stars
+            vec2 seed2 = p2.xy * 2.0;
+            seed2 = floor(seed2 * iResolution.x);
+            vec3 rnd2 = nrand3( seed2 );
+            starcolor += vec4(pow(rnd2.y, uStarIntensity));
+            
+            gl_FragColor = mix(freqs[3]-.3, 1., v) * vec4(uColorMult.r*freqs[2] * t * t* t , uColorMult.g*freqs[1] * t * t, uColorMult.b*freqs[3]*t, 1.0)+c2+starcolor;
+        }
+    `;
+
+    function initShaderProgram(gl, vsSource, fsSource) {
+        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            console.error('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+            return null;
+        }
+        return shaderProgram;
+    }
+
+    function loadShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+
+    const programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        },
+        uniformLocations: {
+            resolution: gl.getUniformLocation(shaderProgram, 'iResolution'),
+            time: gl.getUniformLocation(shaderProgram, 'iTime'),
+            speed: gl.getUniformLocation(shaderProgram, 'uSpeed'),
+            iter1: gl.getUniformLocation(shaderProgram, 'uIter1'),
+            iter2: gl.getUniformLocation(shaderProgram, 'uIter2'),
+            colorMult: gl.getUniformLocation(shaderProgram, 'uColorMult'),
+            starIntensity: gl.getUniformLocation(shaderProgram, 'uStarIntensity'),
+        },
+    };
+
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    const positions = [
+        -1.0,  1.0,
+         1.0,  1.0,
+        -1.0, -1.0,
+         1.0, -1.0,
+    ];
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+    const state = {
+        speed: 1.0,
+        iter1: 26,
+        iter2: 18,
+        colorR: 1.5,
+        colorG: 1.2,
+        colorB: 1.0,
+        starIntensity: 40.0
+    };
+
+    function setupControls() {
+        const bindControl = (id, stateKey, isInt = false) => {
+            const input = document.getElementById(id);
+            const valDisplay = document.getElementById(`val-${id}`);
+            
+            input.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                if(isInt) val = Math.round(val);
+                state[stateKey] = val;
+                valDisplay.textContent = isInt ? val : val.toFixed(2);
+            });
+        };
+
+        bindControl('speed', 'speed');
+        bindControl('iter1', 'iter1', true);
+        bindControl('iter2', 'iter2', true);
+        bindControl('colorR', 'colorR');
+        bindControl('colorG', 'colorG');
+        bindControl('colorB', 'colorB');
+        bindControl('starIntensity', 'starIntensity');
+    }
+    setupControls();
+
+    const panel = document.getElementById('control-panel');
+    const header = document.getElementById('panel-header');
+    const content = document.getElementById('panel-content');
+    const toggleBtn = document.getElementById('toggle-collapse');
+
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    header.addEventListener('mousedown', (e) => {
+        if(e.target === toggleBtn) return; // Don't drag if clicking toggle
+        isDragging = true;
+        dragOffsetX = e.clientX - panel.getBoundingClientRect().left;
+        dragOffsetY = e.clientY - panel.getBoundingClientRect().top;
+        panel.style.transition = 'none'; // Disable transition while dragging
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        let newX = e.clientX - dragOffsetX;
+        let newY = e.clientY - dragOffsetY;
+        
+        // Boundary checks
+        newX = Math.max(0, Math.min(newX, window.innerWidth - panel.offsetWidth));
+        newY = Math.max(0, Math.min(newY, window.innerHeight - panel.offsetHeight));
+
+        panel.style.left = newX + 'px';
+        panel.style.top = newY + 'px';
+        panel.style.right = 'auto'; // Clear right property if dragging
+    });
+
+    document.addEventListener('mouseup', () => {
+        if(isDragging) {
+            isDragging = false;
+            panel.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        }
+    });
+
+    toggleBtn.addEventListener('click', () => {
+        content.classList.toggle('collapsed');
+        toggleBtn.textContent = content.classList.contains('collapsed') ? '展开' : '折叠';
+    });
+
+    // Alt + H Shortcut
+    document.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key.toLowerCase() === 'h') {
+            panel.classList.toggle('hidden');
+        }
+    });
+
+    let then = 0;
+    let internalTime = 0;
+
+    function render(now) {
+        now *= 0.001;  // convert to seconds
+        const deltaTime = now - then;
+        then = now;
+        
+        internalTime += deltaTime * state.speed;
+
+        // Resize canvas if window size changed
+        if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        }
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(programInfo.program);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+        // Set uniforms
+        gl.uniform2f(programInfo.uniformLocations.resolution, gl.canvas.width, gl.canvas.height);
+        gl.uniform1f(programInfo.uniformLocations.time, internalTime);
+        gl.uniform1f(programInfo.uniformLocations.speed, state.speed);
+        gl.uniform1i(programInfo.uniformLocations.iter1, state.iter1);
+        gl.uniform1i(programInfo.uniformLocations.iter2, state.iter2);
+        gl.uniform3f(programInfo.uniformLocations.colorMult, state.colorR, state.colorG, state.colorB);
+        gl.uniform1f(programInfo.uniformLocations.starIntensity, state.starIntensity);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        requestAnimationFrame(render);
+    }
+
+    requestAnimationFrame(render);
+
+</script>
+</body>
+</html>

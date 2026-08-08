@@ -2,92 +2,290 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>背景预览</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>背景特效选择</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0f172a;color:#f8fafc;font-family:system-ui,sans-serif;height:100vh;overflow:hidden}
-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
-.ui{position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:10;
-  display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;
-  background:rgba(15,23,42,.85);padding:.75rem 1rem;border-radius:.75rem;
-  backdrop-filter:blur(8px);border:1px solid #334155}
-select,button{background:#1e293b;color:#f8fafc;border:1px solid #334155;
-  padding:.4rem .8rem;border-radius:.4rem;cursor:pointer;font-size:.875rem}
-button.active{background:#38bdf8;color:#0f172a;border-color:#38bdf8;font-weight:600}
-.label{color:#94a3b8;font-size:.8rem;align-self:center}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 60px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #58a6ff;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #21262d;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    background: #161b22;
+  }
+  .card:hover {
+    border-color: #58a6ff;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(88,166,255,0.15);
+  }
+  .card.active {
+    border-color: #3fb950;
+    box-shadow: 0 0 0 2px rgba(63,185,80,0.3);
+  }
+
+  .preview {
+    width: 100%;
+    height: 180px;
+    border: none;
+    display: block;
+    pointer-events: none;
+    background: #0d1117;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(22,27,34,0.95);
+    border-top: 1px solid #21262d;
+  }
+  .card-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e6edf3;
+  }
+  .card-file {
+    font-size: 0.8rem;
+    color: #58a6ff;
+    font-family: monospace;
+    font-weight: 600;
+    background: rgba(88,166,255,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(88,166,255,0.25);
+  }
+
+  .badge-active {
+    display: none;
+    font-size: 0.7rem;
+    background: #3fb950;
+    color: #0d1117;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .card.active .badge-active { display: inline-block; }
+
+  /* 选中覆盖层 */
+  .card.active::after {
+    content: '✓ 已选择';
+    position: absolute;
+    top: 8px; right: 8px;
+    background: #3fb950;
+    color: #0d1117;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  /* 无背景卡片 */
+  .card-none .preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #30363d;
+    background: repeating-linear-gradient(
+      45deg,
+      #161b22,
+      #161b22 10px,
+      #1c2128 10px,
+      #1c2128 20px
+    );
+  }
+
+  .loading {
+    text-align: center;
+    color: #8b949e;
+    padding: 60px 0;
+    font-size: 0.95rem;
+  }
+
+  /* 底部操作栏 */
+  .action-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(13,17,23,0.95);
+    border-top: 1px solid #21262d;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+  }
+  .action-bar .selected-name {
+    font-size: 0.9rem;
+    color: #8b949e;
+  }
+  .action-bar .selected-name span {
+    color: #58a6ff;
+    font-weight: 600;
+  }
+  .btn-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-apply:hover { background: #2ea043; }
+  .btn-apply:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
 </style>
 </head>
 <body>
-<canvas id="bg-canvas"></canvas>
-<div class="ui">
-  <span class="label">背景预览器</span>
-  <button onclick="switchBg('rain')" id="btn-rain">🌧 下雨</button>
-  <button onclick="switchBg('snow')" id="btn-snow">❄️ 下雪</button>
-  <button onclick="switchBg('forest')" id="btn-forest">🌿 落叶</button>
-  <button onclick="switchBg('stream')" id="btn-stream">🌊 海浪</button>
-  <button onclick="switchBg('stars')" id="btn-stars">🌌 星空</button>
-  <button onclick="switchBg('aurora')" id="btn-aurora">🌈 极光</button>
-  <button onclick="switchBg('particles')" id="btn-particles">✨ 粒子</button>
-  <button onclick="switchBg('matrix')" id="btn-matrix">💻 矩阵</button>
-  <button onclick="switchBg('sakura')" id="btn-sakura">🌸 樱花</button>
-  <button onclick="switchBg('none')" id="btn-none">✕ 关闭</button>
+
+<h1>🎨 背景特效库</h1>
+<p class="subtitle">点击预览卡片选择背景，点击"应用"后返回导航页</p>
+
+<div class="grid" id="grid">
+  <div class="loading">正在加载背景列表...</div>
 </div>
 
-<script type="module">
-const canvas = document.getElementById('bg-canvas');
+<div class="action-bar">
+  <div class="selected-name">当前选择：<span id="selected-label">无</span></div>
+  <button class="btn-apply" id="btn-apply" disabled>应用到导航页</button>
+</div>
 
-const MODULES = {
-  rain:      () => import('./backgrounds/rain.js'),
-  snow:      () => import('./backgrounds/snow.js'),
-  forest:    () => import('./backgrounds/forest.js'),
-  stream:    () => import('./backgrounds/stream.js'),
-  stars:     () => import('./backgrounds/stars.js'),
-  aurora:    () => import('./backgrounds/aurora.js'),
-  particles: () => import('./backgrounds/particles.js'),
-  matrix:    () => import('./backgrounds/matrix.js'),
-  sakura:    () => import('./backgrounds/sakura.js'),
-};
+<script>
+(async function() {
+  const grid = document.getElementById('grid');
+  const btnApply = document.getElementById('btn-apply');
+  const selectedLabel = document.getElementById('selected-label');
 
-let current = null, currentName = 'none';
+  // 读取当前已选背景
+  let chosen = localStorage.getItem('bgChoice') || 'none';
 
-window.switchBg = async function(name) {
-  // 清理当前
-  if (current?.stop) try { current.stop(); } catch(e) {}
-  current = null;
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const ctx = canvas.getContext('2d');
-  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // 更新按钮状态
-  document.querySelectorAll('.ui button').forEach(b => b.classList.remove('active'));
-  document.getElementById('btn-' + name)?.classList.add('active');
-  currentName = name;
-
-  if (name === 'none') return;
-  if (!MODULES[name]) return;
-
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  try {
-    const mod = await MODULES[name]();
-    current = mod;
-    mod.start(canvas);
-    console.log(`✓ ${name} 启动成功`);
-  } catch(e) {
-    console.error(`✗ ${name} 加载失败:`, e);
-    alert(`${name} 加载失败: ${e.message}\n\n请确认用 HTTP 服务器打开此页面（不能直接双击打开）`);
+  function updateSelected(file, name) {
+    chosen = file;
+    selectedLabel.textContent = name;
+    btnApply.disabled = false;
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    const target = document.querySelector(`.card[data-file="${file}"]`);
+    if (target) target.classList.add('active');
   }
-};
 
-window.addEventListener('resize', () => {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
+  function makeCard(file, name) {
+    const card = document.createElement('div');
+    card.className = 'card' + (file === 'none' ? ' card-none' : '');
+    card.dataset.file = file;
+    if (file === chosen) card.classList.add('active');
 
-// 默认展示下雨
-switchBg('rain');
+    if (file === 'none') {
+      card.innerHTML = `
+        <div class="preview">🚫</div>
+        <div class="card-footer">
+          <span class="card-name">${name}</span>
+          <span class="card-file">none</span>
+        </div>`;
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'preview';
+      iframe.loading = 'lazy';
+      // 用 IntersectionObserver 懒加载，避免全部同时渲染
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            iframe.src = `/backgrounds/${file}`;
+            observer.unobserve(iframe);
+          }
+        });
+      }, { rootMargin: '200px' });
+      observer.observe(iframe);
+
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+      footer.innerHTML = `
+        <span class="card-name">${name}</span>
+        <span class="card-file">${file}</span>`;
+
+      card.appendChild(iframe);
+      card.appendChild(footer);
+    }
+
+    card.addEventListener('click', () => updateSelected(file, name));
+    return card;
+  }
+
+  // 加载列表
+  try {
+    const res = await fetch('/api/backgrounds');
+    const data = await res.json();
+    const list = (data.backgrounds || []).filter(b => b.file.startsWith('a'));
+
+    grid.innerHTML = '';
+
+    // 第一个：无背景
+    grid.appendChild(makeCard('none', '无背景'));
+
+    list.forEach(({ file, name }) => {
+      grid.appendChild(makeCard(file, name));
+    });
+
+    // 更新底部显示
+    if (chosen !== 'none') {
+      const item = list.find(b => b.file === chosen);
+      selectedLabel.textContent = item ? item.name : chosen;
+      btnApply.disabled = false;
+    } else {
+      selectedLabel.textContent = '无背景';
+      btnApply.disabled = false;
+    }
+
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">加载失败，请确认在开发服务器下访问此页面</div>';
+  }
+
+  // 应用按钮
+  btnApply.addEventListener('click', () => {
+    localStorage.setItem('bgChoice', chosen);
+    // 尝试通知父页面（如果在 iframe 里）
+    if (window.opener) {
+      window.opener.location.reload();
+      window.close();
+    } else {
+      window.location.href = '/';
+    }
+  });
+})();
 </script>
 </body>
 </html>

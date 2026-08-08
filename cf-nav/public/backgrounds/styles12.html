@@ -1,0 +1,844 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>show_widget</title>
+</head>
+<body>
+<style>
+:root{
+  --bg:#232324;
+  --panel-bg:#1c1c1d;
+  --card-bg:#2a2a2b;
+  --text-primary:rgba(255,255,255,.85);
+  --text-secondary:rgba(255,255,255,.55);
+  --text-tertiary:rgba(255,255,255,.4);
+  --border:rgba(255,255,255,.08);
+  --border-strong:rgba(255,255,255,.14);
+  --accent:#FFB11B;
+  --success:#40B43E;
+  --intensity-4:rgba(255,255,255,.04);
+  --intensity-6:rgba(255,255,255,.06);
+  --intensity-8:rgba(255,255,255,.08);
+  --intensity-12:rgba(255,255,255,.12);
+  font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+button{cursor:pointer;font-family:inherit;border:0;background:transparent}
+a{cursor:pointer;text-decoration:none;color:inherit}
+
+body{
+  background:var(--bg);
+  color:var(--text-primary);
+  min-height:100vh;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.shell{
+  display:flex;flex-direction:column;
+  gap:14px;
+  padding:16px;
+  max-width:1600px;
+  margin:0 auto;
+  min-height:100vh;
+}
+
+.topbar{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 14px;
+  background:var(--panel-bg);
+  border:.5px solid var(--border);
+  border-radius:14px;
+}
+.brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.brand-logo{
+  width:28px;height:28px;
+  background:linear-gradient(135deg,#FFB11B,#E58522);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:600;color:#000;
+}
+.brand-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap}
+
+.search{
+  flex:1;min-width:0;
+  display:flex;align-items:center;gap:8px;
+  padding:7px 12px;
+  background:var(--intensity-4);
+  border:.5px solid var(--border);
+  border-radius:10px;
+  transition:border .15s;
+}
+.search:focus-within{border-color:var(--accent)}
+.search input{
+  flex:1;background:transparent;outline:0;
+  color:var(--text-primary);font-size:13px;
+  border:0;min-width:0;
+}
+.search input::placeholder{color:var(--text-tertiary)}
+.search-ico{color:var(--text-tertiary);font-size:13px}
+
+.top-actions{display:flex;gap:6px;flex-shrink:0}
+.top-btn{
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--intensity-4);
+  border:.5px solid var(--border);
+  border-radius:10px;
+  color:var(--text-secondary);
+  font-size:13px;
+}
+.top-btn:hover{color:var(--text-primary)}
+
+.topnav{
+  display:flex;flex-wrap:wrap;
+  gap:4px;
+  padding:6px;
+  background:var(--panel-bg);
+  border:.5px solid var(--border);
+  border-radius:14px;
+}
+
+.topnav-item{
+  flex:1 1 0;
+  min-width:70px;
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;
+  padding:9px 8px;
+  border-radius:8px;
+  color:var(--text-secondary);
+  font-size:12px;
+  font-weight:400;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  transition:all .15s;
+}
+.topnav-item:hover{background:var(--intensity-6);color:var(--text-primary)}
+.topnav-item.active{
+  background:var(--intensity-8);
+  color:var(--accent);
+  font-weight:500;
+}
+.topnav-item .nav-ico{font-size:13px;flex-shrink:0}
+.topnav-item .nav-label{
+  overflow:hidden;text-overflow:ellipsis;
+}
+
+.more-wrap{
+  position:relative;
+  flex:1 1 0;
+  min-width:70px;
+}
+.more-btn{
+  width:100%;
+  display:flex;align-items:center;justify-content:center;
+  gap:6px;
+  padding:9px 8px;
+  border-radius:8px;
+  background:var(--intensity-4);
+  border:.5px solid var(--border);
+  color:var(--text-secondary);
+  font-size:12px;
+  white-space:nowrap;
+  transition:all .15s;
+}
+.more-btn:hover{background:var(--intensity-6);color:var(--text-primary)}
+.more-btn .caret{font-size:9px;opacity:.7;transition:transform .2s}
+.more-wrap.open .more-btn .caret{transform:rotate(180deg)}
+.more-wrap.open .more-btn{background:var(--intensity-8);color:var(--text-primary)}
+
+.dropdown{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  min-width:180px;
+  background:var(--card-bg);
+  border:.5px solid var(--border-strong);
+  border-radius:10px;
+  padding:4px;
+  box-shadow:0 10px 25px rgba(0,0,0,.4);
+  display:none;
+  z-index:100;
+}
+.more-wrap.open .dropdown{display:block}
+.dropdown-item{
+  display:flex;align-items:center;gap:8px;
+  width:100%;text-align:left;
+  padding:8px 10px;
+  border-radius:6px;
+  font-size:12px;
+  color:var(--text-secondary);
+  transition:all .15s;
+}
+.dropdown-item:hover{background:var(--intensity-6);color:var(--text-primary)}
+.dropdown-item.active{color:var(--accent)}
+.dropdown-item .nav-ico{font-size:13px;width:16px;text-align:center}
+
+.section{
+  background:var(--panel-bg);
+  border:.5px solid var(--border);
+  border-radius:14px;
+  padding:14px 16px;
+}
+.section-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.section-title{
+  font-size:11px;
+  font-weight:600;
+  color:var(--text-tertiary);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.section-count{font-size:11px;color:var(--text-tertiary)}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:8px;
+}
+.app-card{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;
+  background:var(--card-bg);
+  border:.5px solid var(--border);
+  border-radius:10px;
+  transition:all .15s;
+  position:relative;
+  text-align:left;
+  width:100%;
+}
+.app-card:hover{
+  background:var(--intensity-6);
+  border-color:var(--border-strong);
+}
+.app-icon{
+  width:32px;height:32px;
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  font-weight:600;font-size:13px;
+  background:var(--intensity-8);
+  color:var(--text-primary);
+}
+.app-info{flex:1;min-width:0}
+.app-title{
+  font-size:13px;
+  font-weight:500;
+  color:var(--text-primary);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.app-meta{font-size:11px;color:var(--text-tertiary);margin-top:2px}
+.app-meta.ok{color:var(--success)}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--success);flex-shrink:0;
+}
+
+.clock-card{display:flex;flex-direction:column;gap:6px}
+.clock-date{font-size:22px;font-weight:500;color:var(--text-primary);letter-spacing:-.01em}
+.clock-time{font-size:13px;color:var(--text-secondary)}
+.clock-week{font-size:11px;color:var(--text-tertiary)}
+
+.weather-card{display:flex;flex-direction:column;gap:8px}
+.weather-top{display:flex;align-items:center;gap:10px}
+.weather-ico{
+  width:36px;height:36px;
+  background:var(--intensity-8);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+}
+.weather-info{flex:1}
+.weather-temp{font-size:18px;font-weight:500}
+.weather-feels{font-size:11px;color:var(--text-secondary);margin-top:4px}
+
+.bar-chart{
+  display:flex;align-items:flex-end;
+  height:48px;gap:3px;margin-top:6px;
+}
+.bar{
+  flex:1;background:linear-gradient(180deg,var(--accent),#E58522);
+  border-radius:2px;opacity:.7;
+}
+.bar.now{opacity:1}
+.bar-labels{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:var(--text-tertiary);
+  margin-top:4px;
+}
+.location{font-size:11px;color:var(--text-tertiary);margin-top:6px}
+
+.footer{text-align:center;font-size:11px;color:var(--text-tertiary);padding:10px}
+.empty{
+  grid-column:1/-1;text-align:center;
+  color:var(--text-tertiary);padding:30px 0;font-size:13px;
+}
+
+@media (max-width:900px){
+  .topbar{flex-wrap:wrap}
+  .brand{flex:1}
+  .search{order:3;flex:1 0 100%;margin-top:4px}
+}
+</style>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">N</div>
+      <div class="brand-name">我的导航</div>
+    </div>
+    <div class="search">
+      <span class="search-ico">⌕</span>
+      <input id="searchInput" type="text" placeholder="搜索书签..." />
+    </div>
+    <div class="top-actions">
+      <button class="top-btn" title="刷新">↻</button>
+      <button class="top-btn" title="设置">⚙</button>
+    </div>
+  </header>
+
+  <nav class="topnav" id="topnav"></nav>
+
+  <main id="content"></main>
+
+  <div class="footer">由 Tabbit 制作 · 我的导航</div>
+</div>
+
+<script id="dataBlock" type="application/json">
+{"categories":[
+{"title":"resourse","items":[
+{"title":"doyoudo官网","url":"https://www.doyoudo.com/","icon":"","hover":"doyoudo 在线设计与视频制作学习平台。"},
+{"title":"Panzoid","url":"https://panzoid.com/","icon":"","hover":"在线视频动画制作平台。"},
+{"title":"耳聆网-音效素材库","url":"https://www.ear0.com/","icon":"","hover":"免费音效素材库。"},
+{"title":"免费字体","url":"https://www.hellofont.cn/","icon":"","hover":"中文字体服务平台。"},
+{"title":"矢量图标库","url":"https://www.iconfont.cn/","icon":"","hover":"阿里巴巴矢量图标库。"},
+{"title":"大众脸影视后期特效","url":"https://www.lookae.com/","icon":"","hover":"影视后期资源网站。"},
+{"title":"台词找影片素材","url":"https://33tc.net/","icon":"","hover":"通过影视台词搜索影片片段。"},
+{"title":"找台词","url":"http://www.zhaotaici.cn/","icon":"","hover":"影视台词搜索网站。"},
+{"title":"AE脚本-捡屁笑","url":"https://jpsmile.com/","icon":"","hover":"AE脚本、插件、扩展工具资源。"},
+{"title":"用户脚本","url":"https://greasyfork.org/zh-CN/scripts","icon":"","hover":"用户脚本分享平台。"}
+]},
+{"title":"tools","items":[
+{"title":"字幕-SubHD","url":"https://subhd.tv/","icon":"","hover":"字幕资源搜索与下载网站。"},
+{"title":"免费字体","url":"https://www.maoken.com/","icon":"","hover":"猫啃网免费字体资源网站。"},
+{"title":"Magic Studio","url":"https://magicstudio.com/zh/","icon":"","hover":"AI图像处理平台。"},
+{"title":"书法欣赏","url":"http://www.yac8.com/","icon":"","hover":"中国书法作品展示和资料查询。"},
+{"title":"大叔汁源","url":"https://www.kdocs.cn/l/ceZS4cRWJBxs","icon":"","hover":"资源分享链接集合。"},
+{"title":"Google Colab","url":"https://colab.research.google.com/","icon":"","hover":"云端Python编程环境。"}
+]},
+{"title":"soft","items":[
+{"title":"万能命令","url":"https://wannengrun.com/zh/","icon":"","hover":"在线工具导航平台。"},
+{"title":"3D模型-GFXCamp","url":"http://www.gfxcamp.com/","icon":"","hover":"CG资源分享网站。"},
+{"title":"文件共享-Blaze","url":"https://blaze.vercel.app/","icon":"","hover":"在线文件共享工具。"},
+{"title":"3D Models-Artec","url":"https://www.artec3d.com/","icon":"","hover":"三维扫描和3D模型资源。"},
+{"title":"3D模型-3DModels","url":"https://3dmodels.org/zh/","icon":"","hover":"3D模型资源网站。"},
+{"title":"RenderPeople","url":"https://renderpeople.com/","icon":"","hover":"专业3D人物模型资源平台。"},
+{"title":"AE模板-NewCGer","url":"https://www.newcger.com/","icon":"","hover":"CG资源分享网站。"},
+{"title":"100font","url":"https://www.100font.com/","icon":"","hover":"免费字体资源网站。"},
+{"title":"哔哩视频解析","url":"https://weibo.iiilab.com/","icon":"","hover":"微博视频解析工具。"},
+{"title":"佛系软件","url":"https://foxirj.com/","icon":"","hover":"软件分享网站。"},
+{"title":"3322软件","url":"http://www.32r.com/","icon":"","hover":"软件下载平台。"},
+{"title":"最佳应用商店","url":"http://www.zuijiastore.com/","icon":"","hover":"应用资源网站。"},
+{"title":"Fox Studio","url":"https://fox-studio.net/","icon":"","hover":"AE模板和影视后期资源。"},
+{"title":"CG插件-CGOwn","url":"https://www.cgown.com/","icon":"","hover":"CG资源网站。"},
+{"title":"分秒帧","url":"https://app.mediatrack.cn/","icon":"","hover":"在线视频审片和协作平台。"}
+]},
+{"title":"视频","items":[
+{"title":"快手","url":"https://www.kuaishou.com/new-reco","icon":"","hover":"短视频和直播平台。"},
+{"title":"小红书","url":"https://www.xiaohongshu.com/","icon":"","hover":"生活方式内容社区。"},
+{"title":"哔哩哔哩","url":"https://www.bilibili.com/","icon":"","hover":"综合视频社区。"},
+{"title":"X.COM","url":"https://x.com/xuxk17125","icon":"","hover":"全球社交信息平台。"},
+{"title":"西瓜创作平台","url":"https://studio.ixigua.com/","icon":"","hover":"字节跳动视频创作者后台。"},
+{"title":"今日头条","url":"https://www.toutiao.com/","icon":"","hover":"资讯内容平台。"},
+{"title":"好看视频","url":"https://haokan.baidu.com/","icon":"","hover":"百度短视频平台。"},
+{"title":"老王导航","url":"https://nav.eooce.com/","icon":"","hover":"网址导航站。"},
+{"title":"科技lion","url":"https://dh.kejilion.pro/","icon":"","hover":"科技类网址导航。"},
+{"title":"TikTok","url":"https://www.tiktok.com/en/","icon":"","hover":"国际版短视频平台。"},
+{"title":"百家号","url":"https://baijiahao.baidu.com/","icon":"","hover":"百度内容创作平台。"},
+{"title":"Product Hunt","url":"https://www.producthunt.com/?bc=1","icon":"","hover":"新产品发现社区。"},
+{"title":"Pattaya","url":"https://ioc.pattaya.go.th/","icon":"","hover":"泰国芭提雅公共信息服务。"},
+{"title":"泰国海滩监控","url":"https://www.thailandnomads.com/","icon":"","hover":"泰国海滩实时摄像头。"},
+{"title":"Camscape","url":"https://www.camscape.com/","icon":"","hover":"全球网络摄像头目录。"},
+{"title":"LiteAPKs","url":"https://liteapks.com/","icon":"","hover":"安卓APK资源网站。"}
+]},
+{"title":"AIGC","items":[
+{"title":"GitHub","url":"https://github.com/","icon":"","hover":"代码托管和开源协作平台。"},
+{"title":"魔搭社区","url":"https://modelscope.cn/models","icon":"","hover":"阿里AI模型开放平台。"},
+{"title":"Hugging Face","url":"https://huggingface.co/","icon":"","hover":"AI模型和数据集共享平台。"},
+{"title":"HF Mirror","url":"https://hf-mirror.com/","icon":"","hover":"Hugging Face 镜像访问。"},
+{"title":"NovelAI.Dev","url":"https://novelai.dev/","icon":"","hover":"NovelAI和AI绘画资源。"},
+{"title":"Civitai","url":"https://civitai.com/models","icon":"","hover":"AI绘画模型分享社区。"},
+{"title":"LiblibAI","url":"https://www.liblib.art/","icon":"","hover":"国内AI绘画模型分享平台。"},
+{"title":"SD法术解析","url":"https://spell.novelai.dev/","icon":"","hover":"Stable Diffusion参数解析工具。"},
+{"title":"cobalt","url":"https://cobalt.tools/","icon":"","hover":"开源媒体下载工具。"},
+{"title":"PaywallBuster","url":"https://paywallbuster.com/","icon":"","hover":"访问付费墙内容的工具。"},
+{"title":"Medium","url":"https://medium.com/","icon":"","hover":"在线内容发布平台。"},
+{"title":"FMHY","url":"https://fmhy.net/","icon":"","hover":"综合资源导航社区。"},
+{"title":"巨量创意","url":"https://cc.oceanengine.com/","icon":"","hover":"字节跳动广告创意平台。"},
+{"title":"AIGC工具收集","url":"https://lilac-guilty-188.notion.site/155afebca4c7804b9c14d485c15ae191","icon":"","hover":"AI工具整理页面。"},
+{"title":"艾文AIGC工具库","url":"https://tauacgr5lqv.feishu.cn/docx/VCB6dsoxGoqhClxgDDocl0ignwd","icon":"","hover":"AI工具资源整理文档。"},
+{"title":"艾文AIGC知识库","url":"https://tauacgr5lqv.feishu.cn/docx/ZnPedHE3loaQ5MxwE7TctC6PnNh","icon":"","hover":"AI学习资料库。"}
+]},
+{"title":"AI","items":[
+{"title":"硅基流动","url":"https://cloud.siliconflow.cn/","icon":"","hover":"AI模型服务平台。"},
+{"title":"蓝鲸AI","url":"https://lanjing.ai/","icon":"","hover":"人工智能工具和服务平台。"},
+{"title":"AI智慧岛","url":"https://chat.lify.vip/chat","icon":"","hover":"AI聊天助手平台。"},
+{"title":"TransPixar AI","url":"https://transpixarai.org/","icon":"","hover":"AI透明视觉处理工具。"},
+{"title":"AI Plus","url":"https://www.yixiaai.com/","icon":"","hover":"人工智能应用平台。"},
+{"title":"星火绘镜","url":"https://typemovie.art/","icon":"","hover":"讯飞AI视频创作工具。"},
+{"title":"开拍","url":"https://www.kaipai.com/","icon":"","hover":"AI视频创作工具。"},
+{"title":"Deforum","url":"https://deforum.art/","icon":"","hover":"Stable Diffusion视频生成项目。"},
+{"title":"AI工具集","url":"https://ai-bot.cn/","icon":"","hover":"AI工具导航网站。"},
+{"title":"抠抠图","url":"https://www.koukoutu.com/","icon":"","hover":"在线AI图片处理工具。"},
+{"title":"AI技术社区","url":"https://www.aibl.vip/","icon":"","hover":"人工智能交流平台。"},
+{"title":"Ssemble","url":"https://app.ssemble.com/signup","icon":"","hover":"AI长视频分割工具。"}
+]},
+{"title":"ai","items":[
+{"title":"Invideo AI","url":"https://invideo.io/","icon":"","hover":"AI视频创作平台。"},
+{"title":"Vheer","url":"https://vheer.com/","icon":"","hover":"在线AI图像生成平台。"},
+{"title":"GenTube","url":"https://www.gentube.app/","icon":"","hover":"AI图像生成平台。"},
+{"title":"Fliki","url":"https://fliki.ai/","icon":"","hover":"AI视频制作工具。"},
+{"title":"Krea AI","url":"https://www.krea.ai/home","icon":"","hover":"实时AI创作平台。"},
+{"title":"Raphael","url":"https://raphael.app/zh","icon":"","hover":"免费AI图像生成工具。"},
+{"title":"Viggle AI","url":"https://viggle.ai/home","icon":"","hover":"AI视频生成和动作控制。"},
+{"title":"PixVerse","url":"https://app.pixverse.ai/onboard","icon":"","hover":"AI视频生成平台。"},
+{"title":"RenderNet","url":"https://rendernet.ai/","icon":"","hover":"AI人物和图像生成平台。"},
+{"title":"Skywork AI","url":"https://skywork.ai/home","icon":"","hover":"AI办公智能体平台。"},
+{"title":"Klap","url":"https://klap.app/","icon":"","hover":"AI视频剪辑工具。"},
+{"title":"AKOOL","url":"https://akool.com/zh-cn","icon":"","hover":"AI视频创作套件。"},
+{"title":"SJinn","url":"https://sjinn.ai/","icon":"","hover":"AI创作平台。"}
+]},
+{"title":"AI大语言","items":[
+{"title":"通义tongyi","url":"https://tongyi.aliyun.com/","icon":"","hover":"阿里云大模型AI平台。"},
+{"title":"OpenAI","url":"https://openai.com/","icon":"","hover":"人工智能研究与产品开发机构。"},
+{"title":"百灵大模型","url":"https://ling.tbox.cn/chat","icon":"","hover":"AI对话服务。"},
+{"title":"文心一言","url":"https://yiyan.baidu.com/","icon":"","hover":"百度生成式AI助手。"},
+{"title":"跃问","url":"https://yuewen.cn/chats/new","icon":"","hover":"阶跃星辰AI助手。"},
+{"title":"Cici","url":"https://www.cici.com/chat/","icon":"","hover":"字节跳动海外AI助手。"},
+{"title":"HyperAI","url":"https://hyper.ai/cn","icon":"","hover":"人工智能资讯平台。"},
+{"title":"bolt.new","url":"https://bolt.new/","icon":"","hover":"AI编程开发平台。"},
+{"title":"ChatAI","url":"https://ybb.chatleft.com/","icon":"","hover":"在线AI聊天工具。"},
+{"title":"灵光","url":"https://www.lingguang.com/chat","icon":"","hover":"AI助手平台。"},
+{"title":"Pinterest","url":"https://www.pinterest.com/","icon":"","hover":"图片灵感和视觉收藏平台。"},
+{"title":"PoseMy.art","url":"https://posemy.art/","icon":"","hover":"3D人体姿势参考工具。"},
+{"title":"QuickPoses","url":"https://quickposes.com/en","icon":"","hover":"绘画训练姿势素材网站。"},
+{"title":"Magic Poser","url":"https://webapp.magicposer.com/","icon":"","hover":"在线3D人体姿态设计工具。"},
+{"title":"云原生镜像站","url":"http://dockerimage.gbfeng.com/","icon":"","hover":"Docker镜像资源镜像服务。"}
+]},
+{"title":"AI声音","items":[
+{"title":"Logic Intelligence","url":"https://luoji.cn/","icon":"","hover":"逻辑智能英文平台。"},
+{"title":"ClawCloud","url":"https://us-east-1.run.claw.cloud/","icon":"","hover":"云端应用运行平台。"},
+{"title":"AI声音生成","url":"https://musichero.ai/zh-CN/sound-effect","icon":"","hover":"在线AI音效生成工具。"},
+{"title":"Stable Audio","url":"https://stability.ai/stable-audio","icon":"","hover":"Stability AI音频生成服务。"},
+{"title":"labs.google/fx","url":"https://labs.google/fx","icon":"","hover":"谷歌AI实验平台。"},
+{"title":"Beatoven.ai","url":"https://www.beatoven.ai/","icon":"","hover":"AI背景音乐生成平台。"},
+{"title":"Free TTS","url":"https://freetts.com/text-to-speech","icon":"","hover":"在线文字转语音工具。"},
+{"title":"海豚AI","url":"https://www.ttson.cn/","icon":"","hover":"AI语音处理平台。"},
+{"title":"马克配音","url":"https://ttsmaker.cn/","icon":"","hover":"在线AI配音平台。"},
+{"title":"Online Audio Converter","url":"https://onlineaudioconverter.com/","icon":"","hover":"在线音频格式转换工具。"},
+{"title":"Fish Audio","url":"https://fish.audio/zh-CN/","icon":"","hover":"AI语音生成平台。"},
+{"title":"Mureka","url":"https://www.mureka.ai/","icon":"","hover":"AI音乐创作平台。"},
+{"title":"Audiomatic","url":"https://audiomatic.io/","icon":"","hover":"AI音乐生成工具。"}
+]},
+{"title":"反推提示词","items":[
+{"title":"Y2MP3","url":"https://y2mp3.net/","icon":"","hover":"在线视频转换工具。"},
+{"title":"Medio AI","url":"https://medio.cool/en/","icon":"","hover":"AI视频下载和处理工具。"},
+{"title":"VGO","url":"https://vgo.pub/","icon":"","hover":"在线视频处理工具。"},
+{"title":"小红书下载","url":"https://dy.kukutool.com/xiaohongshu","icon":"","hover":"小红书内容链接解析工具。"},
+{"title":"看往","url":"https://tupian.32cd.com/index.html#/user/login","icon":"","hover":"视频去水印字幕处理工具。"},
+{"title":"WatermarkRemover","url":"https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal","icon":"","hover":"AI视频水印去除工具。"},
+{"title":"SnapTik","url":"https://snaptik.app/en2","icon":"","hover":"TikTok视频下载工具。"},
+{"title":"玩转节点","url":"https://wanzhuanmi.com/","icon":"","hover":"网络资源和工具分享平台。"},
+{"title":"米贝分享","url":"https://www.mibei77.com/","icon":"","hover":"资源分享平台。"},
+{"title":"飞影数字人","url":"https://hifly.cc/","icon":"","hover":"AI数字人创作平台。"},
+{"title":"OpenCut","url":"https://opencut.net/","icon":"","hover":"开源AI视频编辑工具。"},
+{"title":"Visuali","url":"https://visuali.io/","icon":"","hover":"AI图像生成和编辑平台。"}
+]},
+{"title":"YouTube","items":[
+{"title":"FMHY","url":"https://fmhy.pages.dev/","icon":"","hover":"FMHY资源导航网站。"},
+{"title":"SkyReels","url":"https://www.skyreels.ai/home/","icon":"","hover":"AI视频生成平台。"},
+{"title":"相逢解析站","url":"https://pan.xfyzyyb.xyz/user/parse","icon":"","hover":"网盘资源解析工具。"},
+{"title":"相逢储物站","url":"https://pan.xfyzyyb.xyz/ms.html","icon":"","hover":"网盘资源管理辅助页面。"},
+{"title":"百度网盘不限速","url":"https://jyjc.cloudns.org/bdwpbxs_1","icon":"","hover":"百度网盘下载加速工具。"},
+{"title":"Ideogram Character","url":"https://ideogram.ai/character","icon":"","hover":"AI角色一致性功能。"},
+{"title":"Pixabay","url":"https://pixabay.com/","icon":"","hover":"免费素材库。"},
+{"title":"PS-key","url":"https://gen.paramore.su/","icon":"","hover":"Photoshop相关资源。"},
+{"title":"Animagraffs","url":"https://animagraffs.com/","icon":"","hover":"动画信息图网站。"},
+{"title":"Adobe Photoshop","url":"https://photoshop.adobe.com/","icon":"","hover":"专业图像编辑软件。"}
+]},
+{"title":"Google","items":[
+{"title":"google安全性","url":"https://myaccount.google.com/security","icon":"","hover":"Google账号安全管理。"},
+{"title":"NotebookLM","url":"https://notebooklm.google.com/","icon":"","hover":"Google AI笔记助手。"},
+{"title":"更改gmail所在地","url":"https://policies.google.com/country-association-form","icon":"","hover":"账号关联地区请求。"},
+{"title":"Genie 3","url":"https://deepmind.google/models/genie/","icon":"","hover":"DeepMind AI世界模型。"},
+{"title":"Imagen","url":"https://deepmind.google/models/imagen/","icon":"","hover":"DeepMind图像生成模型。"},
+{"title":"Disco","url":"https://labs.google/disco","icon":"","hover":"Google Labs实验AI工具。"},
+{"title":"Firebase Studio","url":"https://idx.google.com/","icon":"","hover":"AI辅助应用开发环境。"},
+{"title":"Opal","url":"https://opal.google/?mode=canvas","icon":"","hover":"Google Labs AI应用实验工具。"},
+{"title":"OpenCode","url":"https://opencode.ai/","icon":"","hover":"开源AI编程代理工具。"},
+{"title":"OpenRouter","url":"https://openrouter.ai/","icon":"","hover":"AI模型API聚合平台。"},
+{"title":"Stitch","url":"https://stitch.withgoogle.com/","icon":"","hover":"Google AI设计工具。"},
+{"title":"Higgsfield","url":"https://higgsfield.ai/","icon":"","hover":"AI视频生成平台。"},
+{"title":"Facebook","url":"https://www.facebook.com/","icon":"","hover":"社交网络平台。"},
+{"title":"Coze-扣子","url":"https://www.coze.com/","icon":"","hover":"字节跳动AI智能体开发平台。"},
+{"title":"OpenAI API","url":"https://platform.openai.com/docs/overview","icon":"","hover":"OpenAI开发者接口。"},
+{"title":"Intangible Studio","url":"https://studio.intangible.ai/","icon":"","hover":"AI创意工具平台。"}
+]},
+{"title":"电影","items":[
+{"title":"奈飞工厂","url":"https://www.netflixgc.com/","icon":"","hover":"影视在线播放聚合网站。"},
+{"title":"音范丝","url":"https://www.yinfans.net/","icon":"","hover":"高清影视资源站。"},
+{"title":"低端影视","url":"https://www.hjdpj.com/","icon":"","hover":"影视内容在线播放平台。"},
+{"title":"大米星球","url":"https://www.5zsz.net/","icon":"","hover":"在线视频影视资源站。"},
+{"title":"剧圈圈","url":"https://www.jqqzx.me/","icon":"","hover":"影视播放与资源整理网站。"},
+{"title":"南瓜影院","url":"http://www.tjwqjz.com/","icon":"","hover":"在线视频影视平台。"},
+{"title":"Flixbaba","url":"https://flixbaba.tv/","icon":"","hover":"免费在线观看高清电影。"}
+]},
+{"title":"身份","items":[
+{"title":"Cloudflare IP测试","url":"http://ip.flares.cloud/","icon":"","hover":"Cloudflare IP测试和筛选工具。"},
+{"title":"FOFA","url":"https://fofa.info/","icon":"","hover":"网络空间搜索引擎。"},
+{"title":"5sim","url":"https://5sim.net/zh/login","icon":"","hover":"在线短信验证码服务。"},
+{"title":"Psiphon","url":"https://psiphon.ca/zh/","icon":"","hover":"开源网络代理工具。"},
+{"title":"nthLink","url":"https://www.nthlink.com/zh/","icon":"","hover":"网络连接工具。"},
+{"title":"全球主机监控","url":"https://stock.hostmonit.com/CloudFlareYes","icon":"","hover":"Cloudflare IP状态监控。"}
+]},
+{"title":"壁纸","items":[
+{"title":"FARFETCH","url":"https://www.farfetch.com/","icon":"","hover":"全球奢侈时尚电商平台。"},
+{"title":"VOGUE","url":"https://www.vogue.com.cn/","icon":"","hover":"时尚资讯平台。"},
+{"title":"Pexels","url":"https://www.pexels.com/zh-cn/","icon":"","hover":"免费图片和视频素材。"},
+{"title":"Unsplash","url":"https://unsplash.com/","icon":"","hover":"高质量免费图片平台。"},
+{"title":"Wallhaven","url":"https://wallhaven.cc/","icon":"","hover":"高清壁纸资源网站。"},
+{"title":"WallpapersCraft","url":"https://wallpaperscraft.com/","icon":"","hover":"壁纸下载网站。"},
+{"title":"Freepik","url":"https://www.freepik.com/","icon":"","hover":"综合设计素材平台。"},
+{"title":"Mytheresa","url":"https://www.mytheresa.com/cn/zh","icon":"","hover":"国际奢侈品电商平台。"},
+{"title":"Vectorizer.ai","url":"https://vectorizer.ai/","icon":"","hover":"在线位图转矢量图工具。"}
+]},
+{"title":"API-VPS","items":[
+{"title":"OpenRouter","url":"https://openrouter.ai/","icon":"","hover":"AI模型API聚合平台。"},
+{"title":"ClawCloud Run","url":"https://us-east-1.run.claw.cloud/","icon":"","hover":"云端应用运行平台。"},
+{"title":"智谱API","url":"https://bigmodel.cn/usercenter/proj-mgmt/apikeys","icon":"","hover":"智谱AI大模型开放接口。"},
+{"title":"阿里云百炼","url":"https://bailian.console.aliyun.com/cn-beijing/","icon":"","hover":"阿里云生成式AI应用平台。"},
+{"title":"鑫源API","url":"https://xinyuanai666.com/login","icon":"","hover":"AI接口服务平台。"},
+{"title":"阶跃星辰API","url":"https://platform.stepfun.com/","icon":"","hover":"阶跃星辰大模型开放平台。"},
+{"title":"智谱国际","url":"https://z.ai/subscribe","icon":"","hover":"智谱AI海外服务入口。"},
+{"title":"HubuHost","url":"https://hubuhost.com/","icon":"","hover":"虚拟主机和服务器服务平台。"}
+]},
+{"title":"AI-3D","items":[
+{"title":"HYPER3D","url":"https://hyper3d.ai/","icon":"","hover":"AI 3D内容生成工具。"},
+{"title":"Meshy","url":"https://www.meshy.ai/","icon":"","hover":"AI 3D模型生成服务。"},
+{"title":"Kinetix","url":"https://www.kinetix.tech/","icon":"","hover":"AI角色动画生成平台。"},
+{"title":"腾讯混元3D","url":"https://3d.hunyuan.tencent.com/","icon":"","hover":"腾讯AI三维内容生成平台。"},
+{"title":"MakerWorld","url":"https://makerworld.com/zh","icon":"","hover":"3D打印模型分享平台。"},
+{"title":"Rendair","url":"https://app.rendair.ai/chat/821421","icon":"","hover":"AI 3D内容生成和设计辅助。"},
+{"title":"NexodusAI","url":"https://nexodusai.com/","icon":"","hover":"图片转3D模型AI工具。"}
+]},
+{"title":"APK-Proxy","items":[
+{"title":"APP的收入","url":"https://www.paywallscreens.com/","icon":"","hover":"移动应用付费墙设计案例。"},
+{"title":"Aptoide","url":"https://cn.aptoide.com/","icon":"","hover":"Android应用分发平台。"},
+{"title":"APKPure","url":"https://apkpure.com/cn/","icon":"","hover":"Android APK下载平台。"},
+{"title":"APKMirror","url":"https://www.apkmirror.com/","icon":"","hover":"Android应用APK文件下载。"},
+{"title":"APKCombo","url":"https://apkcombo.com/zh/","icon":"","hover":"Android应用资源下载平台。"},
+{"title":"Open Proxy List","url":"https://openproxylist.com/","icon":"","hover":"免费代理服务器查询网站。"},
+{"title":"ITDOG测速","url":"https://www.itdog.cn/ping/","icon":"","hover":"网络检测工具平台。"},
+{"title":"DNS Checker","url":"https://dnschecker.org/","icon":"","hover":"在线DNS查询和解析检测。"}
+]},
+{"title":"Nano Banana","items":[
+{"title":"Patreon","url":"https://www.patreon.com/document-verification","icon":"","hover":""},
+{"title":"倒计时管理","url":"https://transpilot.cc.cd/countdown-app/mgr_c8f2a1.php","icon":"","hover":"在线倒计时任务管理工具。"},
+{"title":"小云雀网页版","url":"https://xyq.jianying.com/home?tab_name=home","icon":"","hover":"剪映在线AI创作工具平台。"},
+{"title":"小云雀国际版","url":"https://www.pippit.ai/home?","icon":"","hover":"海外AI内容创作平台。"},
+{"title":"火山方舟","url":"https://console.volcengine.com/auth/login","icon":"","hover":"字节跳动AI服务管理平台。"},
+{"title":"LMArena","url":"https://lmarena.ai/","icon":"","hover":"大语言模型能力评测平台。"},
+{"title":"Nano Banana Free","url":"https://nanobananafree.ai/","icon":"","hover":"AI图像生成工具。"},
+{"title":"RunningHub","url":"https://www.runninghub.cn/quick-create","icon":"","hover":"云端AI工作流创作平台。"},
+{"title":"Vibe Banana","url":"https://intent.app/banana/","icon":"","hover":"AI图像创作工具。"},
+{"title":"iMini","url":"https://imini.com/zh","icon":"","hover":"AI智能助手平台。"},
+{"title":"Opal-VEO","url":"https://opal.withgoogle.com/?mode=canvas","icon":"","hover":"Google Opal AI创作工具。"},
+{"title":"ego","url":"https://lite.ego.app/","icon":"","hover":"AI应用和智能助手平台。"}
+]},
+{"title":"Blog","items":[
+{"title":"IP.sb","url":"https://ip.sb/","icon":"","hover":"IP地址查询工具。"},
+{"title":"IP风险度","url":"https://ping0.cc/","icon":"","hover":"IP地址风险状态检测。"},
+{"title":"Windsurf","url":"https://windsurf.com/account/register","icon":"","hover":"AI编程开发工具平台。"},
+{"title":"Fast.com","url":"https://fast.com/zh/cn","icon":"","hover":"Netflix网络速度测试。"},
+{"title":"果汁排行榜","url":"http://www.guozhivip.com/rank/","icon":"","hover":"综合榜单信息网站。"},
+{"title":"85LA","url":"https://www.85la.com/","icon":"","hover":"网络节点资源平台。"},
+{"title":"85LA-节点","url":"https://sub.85la.com/","icon":"","hover":"节点管理入口。"},
+{"title":"Tally","url":"https://tally.so/dashboard","icon":"","hover":"在线表单工具后台。"},
+{"title":"RentAHuman","url":"https://rentahuman.ai/dashboard","icon":"","hover":"AI任务和人工服务平台。"},
+{"title":"WhatIsMyIP","url":"https://whatismyipaddress.com/","icon":"","hover":"IP地址查询网站。"},
+{"title":"ManyChat","url":"https://manychat.com/","icon":"","hover":"聊天机器人营销平台。"},
+{"title":"Scamalytics","url":"https://scamalytics.com/","icon":"","hover":"IP风险检测平台。"}
+]},
+{"title":"mail","items":[
+{"title":"One.IDkey","url":"https://one.idkey.cc/","icon":"","hover":"身份验证服务平台。"},
+{"title":"CoPaw","url":"https://copaw.agentscope.io/","icon":"","hover":"AI智能体平台。"},
+{"title":"MoeMail","url":"https://moemail.app/zh-CN","icon":"","hover":"在线邮箱服务平台。"},
+{"title":"Outlook","url":"https://outlook.live.com/mail/","icon":"","hover":"微软电子邮件服务。"},
+{"title":"临时邮箱","url":"https://linshiyouxiang.net/","icon":"","hover":"一次性邮箱在线服务。"},
+{"title":"临时Gmail","url":"https://emailtick.com/zh","icon":"","hover":"临时邮箱服务。"},
+{"title":"网易数帆","url":"https://console.163yun.com/","icon":"","hover":"网易云服务管理入口。"},
+{"title":"Base64 Image","url":"https://www.base64-image.de/","icon":"","hover":"在线图片Base64转换工具。"},
+{"title":"图片转Base64","url":"https://tool.chinaz.com/tools/imgtobase","icon":"","hover":"站长工具图片编码。"},
+{"title":"WARP","url":"https://one.one.one.one/","icon":"","hover":"Cloudflare网络连接服务。"}
+]}
+]}
+</script>
+
+<script>
+const data = JSON.parse(document.getElementById('dataBlock').textContent);
+const topnavEl = document.getElementById('topnav');
+const content = document.getElementById('content');
+const searchInput = document.getElementById('searchInput');
+
+const icons = {
+  resourse:'📚', tools:'🛠', soft:'💾', '视频':'🎬', AIGC:'✨',
+  AI:'🤖', ai:'⚡', 'AI大语言':'💬', 'AI声音':'🎵', '反推提示词':'🔍',
+  YouTube:'▶', Google:'G', '电影':'🎥', '身份':'🔐', '壁纸':'🖼',
+  'API-VPS':'☁', 'AI-3D':'🧊', 'APK-Proxy':'📦', 'Nano Banana':'🍌', Blog:'📝', mail:'✉'
+};
+
+const primaryCats = ['resourse','tools','soft','视频','AIGC','AI','ai','AI大语言','AI声音','反推提示词','YouTube','Google','电影','身份'];
+const moreCats = ['壁纸','API-VPS','AI-3D','APK-Proxy','Nano Banana','Blog','mail'];
+
+const allItems = [];
+data.categories.forEach(c => c.items.forEach(i => allItems.push({...i, catTitle:c.title})));
+
+let currentCat = null;
+let searchTimer = null;
+
+function renderTopnav(){
+  topnavEl.innerHTML = '';
+  primaryCats.forEach(title => {
+    const cat = data.categories.find(c => c.title === title);
+    if(!cat) return;
+    const btn = document.createElement('button');
+    btn.className = 'topnav-item' + (currentCat === title ? ' active' : '');
+    btn.innerHTML = '<span class="nav-ico">' + (icons[title]||'•') + '</span><span class="nav-label">' + title + '</span>';
+    btn.addEventListener('click', () => {
+      searchInput.value = '';
+      currentCat = title;
+      renderTopnav();
+      renderCategory();
+    });
+    topnavEl.appendChild(btn);
+  });
+
+  const moreWrap = document.createElement('div');
+  moreWrap.className = 'more-wrap';
+  const isMoreActive = moreCats.includes(currentCat);
+  if(isMoreActive) moreWrap.classList.add('open');
+  moreWrap.innerHTML = `
+    <button class="more-btn">
+      <span class="nav-ico">⋯</span>
+      <span class="nav-label">更多</span>
+      <span class="caret">▼</span>
+    </button>
+    <div class="dropdown">
+      ${moreCats.map(t => {
+        const active = currentCat === t ? ' active' : '';
+        return '<button class="dropdown-item' + active + '" data-cat="' + t + '"><span class="nav-ico">' + (icons[t]||'•') + '</span><span>' + t + '</span></button>';
+      }).join('')}
+    </div>
+  `;
+  topnavEl.appendChild(moreWrap);
+
+  const moreBtn = moreWrap.querySelector('.more-btn');
+  moreBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    moreWrap.classList.toggle('open');
+  });
+
+  moreWrap.querySelectorAll('.dropdown-item').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = el.dataset.cat;
+      moreWrap.classList.remove('open');
+      searchInput.value = '';
+      currentCat = t;
+      renderTopnav();
+      renderCategory();
+    });
+  });
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function buildCard(item, showCat){
+  const ic = icons[item.catTitle] || item.title.charAt(0);
+  const iconHtml = item.icon
+    ? '<div class="app-icon"><img src="' + item.icon + '" onerror="this.parentElement.innerHTML=\'' + ic + '\'" style="width:100%;height:100%;object-fit:contain"></div>'
+    : '<div class="app-icon">' + ic + '</div>';
+  const catBadge = showCat ? '<div style="font-size:10px;color:var(--accent);margin-top:2px">' + escapeHtml(item.catTitle) + '</div>' : '';
+  return '<button class="app-card" data-url="' + item.url + '" title="' + escapeHtml(item.hover||item.title) + '">' + iconHtml + '<div class="app-info"><div class="app-title">' + escapeHtml(item.title) + '</div><div class="app-meta ok">可用</div>' + catBadge + '</div><div class="status-dot"></div></button>';
+}
+
+function bindCards(){
+  document.querySelectorAll('.app-card').forEach(el => {
+    el.addEventListener('click', () => window.open(el.dataset.url, '_blank'));
+  });
+}
+
+function renderCategory(){
+  const cat = data.categories.find(c => c.title === currentCat);
+  if(!cat) return;
+  let html = '<div class="section"><div class="section-head"><div class="section-title">' + cat.title + '</div><div class="section-count">' + cat.items.length + ' 项</div></div><div class="grid">';
+  cat.items.forEach(item => { html += buildCard(item, false); });
+  html += '</div></div>';
+  content.innerHTML = html;
+  bindCards();
+}
+
+function renderSearch(query){
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!words.length){
+    if(currentCat) renderCategory();
+    else renderHome();
+    return;
+  }
+  const scored = allItems.map(item => {
+    const t = (item.title||'').toLowerCase();
+    const h = (item.hover||'').toLowerCase();
+    const u = (item.url||'').toLowerCase();
+    let score = 0, matched = 0;
+    for(const w of words){
+      if(t.includes(w)){ score += t === w ? 100 : (t.startsWith(w)?60:40); matched++; }
+      else if(u.includes(w)){ score += 10; matched++; }
+      else if(h.includes(w)){ score += 5; matched++; }
+    }
+    return matched === words.length ? {item, score} : null;
+  }).filter(Boolean).sort((a,b) => b.score - a.score);
+
+  let html = '<div class="section"><div class="section-head"><div class="section-title">搜索结果</div><div class="section-count">' + scored.length + ' 项匹配</div></div>';
+  if(!scored.length){
+    html += '<div class="grid"><div class="empty">未找到匹配书签</div></div>';
+  } else {
+    html += '<div class="grid">';
+    scored.forEach(s => { html += buildCard(s.item, true); });
+    html += '</div>';
+  }
+  html += '</div>';
+  content.innerHTML = html;
+  bindCards();
+}
+
+function updateClock(){
+  const now = new Date();
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return {
+    date: now.getDate() + ' ' + months[now.getMonth()],
+    time: String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0'),
+    week: days[now.getDay()],
+    year: now.getFullYear()
+  };
+}
+
+function renderHome(){
+  const t = updateClock();
+  content.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="section">
+        <div class="section-head"><div class="section-title">Clock</div><div class="section-count">本地时间</div></div>
+        <div class="clock-card">
+          <div class="clock-date">${t.date}</div>
+          <div class="clock-time">${t.time}</div>
+          <div class="clock-week">${t.week} · ${t.year}</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-head"><div class="section-title">Weather</div><div class="section-count">实时</div></div>
+        <div class="weather-card">
+          <div class="weather-top">
+            <div class="weather-ico">☀</div>
+            <div class="weather-info">
+              <div class="weather-temp">24° <span style="font-size:13px;color:var(--text-tertiary);font-weight:400">Clear Sky</span></div>
+              <div class="weather-feels">Feels like 23°C</div>
+            </div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar" style="height:30%"></div>
+            <div class="bar" style="height:45%"></div>
+            <div class="bar" style="height:60%"></div>
+            <div class="bar now" style="height:90%"></div>
+            <div class="bar" style="height:75%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:35%"></div>
+          </div>
+          <div class="bar-labels"><span>6am</span><span>2pm</span><span>10pm</span></div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:6px">⊕ Nairobi, Kenya</div>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-head"><div class="section-title">Recent Categories</div><div class="section-count">${data.categories.length} 个分类</div></div>
+      <div class="grid">
+        ${data.categories.slice(0,8).map(c => {
+          const ic = icons[c.title] || '•';
+          return '<button class="app-card" data-cat="' + c.title + '"><div class="app-icon">' + ic + '</div><div class="app-info"><div class="app-title">' + c.title + '</div><div class="app-meta">' + c.items.length + ' 项书签</div></div><div class="status-dot"></div></button>';
+        }).join('')}
+      </div>
+    </div>
+  `;
+  document.querySelectorAll('.app-card[data-cat]').forEach(el => {
+    el.addEventListener('click', () => {
+      currentCat = el.dataset.cat;
+      renderTopnav();
+      renderCategory();
+    });
+  });
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.more-wrap.open').forEach(el => el.classList.remove('open'));
+});
+
+renderTopnav();
+renderHome();
+
+searchInput.addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value;
+  searchTimer = setTimeout(() => renderSearch(q), 200);
+});
+</script><script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+</body>
+</html>

@@ -860,3 +860,57 @@ const locDistance=gl.getUniformLocation(program,"uDistance");
 
 const locSun=gl.getUniformLocation(program,"uSun");
 
+
+function render(now){
+
+gl.useProgram(program);
+
+const locPos2=gl.getAttribLocation(program,"p");
+
+gl.enableVertexAttribArray(locPos2);
+
+gl.vertexAttribPointer(locPos2,2,gl.FLOAT,false,0,0);
+
+gl.uniform2f(locResolution,canvas.width,canvas.height);
+
+gl.uniform1f(locTime,(now-start)/1000);
+
+gl.uniform1f(locDensity,uniforms.density);
+
+gl.uniform1f(locScale,uniforms.scale);
+
+gl.uniform1f(locSpeed,uniforms.speed);
+
+gl.uniform1f(locStep,uniforms.step);
+
+gl.uniform1f(locDistance,uniforms.distance);
+
+gl.uniform1f(locSun,uniforms.sun);
+
+gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+
+frame++;
+
+const now2=performance.now();
+
+if(now2-last>=1000){
+
+document.getElementById("fpsText").textContent=frame;
+
+frame=0;
+
+last=now2;
+
+}
+
+requestAnimationFrame(render);
+
+}
+
+requestAnimationFrame(render);
+
+</script>
+<script>document.addEventListener('DOMContentLoaded',function(){var p=document.getElementById('panel');if(p)p.style.display='none';});</script>
+
+</body>
+</html>

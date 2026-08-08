@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield Shader 渲染器</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #gui-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+        /* Optional: small hint for the shortcut */
+        #hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: sans-serif;
+            font-size: 12px;
+            pointer-events: none;
+            user-select: none;
+            z-index: 10;
+        }
+    </style>
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入 lil-gui (dat.gui 的现代替代品) -->
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.18"></script>
+</head>
+<body>
+
+<div id="gui-container"></div>
+<div id="hint">按 Alt+H 隐藏/显示控制台 | 拖动鼠标旋转视角</div>
+
+<script>
+    // --- Shader 代码 ---
+    const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+
+    const fragmentShader = `
+        uniform vec2 iResolution;
+        uniform float iTime;
+        uniform vec2 iMouse;
+
+        // 通过 uniform 传入的参数
+        uniform int iterations;
+        uniform float formuparam;
+        uniform int volsteps;
+        uniform float stepsize;
+        uniform float zoom;
+        uniform float tile;
+        uniform float speed;
+        uniform float brightness;
+        uniform float darkmatter;
+        uniform float distfading;
+        uniform float saturation;
+
+        varying vec2 vUv;
+
+        void mainImage( out vec4 fragColor, in vec2 fragCoord )
+        {
+            // get coords and direction
+            vec2 uv = fragCoord.xy / iResolution.xy - .5;
+            uv.y *= iResolution.y / iResolution.x;
+            vec3 dir = vec3(uv * zoom, 1.);
+            float time = iTime * speed + .25;
+
+            // mouse rotation
+            // Convert normalized mouse coordinates (0 to 1) to the original expected logic
+            float a1 = .5 + (iMouse.x / iResolution.x) * 2.0;
+            float a2 = .8 + (iMouse.y / iResolution.y) * 2.0;
+            mat2 rot1 = mat2(cos(a1), sin(a1), -sin(a1), cos(a1));
+            mat2 rot2 = mat2(cos(a2), sin(a2), -sin(a2), cos(a2));
+            dir.xz *= rot1;
+            dir.xy *= rot2;
+            vec3 from = vec3(1., .5, 0.5);
+            from += vec3(time * 2., time, -2.);
+            from.xz *= rot1;
+            from.xy *= rot2;
+            
+            // volumetric rendering
+            float s = 0.1, fade = 1.;
+            vec3 v = vec3(0.);
+            for (int r = 0; r < volsteps; r++) {
+                vec3 p = from + s * dir * .5;
+                p = abs(vec3(tile) - mod(p, vec3(tile * 2.))); // tiling fold
+                float pa, a = pa = 0.;
+                for (int i = 0; i < iterations; i++) { 
+                    p = abs(p) / dot(p, p) - formuparam; // the magic formula
+                    a += abs(length(p) - pa); // absolute sum of average change
+                    pa = length(p);
+                }
+                float dm = max(0., darkmatter - a * a * .001); // dark matter
+                a *= a * a; // add contrast
+                if (r > 6) fade *= 1. - dm; // dark matter, don't render near
+                //v+=vec3(dm,dm*.5,0.);
+                v += fade;
+                v += vec3(s, s * s, s * s * s * s) * a * brightness * fade; // coloring based on distance
+                fade *= distfading; // distance fading
+                s += stepsize;
+            }
+            v = mix(vec3(length(v)), v, saturation); // color adjust
+            fragColor = vec4(v * .01, 1.);	
+        }
+
+        void main() {
+            mainImage(gl_FragColor, vUv * iResolution.xy);
+        }
+    `;
+
+    // --- Three.js 设置 ---
+    let camera, scene, renderer;
+    let uniforms;
+    let material, mesh;
+    let mouse = new THREE.Vector2(0.5, 0.5); // Default mouse position
+    let isMouseDown = false;
+
+    // 参数配置对象 (初始值)
+    const config = {
+        iterations: 17,
+        formuparam: 0.53,
+        volsteps: 20,
+        stepsize: 0.1,
+        zoom: 0.800,
+        tile: 0.850,
+        speed: 0.010,
+        brightness: 0.0015,
+        darkmatter: 0.300,
+        distfading: 0.730,
+        saturation: 0.850
+    };
+
+    function init() {
+        const container = document.createElement( 'div' );
+        document.body.appendChild( container );
+
+        camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+        scene = new THREE.Scene();
+
+        const geometry = new THREE.PlaneGeometry( 2, 2 );
+
+        uniforms = {
+            iTime: { value: 1.0 },
+            iResolution: { value: new THREE.Vector2() },
+            iMouse: { value: new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5) },
+            
+            // 绑定 config 参数到 uniform
+            iterations: { value: config.iterations },
+            formuparam: { value: config.formuparam },
+            volsteps: { value: config.volsteps },
+            stepsize: { value: config.stepsize },
+            zoom: { value: config.zoom },
+            tile: { value: config.tile },
+            speed: { value: config.speed },
+            brightness: { value: config.brightness },
+            darkmatter: { value: config.darkmatter },
+            distfading: { value: config.distfading },
+            saturation: { value: config.saturation }
+        };
+
+        material = new THREE.ShaderMaterial( {
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader
+        } );
+
+        mesh = new THREE.Mesh( geometry, material );
+        scene.add( mesh );
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        container.appendChild( renderer.domElement );
+
+        onWindowResize();
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        // 鼠标事件
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if(isMouseDown) {
+                // Invert Y for correct ShaderToy behavior
+                uniforms.iMouse.value.x = e.clientX;
+                uniforms.iMouse.value.y = window.innerHeight - e.clientY; 
+            }
+        });
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            uniforms.iMouse.value.x = e.clientX;
+            uniforms.iMouse.value.y = window.innerHeight - e.clientY;
+        });
+        renderer.domElement.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        
+        // 触摸事件 (移动端支持)
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if(e.touches.length > 0) {
+                 uniforms.iMouse.value.x = e.touches[0].clientX;
+                 uniforms.iMouse.value.y = window.innerHeight - e.touches[0].clientY;
+            }
+        }, {passive: false});
+
+        initGUI();
+    }
+
+    function onWindowResize() {
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        uniforms.iResolution.value.x = renderer.domElement.width;
+        uniforms.iResolution.value.y = renderer.domElement.height;
+    }
+
+    // --- lil-gui 控制台设置 ---
+    let gui;
+    function initGUI() {
+        gui = new lil.GUI({ container: document.getElementById('gui-container'), title: '参数控制台' });
+        
+        // 将 GUI 设置为可折叠，默认展开
+        gui.open();
+
+        // 监听值变化，更新 uniform
+        const updateUniform = (name) => {
+            return (value) => {
+                uniforms[name].value = value;
+            };
+        };
+
+        const folder = gui.addFolder('Shader 参数');
+        
+        folder.add(config, 'iterations', 1, 50, 1).name('迭代次数 (iterations)').onChange(updateUniform('iterations'));
+        folder.add(config, 'formuparam', 0.1, 1.0).name('形状参数 (formuparam)').onChange(updateUniform('formuparam'));
+        folder.add(config, 'volsteps', 1, 50, 1).name('体积步数 (volsteps)').onChange(updateUniform('volsteps'));
+        folder.add(config, 'stepsize', 0.01, 0.5).name('步长 (stepsize)').onChange(updateUniform('stepsize'));
+        folder.add(config, 'zoom', 0.1, 3.0).name('缩放 (zoom)').onChange(updateUniform('zoom'));
+        folder.add(config, 'tile', 0.1, 2.0).name('平铺 (tile)').onChange(updateUniform('tile'));
+        folder.add(config, 'speed', 0.0, 0.1).name('速度 (speed)').onChange(updateUniform('speed'));
+        folder.add(config, 'brightness', 0.0, 0.01).name('亮度 (brightness)').onChange(updateUniform('brightness'));
+        folder.add(config, 'darkmatter', 0.0, 1.0).name('暗物质 (darkmatter)').onChange(updateUniform('darkmatter'));
+        folder.add(config, 'distfading', 0.1, 1.0).name('距离衰减 (distfading)').onChange(updateUniform('distfading'));
+        folder.add(config, 'saturation', 0.0, 1.0).name('饱和度 (saturation)').onChange(updateUniform('saturation'));
+
+        folder.open();
+    }
+
+    // --- Alt+H 快捷键控制显示/隐藏 ---
+    document.addEventListener('keydown', (event) => {
+        // 检查是否按下 Alt 键 且按下了 'h' 或 'H'
+        if (event.altKey && event.key.toLowerCase() === 'h') {
+            event.preventDefault(); // 阻止默认行为（比如浏览器菜单）
+            const guiContainer = document.getElementById('gui-container');
+            if (guiContainer.style.display === 'none') {
+                guiContainer.style.display = 'block';
+            } else {
+                guiContainer.style.display = 'none';
+            }
+        }
+    });
+
+    // --- 动画循环 ---
+    function animate(time) {
+        requestAnimationFrame( animate );
+        // 将时间转换为秒
+        uniforms.iTime.value = time * 0.001;
+        renderer.render( scene, camera );
+    }
+
+    window.onload = function() {
+        init();
+        requestAnimationFrame(animate);
+    };
+
+</script>
+</body>
+</html>

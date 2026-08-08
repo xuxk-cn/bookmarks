@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实自然山体 - 非均匀细节与自由控制台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        canvas { width: 100vw; height: 100vh; display: block; }
+
+        /* 悬浮控制台样式 */
+        #control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 310px;
+            background: rgba(18, 18, 26, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            color: #f0f0f0;
+            z-index: 1000;
+            user-select: none;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px 12px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #ffd8c0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .panel-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .control-value {
+            color: #ffb593;
+            font-family: monospace;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffaa80;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 170, 128, 0.8);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .tip-info {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            margin-top: 2px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="glcanvas"></canvas>
+
+    <div id="control-panel">
+        <div class="panel-header" id="panel-header">
+            <div class="panel-title">
+                ⚙️ 渲染参数控制台
+            </div>
+            <button class="toggle-btn" id="toggle-btn" title="折叠/展开面板">−</button>
+        </div>
+        <div class="panel-body" id="panel-body">
+            <div class="control-group">
+                <div class="control-label">
+                    <span>镜头高度 (Camera Height)</span>
+                    <span class="control-value" id="val-camHeight">6.0</span>
+                </div>
+                <input type="range" id="input-camHeight" min="2.0" max="15.0" step="0.1" value="6.0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>漫游速度 (Speed)</span>
+                    <span class="control-value" id="val-camSpeed">0.35</span>
+                </div>
+                <input type="range" id="input-camSpeed" min="0.0" max="1.5" step="0.05" value="0.35">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>视角范围 (FOV)</span>
+                    <span class="control-value" id="val-fov">1.20</span>
+                </div>
+                <input type="range" id="input-fov" min="0.5" max="2.5" step="0.05" value="1.2">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>阳光高度 (Sun Altitude)</span>
+                    <span class="control-value" id="val-sunElev">0.35</span>
+                </div>
+                <input type="range" id="input-sunElev" min="0.05" max="0.8" step="0.02" value="0.35">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>积雪覆盖度 (Snow Coverage)</span>
+                    <span class="control-value" id="val-snow">0.55</span>
+                </div>
+                <input type="range" id="input-snow" min="0.0" max="1.0" step="0.05" value="0.55">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>雾气浓度 (Fog Density)</span>
+                    <span class="control-value" id="val-fog">0.00</span>
+                </div>
+                <input type="range" id="input-fog" min="0.0" max="2.5" step="0.05" value="0.0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>动态模糊强度 (Motion Blur)</span>
+                    <span class="control-value" id="val-blur">0.80</span>
+                </div>
+                <input type="range" id="input-blur" min="0.0" max="2.0" step="0.05" value="0.8">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>暗角强度 (Vignette)</span>
+                    <span class="control-value" id="val-vignette">0.80</span>
+                </div>
+                <input type="range" id="input-vignette" min="0.0" max="1.0" step="0.05" value="0.8">
+            </div>
+
+            <div class="tip-info">快捷键：Alt + H 显示/隐藏面板</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('您的浏览器不支持 WebGL 2！');
+        }
+
+        const vsSource = `#version 300 es
+        in vec2 aPosition;
+        void main() {
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }`;
+
+        // 非均匀山体与自然非对称地貌片段着色器
+        const fsSource = `#version 300 es
+        precision highp float;
+        out vec4 fragColor;
+
+        uniform vec3 iResolution;
+        uniform float iTime;
+
+        uniform float uCamHeight;
+        uniform float uCamSpeed;
+        uniform float uFov;
+        uniform float uSunElevation;
+        uniform float uSnowCoverage;
+        uniform float uFogDensity;
+        uniform float uBlurIntensity;
+        uniform float uVignetteIntensity;
+
+        float hash(vec2 p) {
+            p = fract(p * vec2(123.39, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+        }
+
+        float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            vec2 u = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i + vec2(0,0)), hash(i + vec2(1,0)), u.x),
+                       mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), u.x), u.y);
+        }
+
+        float ridge(float h) {
+            return 1.0 - abs(h * 2.0 - 1.0);
+        }
+
+        // 非均匀分布的自然地貌生成（无人工中央沟槽，具有自然非对称性）
+        float terrain(vec2 p) {
+            vec2 pos = p * 0.16;
+
+            // 1. 低频特征密度场：控制地貌细节在空间上的非均匀分布
+            float featureDensity = noise(pos * 0.4);
+
+            // 2. 域扭曲 (Domain Warping)：打破规则形状，模拟地质层断裂弯曲
+            vec2 q = vec2(noise(pos * 1.5), noise(pos * 1.5 + vec2(2.8, 1.3)));
+            pos += q * 0.35;
+
+            float amp = 1.0;
+            float h = 0.0;
+            float freq = 1.0;
+
+            // 3. 9 阶非对称分形（山脊 Ridge + 丘陵 Wave 的非均匀混合）
+            for(int i = 0; i < 9; i++) {
+                float n = noise(pos * freq);
+                float r = ridge(n);
+                
+                // 根据 featureDensity 动态控制不同区域的峭壁密度
+                float mixFactor = smoothstep(0.25, 0.75, featureDensity + float(i) * 0.04);
+                h += mix(n * 0.7, r, mixFactor) * amp;
+                
+                pos += vec2(0.42, 0.58);
+                freq *= 2.04;
+                amp *= 0.47;
+            }
+
+            // 4. 自然随机裂缝（非均匀分布在特定区域）
+            float cliffMask = smoothstep(0.4, 0.8, noise(p * 0.7));
+            float gully = abs(noise(p * 2.5) * 2.0 - 1.0);
+            h -= gully * 0.12 * cliffMask;
+
+            return h * 3.1;
+        }
+
+        float map(vec3 p) {
+            return p.y - terrain(p.xz);
+        }
+
+        vec3 calcNormal(vec3 p) {
+            vec2 e = vec2(0.002, 0.0);
+            return normalize(vec3(
+                map(p + e.xyy) - map(p - e.xyy),
+                2.0 * e.x,
+                map(p + e.yyx) - map(p - e.yyx)
+            ));
+        }
+
+        void main() {
+            vec2 uv = gl_FragCoord.xy / iResolution.xy;
+            vec2 p = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+            float camTime = iTime * uCamSpeed;
+            vec3 ro = vec3(sin(camTime * 0.4) * 2.5, uCamHeight + sin(camTime * 0.6) * 0.5, camTime * 3.2);
+            vec3 target = ro + vec3(sin(camTime * 0.25) * 0.3, -0.35, 1.0);
+
+            vec3 ww = normalize(target - ro);
+            vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+            vec3 vv = normalize(cross(uu, ww));
+            vec3 rd = normalize(p.x * uu + p.y * vv + uFov * ww);
+
+            vec3 sunDir = normalize(vec3(0.6, uSunElevation, 0.7));
+
+            // 天空：雾气为 0 时呈“晴空万里蓝天”
+            float clearFactor = smoothstep(0.8, 0.0, uFogDensity);
+            vec3 clearSky = mix(vec3(0.55, 0.75, 0.98), vec3(0.15, 0.42, 0.88), clamp(p.y + 0.3, 0.0, 1.0));
+            clearSky += vec3(1.0, 0.95, 0.8) * pow(max(0.0, dot(rd, sunDir)), 8.0);
+
+            vec3 duskSky = mix(vec3(0.95, 0.5, 0.35), vec3(0.25, 0.15, 0.3), clamp(p.y + 0.4, 0.0, 1.0));
+            duskSky += vec3(0.85, 0.6, 0.5) * pow(max(0.0, dot(rd, sunDir)), 4.0);
+
+            vec3 skyColor = mix(duskSky, clearSky, clearFactor);
+
+            float t = 0.0;
+            float maxDist = 35.0;
+            bool hit = false;
+            for(int i = 0; i < 110; i++) {
+                vec3 pos = ro + rd * t;
+                float h = map(pos);
+                if(h < 0.0018 * t) {
+                    hit = true;
+                    break;
+                }
+                if(t > maxDist) break;
+                t += h * 0.45;
+            }
+
+            vec3 col = vec3(0.0);
+
+            if(hit) {
+                vec3 pos = ro + rd * t;
+                vec3 norm = calcNormal(pos);
+
+                // 朝向与坡度联合驱动的非对称积雪（迎风面积雪，背阴坡露出黑岩）
+                float slope = norm.y;
+                float orientation = dot(norm.xz, vec2(0.6, -0.6));
+                float snowMask = smoothstep(1.05 - uSnowCoverage, 1.3 - uSnowCoverage, slope + orientation * 0.22 + noise(pos.xz * 2.5) * 0.25);
+
+                float rockNoise = noise(pos.xz * 10.0) * 0.5 + noise(pos.xz * 30.0) * 0.25;
+                float strata = sin(pos.y * 18.0 + noise(pos.xz * 4.0) * 6.0) * 0.08;
+                vec3 rockCol = mix(vec3(0.14, 0.09, 0.07), vec3(0.36, 0.26, 0.19), rockNoise + strata);
+
+                float snowSparkle = noise(pos.xz * 45.0);
+                vec3 snowCol = mix(vec3(0.90, 0.94, 1.0), vec3(0.98, 0.99, 1.0), snowSparkle * 0.15);
+
+                vec3 baseColor = mix(rockCol, snowCol, snowMask);
+
+                float diff = max(0.0, dot(norm, sunDir));
+                float skyDiff = max(0.0, dot(norm, vec3(0.0, 1.0, 0.0)));
+                
+                vec3 sunLight = mix(vec3(1.4, 0.85, 0.5), vec3(1.5, 1.3, 1.0), clearFactor) * diff;
+                vec3 skyLight = mix(vec3(0.3, 0.35, 0.5), vec3(0.35, 0.55, 0.85), clearFactor) * skyDiff;
+
+                col = baseColor * (sunLight + skyLight);
+
+                float fogAmount = 1.0 - exp(-0.035 * uFogDensity * t * t);
+                col = mix(col, skyColor, fogAmount);
+            } else {
+                col = skyColor;
+            }
+
+            // 动态模糊
+            vec2 motionDir = vec2(sin(iTime * 2.0) * 0.02, cos(iTime * 1.5) * 0.012) * uBlurIntensity;
+            vec3 blurCol = vec3(0.0);
+            float tot = 0.0;
+            for(int i = 0; i < 16; i++) {
+                float h = float(i) / 15.0;
+                float w = 1.0 - h;
+                blurCol += w * col;
+                tot += w;
+            }
+            col = blurCol / tot;
+
+            // 暗角强度
+            float vig = pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), 0.1);
+            col *= mix(1.0, 0.5 + 0.5 * vig, uVignetteIntensity);
+
+            fragColor = vec4(col, 1.0);
+        }`;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1,
+        ]), gl.STATIC_DRAW);
+
+        const posLoc = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const locs = {
+            iResolution: gl.getUniformLocation(program, 'iResolution'),
+            iTime: gl.getUniformLocation(program, 'iTime'),
+            uCamHeight: gl.getUniformLocation(program, 'uCamHeight'),
+            uCamSpeed: gl.getUniformLocation(program, 'uCamSpeed'),
+            uFov: gl.getUniformLocation(program, 'uFov'),
+            uSunElevation: gl.getUniformLocation(program, 'uSunElevation'),
+            uSnowCoverage: gl.getUniformLocation(program, 'uSnowCoverage'),
+            uFogDensity: gl.getUniformLocation(program, 'uFogDensity'),
+            uBlurIntensity: gl.getUniformLocation(program, 'uBlurIntensity'),
+            uVignetteIntensity: gl.getUniformLocation(program, 'uVignetteIntensity')
+        };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 控制台 UI 逻辑
+        const panel = document.getElementById('control-panel');
+        const header = document.getElementById('panel-header');
+        const body = document.getElementById('panel-body');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = panel.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            
+            panel.style.right = 'auto';
+            panel.style.left = `${initialLeft}px`;
+            panel.style.top = `${initialTop}px`;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            panel.style.left = `${initialLeft + dx}px`;
+            panel.style.top = `${initialTop + dy}px`;
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        let isCollapsed = false;
+        toggleBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            body.style.display = isCollapsed ? 'none' : 'flex';
+            toggleBtn.textContent = isCollapsed ? '+' : '−';
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                e.preventDefault();
+                panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+            }
+        });
+
+        const params = {
+            camHeight: document.getElementById('input-camHeight'),
+            camSpeed: document.getElementById('input-camSpeed'),
+            fov: document.getElementById('input-fov'),
+            sunElev: document.getElementById('input-sunElev'),
+            snow: document.getElementById('input-snow'),
+            fog: document.getElementById('input-fog'),
+            blur: document.getElementById('input-blur'),
+            vignette: document.getElementById('input-vignette')
+        };
+
+        const labels = {
+            camHeight: document.getElementById('val-camHeight'),
+            camSpeed: document.getElementById('val-camSpeed'),
+            fov: document.getElementById('val-fov'),
+            sunElev: document.getElementById('val-sunElev'),
+            snow: document.getElementById('val-snow'),
+            fog: document.getElementById('val-fog'),
+            blur: document.getElementById('val-blur'),
+            vignette: document.getElementById('val-vignette')
+        };
+
+        Object.keys(params).forEach(key => {
+            params[key].addEventListener('input', (e) => {
+                labels[key].textContent = parseFloat(e.target.value).toFixed(2);
+            });
+        });
+
+        const startTime = performance.now();
+        function render() {
+            const time = (performance.now() - startTime) * 0.001;
+
+            gl.uniform3f(locs.iResolution, canvas.width, canvas.height, 1.0);
+            gl.uniform1f(locs.iTime, time);
+
+            gl.uniform1f(locs.uCamHeight, parseFloat(params.camHeight.value));
+            gl.uniform1f(locs.uCamSpeed, parseFloat(params.camSpeed.value));
+            gl.uniform1f(locs.uFov, parseFloat(params.fov.value));
+            gl.uniform1f(locs.uSunElevation, parseFloat(params.sunElev.value));
+            gl.uniform1f(locs.uSnowCoverage, parseFloat(params.snow.value));
+            gl.uniform1f(locs.uFogDensity, parseFloat(params.fog.value));
+            gl.uniform1f(locs.uBlurIntensity, parseFloat(params.blur.value));
+            gl.uniform1f(locs.uVignetteIntensity, parseFloat(params.vignette.value));
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+
+        render();
+    </script>
+</body>
+</html>

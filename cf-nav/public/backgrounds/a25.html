@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singularity - WebGL Shader</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* Custom styling for the dat.gui panel to ensure it looks okay */
+        .dg.ac {
+            z-index: 10 !important; /* Ensure it stays on top */
+        }
+        
+        #help-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-family: sans-serif;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+            z-index: 20;
+        }
+    </style>
+    <!-- Load Three.js for easy WebGL setup -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Load dat.gui for the control panel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="help-toast">按 Alt+H 隐藏/显示控制台</div>
+
+    <script>
+        // The fragment shader code provided by the user, adapted slightly for Three.js
+        // We need to declare the uniforms (iResolution, iTime, etc.) at the top.
+        const fragmentShaderSource = `
+            uniform vec3 iResolution;
+            uniform float iTime;
+            
+            // Added uniforms for dat.gui controls
+            uniform float u_zoom;
+            uniform float u_timeScale;
+            uniform float u_distortionFactor;
+            uniform float u_colorIntensity;
+            uniform vec3 u_colorShift;
+            uniform float u_accretionDiskBrightness;
+            uniform float u_centerDarkness;
+
+            // Modified mainImage to accept custom parameters
+            void mainImage(out vec4 O, vec2 F)
+            {
+                // Iterator and attenuation (distance-squared)
+                float i = .2, a;
+                // Resolution for scaling and centering
+                vec2 r = iResolution.xy;
+                
+                // Centered ratio-corrected coordinates, applying zoom factor
+                vec2 p = ( F+F - r ) / r.y / u_zoom;
+                
+                // Diagonal vector for skewing
+                vec2 d = vec2(-1,1);
+                // Blackhole center
+                vec2 b = p - i*d;
+                // Rotate and apply perspective
+                vec2 c = p * mat2(1, 1, d/(.1 + i/dot(b,b)));
+                
+                // Apply time scale
+                float t = iTime * u_timeScale;
+                
+                // Rotate into spiraling coordinates
+                vec2 v = c * mat2(cos(.5*log(a=dot(c,c)) + t*i + vec4(0,33,11,0)))/i;
+                
+                // Waves cumulative total for coloring
+                vec4 w = vec4(0.0);
+                
+                // Loop through waves
+                for(; i++<9.; w += 1.+sin(v.xyyx) ) { // Note: expanded sin(v) to sin(v.xyyx) to match original intent of adding to vec4 w
+                    // Distort coordinates with controllable factor
+                    v += u_distortionFactor * sin(v.yx*i+t) / i + .5;
+                }
+                
+                // Accretion disk radius
+                i = length( sin(v/.3)*.4 + c*(3.+d) );
+                
+                // Apply color shifting
+                vec4 colorGradient = vec4(u_colorShift.x, u_colorShift.y, u_colorShift.z, 0.0) * u_colorIntensity;
+                
+                // Red/blue gradient (modified with uniforms)
+                O = 1. - exp( -exp( c.x * colorGradient )
+                               // Wave coloring
+                               / w.xyyx
+                               // Accretion disk brightness
+                               / ( u_accretionDiskBrightness + i*i/4. - i )
+                               // Center darkness
+                               / ( u_centerDarkness + 1. / a )
+                               // Rim highlight
+                               / ( .03 + abs( length(p)-.7 ) )
+                             );
+            }
+
+            void main() {
+                mainImage(gl_FragColor, gl_FragCoord.xy);
+                gl_FragColor.a = 1.0; // Ensure alpha is 1
+            }
+        `;
+
+        // A simple vertex shader that just passes the coordinates to fill the screen
+        const vertexShaderSource = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        let camera, scene, renderer;
+        let uniforms;
+
+        // Configuration object for dat.gui
+        const params = {
+            zoom: 0.7,
+            timeScale: 1.0,
+            distortionFactor: 0.7,
+            colorIntensity: 1.0,
+            colorShiftR: 0.6,
+            colorShiftG: -0.4,
+            colorShiftB: -1.0,
+            accretionDiskBrightness: 2.0,
+            centerDarkness: 0.5,
+            reset: function() {
+                this.zoom = 0.7;
+                this.timeScale = 1.0;
+                this.distortionFactor = 0.7;
+                this.colorIntensity = 1.0;
+                this.colorShiftR = 0.6;
+                this.colorShiftG = -0.4;
+                this.colorShiftB = -1.0;
+                this.accretionDiskBrightness = 2.0;
+                this.centerDarkness = 0.5;
+                // Update GUI controllers
+                for (let i in gui.__controllers) {
+                    gui.__controllers[i].updateDisplay();
+                }
+                for (let f in gui.__folders) {
+                    for (let i in gui.__folders[f].__controllers) {
+                        gui.__folders[f].__controllers[i].updateDisplay();
+                    }
+                }
+                updateUniforms();
+            }
+        };
+
+        let gui;
+        let guiVisible = true;
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById( 'container' );
+
+            // Camera setup (Orthographic is good for 2D full-screen shaders)
+            camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+            scene = new THREE.Scene();
+
+            // Setup a plane that covers the entire screen
+            const geometry = new THREE.PlaneGeometry( 2, 2 );
+
+            // Define the uniforms that will be passed to the shader
+            uniforms = {
+                iTime: { value: 1.0 },
+                iResolution: { value: new THREE.Vector3() },
+                
+                // Custom uniforms linked to params
+                u_zoom: { value: params.zoom },
+                u_timeScale: { value: params.timeScale },
+                u_distortionFactor: { value: params.distortionFactor },
+                u_colorIntensity: { value: params.colorIntensity },
+                u_colorShift: { value: new THREE.Vector3(params.colorShiftR, params.colorShiftG, params.colorShiftB) },
+                u_accretionDiskBrightness: { value: params.accretionDiskBrightness },
+                u_centerDarkness: { value: params.centerDarkness }
+            };
+
+            const material = new THREE.ShaderMaterial( {
+                uniforms: uniforms,
+                vertexShader: vertexShaderSource,
+                fragmentShader: fragmentShaderSource
+            } );
+
+            const mesh = new THREE.Mesh( geometry, material );
+            scene.add( mesh );
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio( window.devicePixelRatio );
+            container.appendChild( renderer.domElement );
+
+            onWindowResize();
+            window.addEventListener( 'resize', onWindowResize );
+            
+            // Setup GUI and Keyboard Shortcuts
+            setupGUI();
+            setupShortcuts();
+            
+            // Fade out the help toast after 5 seconds
+            setTimeout(() => {
+                const toast = document.getElementById('help-toast');
+                if(toast) toast.style.opacity = '0';
+            }, 5000);
+        }
+
+        function setupGUI() {
+            gui = new dat.GUI({ title: '控制面板' }); // Chinese title might not show in default dat.gui theme, but folder names will
+
+            const f1 = gui.addFolder('视图控制 (View)');
+            f1.add(params, 'zoom', 0.1, 2.0).name('缩放 (Zoom)').onChange(updateUniforms);
+            f1.add(params, 'timeScale', -2.0, 5.0).name('时间流速 (Speed)').onChange(updateUniforms);
+            f1.open();
+
+            const f2 = gui.addFolder('形状与扭曲 (Shape)');
+            f2.add(params, 'distortionFactor', 0.0, 2.0).name('波纹扭曲 (Distortion)').onChange(updateUniforms);
+            f2.add(params, 'accretionDiskBrightness', 0.1, 5.0).name('吸积盘亮度 (Disk Bright.)').onChange(updateUniforms);
+            f2.add(params, 'centerDarkness', 0.0, 2.0).name('中心暗度 (Center Dark)').onChange(updateUniforms);
+            
+            const f3 = gui.addFolder('颜色 (Colors)');
+            f3.add(params, 'colorIntensity', 0.1, 3.0).name('颜色强度 (Intensity)').onChange(updateUniforms);
+            f3.add(params, 'colorShiftR', -2.0, 2.0).name('偏红 (Red Shift)').onChange(updateUniforms);
+            f3.add(params, 'colorShiftG', -2.0, 2.0).name('偏绿 (Green Shift)').onChange(updateUniforms);
+            f3.add(params, 'colorShiftB', -2.0, 2.0).name('偏蓝 (Blue Shift)').onChange(updateUniforms);
+
+            gui.add(params, 'reset').name('重置默认值 (Reset)');
+        }
+
+        function updateUniforms() {
+            if(!uniforms) return;
+            uniforms.u_zoom.value = params.zoom;
+            uniforms.u_timeScale.value = params.timeScale;
+            uniforms.u_distortionFactor.value = params.distortionFactor;
+            uniforms.u_colorIntensity.value = params.colorIntensity;
+            uniforms.u_colorShift.value.set(params.colorShiftR, params.colorShiftG, params.colorShiftB);
+            uniforms.u_accretionDiskBrightness.value = params.accretionDiskBrightness;
+            uniforms.u_centerDarkness.value = params.centerDarkness;
+        }
+
+        function setupShortcuts() {
+            document.addEventListener('keydown', function(event) {
+                // Check for Alt + H (keyCode 72 is 'H')
+                if (event.altKey && (event.key === 'h' || event.key === 'H')) {
+                    event.preventDefault(); // Prevent default browser behavior
+                    toggleGUI();
+                }
+            });
+        }
+
+        function toggleGUI() {
+            if (guiVisible) {
+                dat.GUI.toggleHide(); // built-in method to hide all dat.gui instances
+                guiVisible = false;
+            } else {
+                dat.GUI.toggleHide();
+                guiVisible = true;
+            }
+        }
+
+        function onWindowResize() {
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            // Update iResolution uniform for the shader
+            uniforms.iResolution.value.x = window.innerWidth;
+            uniforms.iResolution.value.y = window.innerHeight;
+            uniforms.iResolution.value.z = 1;
+        }
+
+        function animate( timestamp ) {
+            requestAnimationFrame( animate );
+
+            // Update iTime uniform
+            // Note: In ShaderToy, iTime is in seconds.
+            // timestamp provided by requestAnimationFrame is in milliseconds.
+            uniforms.iTime.value = timestamp / 1000.0;
+
+            renderer.render( scene, camera );
+        }
+    </script>
+</body>
+</html>

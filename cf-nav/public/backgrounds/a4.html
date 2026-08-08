@@ -106,10 +106,10 @@
     </style>
 </head>
 <body>
-    <div id="control-panel">
+    <div id="control-panel" class="hidden-panel">
         <div id="panel-header">
             <h3>海洋参数控制台</h3>
-            <button class="toggle-btn" id="toggle-panel">▼</button>
+            <button class="toggle-btn" id="toggle-panel">▲</button>
         </div>
         <div id="panel-content">
             <div class="control-group">
@@ -614,5 +614,6 @@
     // Start loop
     render();
 </script>
+<script>document.addEventListener('DOMContentLoaded',function(){var p=document.getElementById('control-panel');if(p)p.style.display='none';});</script>
 </body>
 </html>

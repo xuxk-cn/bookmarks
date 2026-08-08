@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Shadertoy Implementation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        #gui-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: 10;
+        }
+        #info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+    <!-- Import Maps to load Three.js and lil-gui from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="info">Alt+H 切换控制台显示/隐藏</div>
+    <div id="gui-container"></div>
+    <div id="container"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import GUI from 'lil-gui';
+
+        let camera, scene, renderer, material;
+        let gui;
+        
+        // Define shader parameters object for the GUI
+        const params = {
+            noiseScale: 0.65,
+            innerRadius: 0.6,
+            color1: '#9c43fe', // vec3(0.611765, 0.262745, 0.996078)
+            color2: '#4cc2e9', // vec3(0.298039, 0.760784, 0.913725)
+            color3: '#101499', // vec3(0.062745, 0.078431, 0.600000)
+            timeScale: 1.0,
+            bgColor: '#000000',
+            visible: true
+        };
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById( 'container' );
+
+            // Camera (Orthographic is best for full screen quad)
+            camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+            scene = new THREE.Scene();
+
+            // Geometry - simple plane to cover the screen
+            const geometry = new THREE.PlaneGeometry( 2, 2 );
+
+            const vertexShader = `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4( position, 1.0 );
+                }
+            `;
+
+            const fragmentShader = `
+                uniform vec3 iResolution;
+                uniform float iTime;
+                
+                // Added uniforms from GUI
+                uniform float uNoiseScale;
+                uniform float uInnerRadius;
+                uniform vec3 uColor1;
+                uniform vec3 uColor2;
+                uniform vec3 uColor3;
+                uniform vec3 uBgColor;
+                uniform float uTimeScale;
+
+                varying vec2 vUv;
+
+                // noise from https://www.shadertoy.com/view/4sc3z2
+                vec3 hash33(vec3 p3)
+                {
+                    p3 = fract(p3 * vec3(.1031,.11369,.13787));
+                    p3 += dot(p3, p3.yxz+19.19);
+                    return -1.0 + 2.0 * fract(vec3(p3.x+p3.y, p3.x+p3.z, p3.y+p3.z)*p3.zyx);
+                }
+                
+                float snoise3(vec3 p)
+                {
+                    const float K1 = 0.333333333;
+                    const float K2 = 0.166666667;
+                    
+                    vec3 i = floor(p + (p.x + p.y + p.z) * K1);
+                    vec3 d0 = p - (i - (i.x + i.y + i.z) * K2);
+                    
+                    vec3 e = step(vec3(0.0), d0 - d0.yzx);
+                    vec3 i1 = e * (1.0 - e.zxy);
+                    vec3 i2 = 1.0 - e.zxy * (1.0 - e);
+                    
+                    vec3 d1 = d0 - (i1 - K2);
+                    vec3 d2 = d0 - (i2 - K1);
+                    vec3 d3 = d0 - 0.5;
+                    
+                    vec4 h = max(0.6 - vec4(dot(d0, d0), dot(d1, d1), dot(d2, d2), dot(d3, d3)), 0.0);
+                    vec4 n = h * h * h * h * vec4(dot(d0, hash33(i)), dot(d1, hash33(i + i1)), dot(d2, hash33(i + i2)), dot(d3, hash33(i + 1.0)));
+                    
+                    return dot(vec4(31.316), n);
+                }
+
+                vec4 extractAlpha(vec3 colorIn)
+                {
+                    vec4 colorOut;
+                    float maxValue = min(max(max(colorIn.r, colorIn.g), colorIn.b), 1.0);
+                    if (maxValue > 1e-5)
+                    {
+                        colorOut.rgb = colorIn.rgb * (1.0 / maxValue);
+                        colorOut.a = maxValue;
+                    }
+                    else
+                    {
+                        colorOut = vec4(0.0);
+                    }
+                    return colorOut;
+                }
+
+                float light1(float intensity, float attenuation, float dist)
+                {
+                    return intensity / (1.0 + dist * attenuation);
+                }
+                
+                float light2(float intensity, float attenuation, float dist)
+                {
+                    return intensity / (1.0 + dist * dist * attenuation);
+                }
+
+                void draw( out vec4 _FragColor, in vec2 uvLocal )
+                {
+                    float localTime = iTime * uTimeScale;
+                    float ang = atan(uvLocal.y, uvLocal.x);
+                    float len = length(uvLocal);
+                    float v0, v1, v2, v3, cl;
+                    float r0, d0, n0;
+                    float r, d;
+                    
+                    // ring
+                    n0 = snoise3( vec3(uvLocal * uNoiseScale, localTime * 0.5) ) * 0.5 + 0.5;
+                    r0 = mix(mix(uInnerRadius, 1.0, 0.4), mix(uInnerRadius, 1.0, 0.6), n0);
+                    d0 = distance(uvLocal, r0 / len * uvLocal);
+                    v0 = light1(1.0, 10.0, d0);
+                    v0 *= smoothstep(r0 * 1.05, r0, len);
+                    cl = cos(ang + localTime * 2.0) * 0.5 + 0.5;
+                    
+                    // high light
+                    float a = localTime * -1.0;
+                    vec2 pos = vec2(cos(a), sin(a)) * r0;
+                    d = distance(uvLocal, pos);
+                    v1 = light2(1.5, 5.0, d);
+                    v1 *= light1(1.0, 50.0 , d0);
+                    
+                    // back decay
+                    v2 = smoothstep(1.0, mix(uInnerRadius, 1.0, n0 * 0.5), len);
+                    
+                    // hole
+                    v3 = smoothstep(uInnerRadius, mix(uInnerRadius, 1.0, 0.5), len);
+                    
+                    // color
+                    vec3 c = mix(uColor1, uColor2, cl);
+                    vec3 col = mix(uColor1, uColor2, cl);
+                    col = mix(uColor3, col, v0);
+                    col = (col + v1) * v2 * v3;
+                    col.rgb = clamp(col.rgb, 0.0, 1.0);
+                    
+                    _FragColor = extractAlpha(col);
+                }
+
+                void main() {
+                    // shadertoy equivalent of varying gl_FragCoord via Three.js vUv mapping
+                    vec2 fragCoord = vUv * iResolution.xy;
+                    
+                    // equivalent of (fragCoord*2.-iResolution.xy)/iResolution.y;
+                    vec2 uv = (fragCoord * 2.0 - iResolution.xy) / iResolution.y;
+                    
+                    vec4 col;
+                    draw(col, uv);
+
+                    vec3 bg = uBgColor;
+
+                    //normal blend
+                    gl_FragColor.rgb = mix(bg, col.rgb, col.a); 
+                    gl_FragColor.a = 1.0;
+                }
+            `;
+
+            material = new THREE.ShaderMaterial( {
+                uniforms: {
+                    iTime: { value: 0.0 },
+                    iResolution: { value: new THREE.Vector3() },
+                    uNoiseScale: { value: params.noiseScale },
+                    uInnerRadius: { value: params.innerRadius },
+                    uColor1: { value: new THREE.Color(params.color1) },
+                    uColor2: { value: new THREE.Color(params.color2) },
+                    uColor3: { value: new THREE.Color(params.color3) },
+                    uBgColor: { value: new THREE.Color(params.bgColor) },
+                    uTimeScale: { value: params.timeScale }
+                },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader
+            } );
+
+            const mesh = new THREE.Mesh( geometry, material );
+            scene.add( mesh );
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio( window.devicePixelRatio );
+            container.appendChild( renderer.domElement );
+
+            onWindowResize();
+            window.addEventListener( 'resize', onWindowResize );
+
+            setupGUI();
+            
+            // Setup Keyboard Shortcut (Alt + H)
+            window.addEventListener('keydown', (e) => {
+                if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                    params.visible = !params.visible;
+                    gui.show(params.visible);
+                }
+            });
+        }
+        
+        function setupGUI() {
+            const guiContainer = document.getElementById('gui-container');
+            gui = new GUI({ container: guiContainer, title: '着色器控制台 (Shader Controls)' });
+            
+            const shapeFolder = gui.addFolder('形状参数 (Shape)');
+            shapeFolder.add(params, 'noiseScale', 0.1, 2.0).name('噪声缩放 (Noise Scale)').onChange(val => material.uniforms.uNoiseScale.value = val);
+            shapeFolder.add(params, 'innerRadius', 0.1, 1.0).name('内半径 (Inner Radius)').onChange(val => material.uniforms.uInnerRadius.value = val);
+            
+            const colorFolder = gui.addFolder('颜色参数 (Colors)');
+            colorFolder.addColor(params, 'color1').name('颜色 1 (Color 1)').onChange(val => material.uniforms.uColor1.value.set(val));
+            colorFolder.addColor(params, 'color2').name('颜色 2 (Color 2)').onChange(val => material.uniforms.uColor2.value.set(val));
+            colorFolder.addColor(params, 'color3').name('颜色 3 (Color 3)').onChange(val => material.uniforms.uColor3.value.set(val));
+            colorFolder.addColor(params, 'bgColor').name('背景色 (BG Color)').onChange(val => material.uniforms.uBgColor.value.set(val));
+            
+            const timeFolder = gui.addFolder('时间控制 (Time)');
+            timeFolder.add(params, 'timeScale', 0.0, 5.0).name('时间缩放 (Time Scale)').onChange(val => material.uniforms.uTimeScale.value = val);
+        }
+
+        function onWindowResize() {
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            material.uniforms.iResolution.value.set( window.innerWidth, window.innerHeight, 1 );
+        }
+
+        function animate() {
+            requestAnimationFrame( animate );
+            
+            // Update iTime uniform
+            material.uniforms.iTime.value = performance.now() / 1000;
+            
+            renderer.render( scene, camera );
+        }
+    </script>
+</body>
+</html>

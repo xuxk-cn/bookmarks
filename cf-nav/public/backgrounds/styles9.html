@@ -1,0 +1,525 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>show_widget</title>
+</head>
+<body>
+<style>
+:root{
+--bg:#0f1419;
+--panel:#161b22;
+--card:#1c2128;
+--card-hover:#22272e;
+--card-active:#2d333b;
+--border:rgba(255,255,255,0.08);
+--border-hover:rgba(255,255,255,0.18);
+--text:#e6edf3;
+--text-secondary:#8b949e;
+--text-tertiary:#6e7681;
+--accent:#58a6ff;
+--success:#3fb950;
+--radius:14px;
+font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);min-height:100vh;padding:20px 24px 60px}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:16px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:28px;font-weight:600;color:var(--text);letter-spacing:-0.5px}
+.brand .sub{font-size:13px;color:var(--text-secondary);font-style:italic}
+.topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn-secondary{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:all 0.15s;font-family:inherit}
+.btn-secondary:hover{background:var(--card-hover);border-color:var(--border-hover)}
+
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.search-wrap{margin:0}
+.search-input{width:280px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:8px;font-size:13px;outline:none;transition:border 0.15s;font-family:inherit}
+.search-input:focus{border-color:var(--accent)}
+
+.sections{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+
+.section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:all 0.2s;position:relative;overflow:hidden}
+.section::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--section-color)}
+.section.c1{--section-color:#ff7eb6}
+.section.c2{--section-color:#a371f7}
+.section.c3{--section-color:#d29922}
+.section.c4{--section-color:#58a6ff}
+.section.c5{--section-color:#39c5cf}
+.section.c6{--section-color:#3fb950}
+.section.c7{--section-color:#f85149}
+.section.c8{--section-color:#ff9e64}
+.section.c9{--section-color:#56d364}
+.section.c10{--section-color:#db61a2}
+.section.c11{--section-color:#79c0ff}
+.section.c12{--section-color:#f2cc60}
+.section.c13{--section-color:#e3b341}
+.section.c14{--section-color:#1f6feb}
+.section.c15{--section-color:#bf8700}
+.section.c16{--section-color:#8957e5}
+.section.c17{--section-color:#2ea043}
+.section.c18{--section-color:#cf222e}
+.section.c19{--section-color:#6e7681}
+
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-title{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;letter-spacing:0.2px;text-transform:capitalize}
+.section-count{font-size:11px;color:var(--text-tertiary);background:var(--bg);padding:2px 8px;border-radius:10px;font-weight:500}
+.section-menu{color:var(--text-tertiary);cursor:pointer;font-size:14px;letter-spacing:2px;padding:2px 6px;border-radius:4px}
+.section-menu:hover{color:var(--text);background:var(--intensity-6,rgba(255,255,255,0.06))}
+
+.items{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.item{background:var(--bg);border:1px solid transparent;border-radius:10px;padding:12px 6px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:78px;justify-content:center}
+.item:hover{background:var(--card-hover);border-color:var(--border-hover);transform:translateY(-1px)}
+.item-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#fff;border-radius:6px;overflow:hidden}
+.item-icon img{width:100%;height:100%;object-fit:contain}
+.item-icon-fallback{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.08);border-radius:50%;font-size:14px;color:var(--text-secondary);font-weight:600}
+.item-title{font-size:11px;color:var(--text-secondary);font-weight:500;line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+
+.hidden{display:none!important}
+
+.tooltip{position:fixed;background:rgba(22,27,34,0.97);color:var(--text);padding:10px 12px;border-radius:8px;font-size:12px;max-width:280px;pointer-events:none;z-index:9999;display:none;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid var(--accent);backdrop-filter:blur(4px);line-height:1.5}
+.tooltip-url{color:var(--accent);font-size:11px;margin-bottom:4px;word-break:break-all;font-weight:500}
+.tooltip-desc{color:var(--text-secondary);font-size:11px}
+
+@media (max-width:768px){
+.sections{grid-template-columns:1fr}
+.items{grid-template-columns:repeat(2,1fr)}
+.search-input{width:100%}
+}
+</style>
+
+<div class="topbar">
+  <div class="brand">
+    <h1>我的导航</h1>
+    <span class="sub">Hi Nikhil!</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn-secondary" id="expandAllBtn">展开全部</button>
+    <button class="btn-secondary">Website</button>
+    <button class="btn-secondary">GitHub</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索书签...">
+  </div>
+</div>
+
+<div class="sections" id="sectionsContainer"></div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const data = {
+  "categories": [
+    { "title": "resourse", "items": [
+      { "title": "doyoudo官网", "url": "https://www.doyoudo.com/" },
+      { "title": "Panzoid", "url": "https://panzoid.com/" },
+      { "title": "耳聆网-音效素材库", "url": "https://www.ear0.com/" },
+      { "title": "免费字体", "url": "https://www.hellofont.cn/" },
+      { "title": "矢量图标库", "url": "https://www.iconfont.cn/" },
+      { "title": "大众脸影视后期特效", "url": "https://www.lookae.com/" },
+      { "title": "台词找影片素材", "url": "https://33tc.net/" },
+      { "title": "找台词", "url": "http://www.zhaotaici.cn/" },
+      { "title": "AE脚本/扩展-捡屁笑", "url": "https://jpsmile.com/" },
+      { "title": "用户脚本", "url": "https://greasyfork.org/zh-CN/scripts" }
+    ]},
+    { "title": "tools", "items": [
+      { "title": "字幕- SubHD", "url": "https://subhd.tv/" },
+      { "title": "免费字体", "url": "https://www.maoken.com/" },
+      { "title": "Magic Studio：利用 AI 制作精美图像", "url": "https://magicstudio.com/zh/" },
+      { "title": "书法欣赏", "url": "http://www.yac8.com/" },
+      { "title": "大叔汁源", "url": "https://www.kdocs.cn/l/ceZS4cRWJBxs" },
+      { "title": "欢迎使用Colab", "url": "https://colab.research.google.com/" }
+    ]},
+    { "title": "soft", "items": [
+      { "title": "万能命令", "url": "https://wannengrun.com/zh/" },
+      { "title": "3D模型", "url": "http://www.gfxcamp.com/" },
+      { "title": "文件共享", "url": "https://blaze.vercel.app/" },
+      { "title": "3D Models", "url": "https://www.artec3d.com/" },
+      { "title": "3D模型", "url": "https://3dmodels.org/zh/" },
+      { "title": "3D People Models", "url": "https://renderpeople.com/" },
+      { "title": "AE模板免费", "url": "https://www.newcger.com/" },
+      { "title": "100font", "url": "https://www.100font.com/" },
+      { "title": "哔哩视频解析", "url": "https://weibo.iiilab.com/" },
+      { "title": "佛系软件", "url": "https://foxirj.com/" },
+      { "title": "3322软件", "url": "http://www.32r.com/" },
+      { "title": "实用的应用", "url": "http://www.zuijiastore.com/" },
+      { "title": "狐狸-AE模板", "url": "https://fox-studio.net/" },
+      { "title": "CG插件", "url": "https://www.cgown.com/" },
+      { "title": "分秒帧", "url": "https://app.mediatrack.cn/" }
+    ]},
+    { "title": "视频", "items": [
+      { "title": "快手", "url": "https://www.kuaishou.com/new-reco" },
+      { "title": "小红书", "url": "https://www.xiaohongshu.com/" },
+      { "title": "哔哩哔哩", "url": "https://www.bilibili.com/" },
+      { "title": "X.COM", "url": "https://x.com/xuxk17125" },
+      { "title": "西瓜创作平台", "url": "https://studio.ixigua.com/" },
+      { "title": "今日头条", "url": "https://www.toutiao.com/" },
+      { "title": "好看视频", "url": "https://haokan.baidu.com/" },
+      { "title": "老王导航", "url": "https://nav.eooce.com/" },
+      { "title": "科技lion导航", "url": "https://dh.kejilion.pro/" },
+      { "title": "TikTok", "url": "https://www.tiktok.com/en/" },
+      { "title": "百家号", "url": "https://baijiahao.baidu.com/" },
+      { "title": "Product Hunt – The best new products in tech.", "url": "https://www.producthunt.com/?bc=1" },
+      { "title": "芭提雅", "url": "https://ioc.pattaya.go.th/" },
+      { "title": "泰国海滩监控", "url": "https://www.thailandnomads.com/" },
+      { "title": "热门网络摄像头", "url": "https://www.camscape.com/" },
+      { "title": "破解APK", "url": "https://liteapks.com/" }
+    ]},
+    { "title": "AIGC", "items": [
+      { "title": "GitHub", "url": "https://github.com/" },
+      { "title": "模型库-魔搭社区", "url": "https://modelscope.cn/models" },
+      { "title": "Hugging Face", "url": "https://huggingface.co/" },
+      { "title": "Hugging Face-Mirror", "url": "https://hf-mirror.com/" },
+      { "title": "NovelAI.Dev", "url": "https://novelai.dev/" },
+      { "title": "Civitai Models", "url": "https://civitai.com/models" },
+      { "title": "LiblibAI", "url": "https://www.liblib.art/" },
+      { "title": "SD法术解析", "url": "https://spell.novelai.dev/" },
+      { "title": "cobalt", "url": "https://cobalt.tools/" },
+      { "title": "PaywallBuster", "url": "https://paywallbuster.com/" },
+      { "title": "中等", "url": "https://medium.com/" },
+      { "title": "FMHY", "url": "https://fmhy.net/" },
+      { "title": "巨量创意", "url": "https://cc.oceanengine.com/" },
+      { "title": "AIGC工具收集-戚同学", "url": "https://lilac-guilty-188.notion.site/155afebca4c7804b9c14d485c15ae191?v=155afebca4c78158b00b000c15874f0a" },
+      { "title": "艾文AIGC工具库", "url": "https://tauacgr5lqv.feishu.cn/docx/VCB6dsoxGoqhClxgDDocl0ignwd" },
+      { "title": "艾文AIGC知识库", "url": "https://tauacgr5lqv.feishu.cn/docx/ZnPedHE3loaQ5MxwE7TctC6PnNh" }
+    ]},
+    { "title": "AI", "items": [
+      { "title": "硅基", "url": "https://cloud.siliconflow.cn/" },
+      { "title": "蓝鲸", "url": "https://lanjing.ai/" },
+      { "title": "AI 智慧岛", "url": "https://chat.lify.vip/chat" },
+      { "title": "TransPixar AI 透明视觉", "url": "https://transpixarai.org/" },
+      { "title": "AI Plus", "url": "https://www.yixiaai.com/" },
+      { "title": "星火绘镜", "url": "https://typemovie.art/" },
+      { "title": "开拍", "url": "https://www.kaipai.com/" },
+      { "title": "NovelAI.Dev", "url": "https://novelai.dev/" },
+      { "title": "deforum", "url": "https://deforum.art/" },
+      { "title": "AI工具集官网", "url": "https://ai-bot.cn/" },
+      { "title": "抠抠图", "url": "https://www.koukoutu.com/" },
+      { "title": "AI技术社区", "url": "https://www.aibl.vip/" },
+      { "title": "长视频分割", "url": "https://app.ssemble.com/signup" }
+    ]},
+    { "title": "ai", "items": [
+      { "title": "Invideo AI - 无限制地创建视频", "url": "https://invideo.io/" },
+      { "title": "AI艺术生成器-卡通", "url": "https://nsfwaiartgenerator.io/" },
+      { "title": "维希尔 |在线图像生成器", "url": "https://vheer.com/" },
+      { "title": "GenTube", "url": "https://www.gentube.app/" },
+      { "title": "Fliki - AI 语音将文本转换为视频", "url": "https://fliki.ai/" },
+      { "title": "www.krea.ai", "url": "https://www.krea.ai/home" },
+      { "title": "Raphael - 免费", "url": "https://raphael.app/zh" },
+      { "title": "Viggle AI-生视频和运动控制", "url": "https://viggle.ai/home" },
+      { "title": "PixVerse-AI", "url": "https://app.pixverse.ai/onboard" },
+      { "title": "RenderNet AI", "url": "https://rendernet.ai/" },
+      { "title": "AI办公智能体先驱", "url": "https://skywork.ai/home" },
+      { "title": "视频变成短片", "url": "https://klap.app/" },
+      { "title": "AI 视频套件 | AKOOL", "url": "https://akool.com/zh-cn" },
+      { "title": "SJinn", "url": "https://sjinn.ai/" }
+    ]},
+    { "title": "AI大语言", "items": [
+      { "title": "通义tongyi.ai", "url": "https://tongyi.aliyun.com/" },
+      { "title": "OpenAI", "url": "https://openai.com/" },
+      { "title": "百灵大模型", "url": "https://ling.tbox.cn/chat" },
+      { "title": "文心一言", "url": "https://yiyan.baidu.com/" },
+      { "title": "跃问", "url": "https://yuewen.cn/chats/new" },
+      { "title": "Cici - 你的 AI 助手", "url": "https://www.cici.com/chat/" },
+      { "title": "HyperAI超神经", "url": "https://hyper.ai/cn" },
+      { "title": "bolt.new", "url": "https://bolt.new/" },
+      { "title": "ChatAI", "url": "https://ybb.chatleft.com/" },
+      { "title": "灵光", "url": "https://www.lingguang.com/chat" },
+      { "title": "Pinterest-pose", "url": "https://www.pinterest.com/" },
+      { "title": "PoseMy-poses with 3D models", "url": "https://posemy.art/" },
+      { "title": "Quick-poses", "url": "https://quickposes.com/en" },
+      { "title": "Magic Poser Web", "url": "https://webapp.magicposer.com/" },
+      { "title": "云原生运维圈镜像站", "url": "http://dockerimage.gbfeng.com/" }
+    ]},
+    { "title": "AI声音", "items": [
+      { "title": "Logic Intelligence Technology", "url": "https://luoji.cn/" },
+      { "title": "Claw Cloud", "url": "https://us-east-1.run.claw.cloud/" },
+      { "title": "AI声音生成", "url": "https://musichero.ai/zh-CN/sound-effect" },
+      { "title": "Audio — Stability AI", "url": "https://stability.ai/stable-audio" },
+      { "title": "labs.google/fx", "url": "https://labs.google/fx" },
+      { "title": "Beatoven.ai", "url": "https://www.beatoven.ai/" },
+      { "title": "Free TTS", "url": "https://freetts.com/text-to-speech" },
+      { "title": "海豚Ai", "url": "https://www.ttson.cn/" },
+      { "title": "马克配音", "url": "https://ttsmaker.cn/" },
+      { "title": "Online Audio Converter", "url": "https://onlineaudioconverter.com/" },
+      { "title": "Fish Audio", "url": "https://fish.audio/zh-CN/" },
+      { "title": "音乐创作", "url": "https://www.mureka.ai/" },
+      { "title": "AI Music", "url": "https://audiomatic.io/" }
+    ]},
+    { "title": "反推提示词", "items": [
+      { "title": "视频下载", "url": "https://y2mp3.net/" },
+      { "title": "Medio AI-视频下载", "url": "https://medio.cool/en/" },
+      { "title": "去文字-下视频", "url": "https://vgo.pub/" },
+      { "title": "小红书下载", "url": "https://dy.kukutool.com/xiaohongshu" },
+      { "title": "视频去水印字幕logo① - 看往", "url": "https://tupian.32cd.com/index.html#/user/login" },
+      { "title": "TikTok水印去除", "url": "https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal" },
+      { "title": "Tiktok Downloader", "url": "https://snaptik.app/en2" },
+      { "title": "玩转节点", "url": "https://wanzhuanmi.com/" },
+      { "title": "米贝分享", "url": "https://www.mibei77.com/" },
+      { "title": "飞影数字人 - 官方创作入口", "url": "https://hifly.cc/" },
+      { "title": "OpenCut - 去字幕", "url": "https://opencut.net/" },
+      { "title": "AI 图像生成-放大和照片编辑器", "url": "https://visuali.io/" }
+    ]},
+    { "title": "YouTube", "items": [
+      { "title": "FMHY", "url": "https://fmhy.pages.dev/" },
+      { "title": "SkyReels｜从脚本到视频", "url": "https://www.skyreels.ai/home/" },
+      { "title": "相逢解析站", "url": "https://pan.xfyzyyb.xyz/user/parse" },
+      { "title": "相逢储物站-解析密码", "url": "https://pan.xfyzyyb.xyz/ms.html" },
+      { "title": "百度网盘不限速，手机电脑都能用", "url": "https://jyjc.cloudns.org/bdwpbxs_1" },
+      { "title": "一致性", "url": "https://ideogram.ai/character" },
+      { "title": "无版权图-声音-视频-3D", "url": "https://pixabay.com/" },
+      { "title": "PS-key", "url": "https://gen.paramore.su/" },
+      { "title": "Animagraffs-关于一切的动画信息图。", "url": "https://animagraffs.com/" },
+      { "title": "Adobe Photoshop", "url": "https://photoshop.adobe.com/" }
+    ]},
+    { "title": "Google", "items": [
+      { "title": "google安全性", "url": "https://myaccount.google.com/security?spm=5176.28103460.0.0.7f8d63087H75Te" },
+      { "title": "谷歌NotebookLM", "url": "https://notebooklm.google.com/" },
+      { "title": "更改gmail所在地", "url": "https://policies.google.com/country-association-form" },
+      { "title": "Genie 3 — Google DeepMind", "url": "https://deepmind.google/models/genie/" },
+      { "title": "Imagen - Google DeepMind", "url": "https://deepmind.google/models/imagen/" },
+      { "title": "Disco", "url": "https://labs.google/disco" },
+      { "title": "Firebase Studio", "url": "https://idx.google.com/" },
+      { "title": "Opal", "url": "https://opal.google/?mode=canvas" },
+      { "title": "OpenCode |开源AI编码代理", "url": "https://opencode.ai/" },
+      { "title": "OpenRouter", "url": "https://openrouter.ai/" },
+      { "title": "Stitch", "url": "https://stitch.withgoogle.com/" },
+      { "title": "运动定格-Higgsfield", "url": "https://higgsfield.ai/" },
+      { "title": "Facebook", "url": "https://www.facebook.com/" },
+      { "title": "Coze-扣子", "url": "https://www.coze.com/" },
+      { "title": "Overview - OpenAI API", "url": "https://platform.openai.com/docs/overview" },
+      { "title": "Intangible Studio", "url": "https://studio.intangible.ai/" }
+    ]},
+    { "title": "电影", "items": [
+      { "title": "奈飞工厂", "url": "https://www.netflixgc.com/" },
+      { "title": "音范丝", "url": "https://www.yinfans.net/" },
+      { "title": "低端影视", "url": "https://www.hjdpj.com/" },
+      { "title": "低端影视-", "url": "https://www.iqingtun.com/" },
+      { "title": "大米星球", "url": "https://www.5zsz.net/" },
+      { "title": "剧圈圈", "url": "https://www.jqqzx.me/" },
+      { "title": "南瓜影院", "url": "http://www.tjwqjz.com/" },
+      { "title": "Flixbaba - 免费在线观看高清电影", "url": "https://flixbaba.tv/" }
+    ]},
+    { "title": "身份", "items": [
+      { "title": "Cloudflare IP Batch Test Tool", "url": "http://ip.flares.cloud/" },
+      { "title": "fofa.info", "url": "https://fofa.info/" },
+      { "title": "5订单", "url": "https://5sim.net/zh/login" },
+      { "title": "Psiphon", "url": "https://psiphon.ca/zh/" },
+      { "title": "nthLink", "url": "https://www.nthlink.com/zh/" },
+      { "title": "全球主机监控 - IP优选网站", "url": "https://stock.hostmonit.com/CloudFlareYes" }
+    ]},
+    { "title": "壁纸", "items": [
+      { "title": "FARFETCH - 时装", "url": "https://www.farfetch.com/" },
+      { "title": "VOGU-时装", "url": "https://www.vogue.com.cn/" },
+      { "title": "免费素材图片", "url": "https://www.pexels.com/zh-cn/" },
+      { "title": "壁纸3", "url": "https://unsplash.com/" },
+      { "title": "壁纸1", "url": "https://wallhaven.cc/" },
+      { "title": "壁纸2", "url": "https://wallpaperscraft.com/" },
+      { "title": "自由皮克", "url": "https://www.freepik.com/" },
+      { "title": "奢侈品牌", "url": "https://www.mytheresa.com/cn/zh" },
+      { "title": "位图转矢量图", "url": "https://vectorizer.ai/" }
+    ]},
+    { "title": "API-VPS", "items": [
+      { "title": "OpenRouter", "url": "https://openrouter.ai/" },
+      { "title": "ClawCloud Run", "url": "https://us-east-1.run.claw.cloud/" },
+      { "title": "智谱API", "url": "https://bigmodel.cn/usercenter/proj-mgmt/apikeys" },
+      { "title": "阿里云百炼平台API", "url": "https://bailian.console.aliyun.com/cn-beijing/" },
+      { "title": "鑫源API", "url": "https://xinyuanai666.com/login" },
+      { "title": "阶跃星辰API", "url": "https://platform.stepfun.com/" },
+      { "title": "智谱-国际", "url": "https://z.ai/subscribe" },
+      { "title": "HubuHost.com", "url": "https://hubuhost.com/" }
+    ]},
+    { "title": "AI-3D", "items": [
+      { "title": "HYPER-3D", "url": "https://hyper3d.ai/" },
+      { "title": "AI 3D模型生成器", "url": "https://www.meshy.ai/" },
+      { "title": "用于角色动画的 AI-3D", "url": "https://www.kinetix.tech/" },
+      { "title": "腾讯混元3D", "url": "https://3d.hunyuan.tencent.com/" },
+      { "title": "免费下载 3D 模型", "url": "https://makerworld.com/zh" },
+      { "title": "Rendair | AI-3D", "url": "https://app.rendair.ai/chat/821421" },
+      { "title": "NexodusAI-2D Images to 3D Models", "url": "https://nexodusai.com/" }
+    ]},
+    { "title": "APK-Proxy", "items": [
+      { "title": "APP的收入", "url": "https://www.paywallscreens.com/" },
+      { "title": "Android应用商店", "url": "https://cn.aptoide.com/" },
+      { "title": "APKPure使用免费", "url": "https://apkpure.com/cn/" },
+      { "title": "Free APK Downloads", "url": "https://www.apkmirror.com/" },
+      { "title": "APKCombo", "url": "https://apkcombo.com/zh/" },
+      { "title": "Free  Proxy", "url": "https://openproxylist.com/" },
+      { "title": "测速", "url": "https://www.itdog.cn/ping/" },
+      { "title": "DNS 查询网站", "url": "https://dnschecker.org/" }
+    ]},
+    { "title": "Nano Banana", "items": [
+      { "title": "Patreon", "url": "https://www.patreon.com/document-verification" },
+      { "title": "倒计时管理", "url": "https://transpilot.cc.cd/countdown-app/mgr_c8f2a1.php" },
+      { "title": "小云雀网页版", "url": "https://xyq.jianying.com/home?tab_name=home" },
+      { "title": "小云雀国际版", "url": "https://www.pippit.ai/home?" },
+      { "title": "火山方舟管理控制台", "url": "https://console.volcengine.com/auth/login?redirectURI=%2Fhome" },
+      { "title": "LMArena-全模型", "url": "https://lmarena.ai/" },
+      { "title": "Nano Banana Free", "url": "https://nanobananafree.ai/" },
+      { "title": "RunningHub", "url": "https://www.runninghub.cn/quick-create" },
+      { "title": "Vibe Banana", "url": "https://intent.app/banana/" },
+      { "title": "iMini超级AI智能体", "url": "https://imini.com/zh" },
+      { "title": "Opal-VEO", "url": "https://opal.withgoogle.com/?mode=canvas" },
+      { "title": "ego", "url": "https://lite.ego.app/" }
+    ]},
+    { "title": "Blog", "items": [
+      { "title": "IP地址查询", "url": "https://ip.sb/" },
+      { "title": "IP风险度查询", "url": "https://ping0.cc/" },
+      { "title": "Windsurf", "url": "https://windsurf.com/account/register" },
+      { "title": "互联网速度测试 | Fast.com", "url": "https://fast.com/zh/cn" },
+      { "title": "果汁排行榜 - 各类榜单排名大全", "url": "http://www.guozhivip.com/rank/" },
+      { "title": "85LA_节点", "url": "https://www.85la.com/" },
+      { "title": "85LA-节点", "url": "https://sub.85la.com/" },
+      { "title": "Dashboard - Tally", "url": "https://tally.so/dashboard" },
+      { "title": "AI雇佣人类", "url": "https://rentahuman.ai/dashboard" },
+      { "title": "My IP Address", "url": "https://whatismyipaddress.com/" },
+      { "title": "ManyChat", "url": "https://manychat.com/" },
+      { "title": "Scamalytics-IP纯净度", "url": "https://scamalytics.com/" }
+    ]},
+    { "title": "mail", "items": [
+      { "title": "One.IDkey-ID验证", "url": "https://one.idkey.cc/" },
+      { "title": "CoPaw", "url": "https://copaw.agentscope.io/" },
+      { "title": "MoeMail - 邮箱", "url": "https://moemail.app/zh-CN" },
+      { "title": "Outlook", "url": "https://outlook.live.com/mail/" },
+      { "title": "临时邮箱", "url": "https://linshiyouxiang.net/" },
+      { "title": "临时Gmail", "url": "https://emailtick.com/zh" },
+      { "title": "网易数帆-控制台", "url": "https://console.163yun.com/" },
+      { "title": "icon", "url": "https://www.base64-image.de/?spm=a2ty_o01.29997173.0.0.c05455fbQOAHKD" },
+      { "title": "icon-cn", "url": "https://tool.chinaz.com/tools/imgtobase?spm=a2ty_o01.29997173.0.0.c05455fbQOAHKD" },
+      { "title": "1.1.1.1 -WARP", "url": "https://one.one.one.one/" }
+    ]}
+  ]
+};
+
+const container = document.getElementById('sectionsContainer');
+const tooltip = document.getElementById('tooltip');
+
+function getHostname(url) {
+  try { return new URL(url).hostname; } catch(e) { return ''; }
+}
+
+function getInitial(text) {
+  if (!text) return '?';
+  const cleaned = text.replace(/^(https?:\/\/)/, '').replace(/^www\./, '');
+  return cleaned.charAt(0).toUpperCase();
+}
+
+function createSection(cat, index) {
+  const sec = document.createElement('div');
+  sec.className = 'section c' + ((index % 19) + 1);
+  sec.dataset.title = cat.title.toLowerCase();
+
+  let itemsHTML = '<div class="items">';
+  cat.items.forEach(it => {
+    const hostname = getHostname(it.url);
+    const iconUrl = 'https://www.google.com/s2/favicons?domain=' + hostname + '&sz=64';
+    const initial = getInitial(it.title);
+    itemsHTML += `<div class="item" data-name="${(it.title + ' ' + it.url).toLowerCase()}" data-url="${it.url}">
+      <div class="item-icon">
+        <img src="${iconUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" alt="">
+        <div class="item-icon-fallback" style="display:none">${initial}</div>
+      </div>
+      <div class="item-title">${it.title}</div>
+    </div>`;
+  });
+  itemsHTML += '</div>';
+
+  sec.innerHTML = `
+    <div class="section-header">
+      <div class="section-title">
+        <span>${cat.title}</span>
+        <span class="section-count">${cat.items.length}</span>
+      </div>
+      <div class="section-menu">⋮⋮⋮</div>
+    </div>
+    ${itemsHTML}
+  `;
+  return sec;
+}
+
+data.categories.forEach((cat, i) => container.appendChild(createSection(cat, i)));
+
+container.addEventListener('click', (e) => {
+  const item = e.target.closest('.item');
+  if (item && item.dataset.url) {
+    window.open(item.dataset.url, '_blank');
+  }
+});
+
+const updateTooltipPos = (e) => {
+  const x = e.clientX + 15, y = e.clientY + 15;
+  const rect = tooltip.getBoundingClientRect();
+  tooltip.style.left = (x + rect.width > window.innerWidth ? e.clientX - rect.width - 15 : x) + 'px';
+  tooltip.style.top = (y + rect.height > window.innerHeight ? e.clientY - rect.height - 15 : y) + 'px';
+};
+
+container.addEventListener('mouseover', (e) => {
+  const item = e.target.closest('.item');
+  if (!item) return;
+  const title = item.querySelector('.item-title').textContent;
+  const url = item.dataset.url;
+  tooltip.innerHTML = `<div class="tooltip-url">${url}</div><div class="tooltip-desc">${title}</div>`;
+  tooltip.style.display = 'block';
+  updateTooltipPos(e);
+});
+container.addEventListener('mousemove', updateTooltipPos);
+container.addEventListener('mouseout', (e) => {
+  if (!e.target.closest('.item')) tooltip.style.display = 'none';
+});
+
+const searchInput = document.getElementById('searchInput');
+let searchTimer;
+searchInput.addEventListener('input', (e) => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.toLowerCase().trim();
+  searchTimer = setTimeout(() => {
+    document.querySelectorAll('.section').forEach(sec => {
+      let visibleItems = 0;
+      sec.querySelectorAll('.item').forEach(item => {
+        const match = item.dataset.name.includes(q);
+        item.classList.toggle('hidden', q && !match);
+        if (match) visibleItems++;
+      });
+      sec.classList.toggle('hidden', q && visibleItems === 0);
+    });
+  }, 200);
+});
+</script><script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+</body>
+</html>

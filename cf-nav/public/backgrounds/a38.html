@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 火星 WebGL 着色器演示</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 磨砂玻璃控制面板样式 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+        }
+
+        /* 自定义微型滚动条 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.45);
+        }
+
+        /* 范围滑块自定义样式 */
+        input[type=range] {
+            accent-color: #ff5522;
+        }
+    </style>
+</head>
+<body class="relative text-slate-100">
+
+    <!-- WebGL 画布容器 -->
+    <div id="canvas-container">
+        <canvas id="glCanvas"></canvas>
+    </div>
+
+    <!-- 左上角快捷键提示标 -->
+    <div class="absolute top-4 left-4 z-10 pointer-events-none opacity-80 text-xs bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-md flex items-center space-x-2">
+        <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+        <span>按 <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-600 text-orange-300 font-mono">Alt + H</kbd> 显示/隐藏控制面板</span>
+    </div>
+
+    <!-- 可拖动、可折叠的中文参数控制面板 -->
+    <div id="control-panel" class="glass-panel absolute top-4 right-4 w-88 max-w-[calc(100vw-32px)] sm:w-96 rounded-2xl overflow-hidden z-20 flex flex-col text-xs sm:text-sm">
+        
+        <!-- 面板头部（可拖拽区域） -->
+        <div id="panel-header" class="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 cursor-move flex items-center justify-between select-none">
+            <div class="flex items-center space-x-2 font-semibold text-orange-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+                <span>火星着色器控制台</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <!-- 折叠/展开按钮 -->
+                <button id="btn-collapse" title="折叠/展开" class="p-1 hover:bg-slate-700/60 rounded text-slate-300 hover:text-white transition-colors">
+                    <svg id="icon-collapse" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <!-- 隐藏面板按钮 -->
+                <button id="btn-hide" title="隐藏面板 (Alt+H)" class="p-1 hover:bg-slate-700/60 rounded text-slate-300 hover:text-red-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 面板内容区域（可折叠） -->
+        <div id="panel-body" class="p-4 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar transition-all duration-300">
+            
+            <!-- 场景快照预设 -->
+            <div class="space-y-1.5">
+                <div class="text-slate-400 font-medium text-[11px] uppercase tracking-wider border-b border-slate-700/50 pb-1">场景快照预设</div>
+                <div class="grid grid-cols-3 gap-1.5 pt-1">
+                    <button id="preset-img1" class="py-1.5 px-1 bg-orange-600 text-white rounded-lg font-medium text-[11px] border border-orange-400 shadow-md transition-all hover:bg-orange-500">
+                        🪐 图1 赤红火星
+                    </button>
+                    <button id="preset-img2" class="py-1.5 px-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg font-medium text-[11px] border border-slate-600 transition-all">
+                        🔳 图2 高程掩码
+                    </button>
+                    <button id="preset-img3" class="py-1.5 px-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg font-medium text-[11px] border border-slate-600 transition-all">
+                        🌘 图3 冷却日照
+                    </button>
+                </div>
+            </div>
+
+            <!-- 自定义 3D PBR 贴图上传 -->
+            <div class="space-y-1.5">
+                <div class="text-slate-400 font-medium text-[11px] uppercase tracking-wider border-b border-slate-700/50 pb-1">3D PBR 材质贴图</div>
+                
+                <!-- 颜色贴图上传 -->
+                <div class="flex items-center space-x-2 pt-1">
+                    <label for="texture-upload-color" class="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-center cursor-pointer border border-slate-600 text-xs font-medium transition-colors flex items-center justify-center space-x-1.5 truncate">
+                        <svg class="w-4 h-4 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span id="upload-filename-color" class="truncate">1. 上传颜色贴图(Albedo)...</span>
+                    </label>
+                    <input id="texture-upload-color" type="file" accept="image/*" class="hidden">
+                </div>
+
+                <!-- 高度贴图上传 -->
+                <div class="flex items-center space-x-2 pt-1">
+                    <label for="texture-upload-height" class="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-center cursor-pointer border border-slate-600 text-xs font-medium transition-colors flex items-center justify-center space-x-1.5 truncate">
+                        <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span id="upload-filename-height" class="truncate">2. 上传高度贴图(Bump)...</span>
+                    </label>
+                    <input id="texture-upload-height" type="file" accept="image/*" class="hidden">
+                </div>
+                
+                <div class="flex items-center justify-between pt-1">
+                    <button id="btn-reset-texture" title="恢复默认程序化材质" class="w-full py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-600 text-xs transition-colors">恢复默认程序化材质</button>
+                </div>
+                <div class="flex items-center space-x-2 pt-1.5">
+                    <input id="chk-use-tex-color" type="checkbox" class="w-4 h-4 rounded bg-slate-700 border-slate-600 text-orange-500 focus:ring-0 cursor-pointer">
+                    <label for="chk-use-tex-color" class="text-slate-300 text-xs cursor-pointer">使用颜色贴图的原生色彩</label>
+                </div>
+            </div>
+
+            <!-- 分组 1: 视角与自转 -->
+            <div class="space-y-2">
+                <div class="text-slate-400 font-medium text-[11px] uppercase tracking-wider border-b border-slate-700/50 pb-1">视角与自转</div>
+                
+                <div class="flex items-center justify-between">
+                    <label for="slider-scale" class="text-slate-300">行星缩放 (SCALE)</label>
+                    <span id="val-scale" class="font-mono text-orange-400">0.95</span>
+                </div>
+                <input id="slider-scale" type="range" min="0.5" max="1.5" step="0.01" value="0.95" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+
+                <div class="flex items-center justify-between">
+                    <label for="slider-rot-speed" class="text-slate-300">自转速度</label>
+                    <span id="val-rot-speed" class="font-mono text-orange-400">7.5</span>
+                </div>
+                <input id="slider-rot-speed" type="range" min="0.0" max="25.0" step="0.5" value="7.5" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+
+                <div class="flex items-center justify-between">
+                    <label for="slider-lat-amp" class="text-slate-300">纬度晃动幅度</label>
+                    <span id="val-lat-amp" class="font-mono text-orange-400">15.0</span>
+                </div>
+                <input id="slider-lat-amp" type="range" min="0.0" max="45.0" step="1.0" value="15.0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- 分组 2: 热能与光照 -->
+            <div class="space-y-2">
+                <div class="text-slate-400 font-medium text-[11px] uppercase tracking-wider border-b border-slate-700/50 pb-1">热能与光照</div>
+
+                <div class="flex items-center justify-between">
+                    <label for="slider-heat" class="text-slate-300">手动热发光强度</label>
+                    <span id="val-heat" class="font-mono text-orange-400">0.00</span>
+                </div>
+                <input id="slider-heat" type="range" min="0.0" max="3.0" step="0.05" value="0.00" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+
+                <div class="flex items-center space-x-2 pt-1">
+                    <input id="chk-auto-cooling" type="checkbox" class="w-4 h-4 rounded bg-slate-700 border-slate-600 text-orange-500 focus:ring-0 cursor-pointer">
+                    <label for="chk-auto-cooling" class="text-slate-300 text-xs cursor-pointer">启用物理冷却衰减 (`pow(iTime, -2)`)</label>
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <label for="slider-bump" class="text-slate-300">地貌凹凸深度 (Bump)</label>
+                    <span id="val-bump" class="font-mono text-orange-400">0.020</span>
+                </div>
+                <input id="slider-bump" type="range" min="0.001" max="0.050" step="0.001" value="0.020" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+
+                <!-- 光源方向三轴调节 -->
+                <div class="space-y-1.5 pt-1">
+                    <div class="text-slate-400 text-xs">光源方向 (Light Dir XYZ):</div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <div class="text-[10px] text-slate-400">X: <span id="val-light-x">-4.0</span></div>
+                            <input id="slider-light-x" type="range" min="-10.0" max="10.0" step="0.5" value="-4.0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-400">Y: <span id="val-light-y">1.0</span></div>
+                            <input id="slider-light-y" type="range" min="-10.0" max="10.0" step="0.5" value="1.0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-400">Z: <span id="val-light-z">2.0</span></div>
+                            <input id="slider-light-z" type="range" min="-10.0" max="10.0" step="0.5" value="2.0" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分组 3: 颜色配色 -->
+            <div class="space-y-2">
+                <div class="text-slate-400 font-medium text-[11px] uppercase tracking-wider border-b border-slate-700/50 pb-1">色彩主题</div>
+                
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="flex flex-col items-center">
+                        <label for="color-rock-light" class="text-[10px] text-slate-300 mb-1">火星沙尘</label>
+                        <input id="color-rock-light" type="color" value="#c46a47" class="w-8 h-8 rounded border-0 bg-transparent cursor-pointer">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <label for="color-rock-dark" class="text-[10px] text-slate-300 mb-1">陨石坑色</label>
+                        <input id="color-rock-dark" type="color" value="#381c11" class="w-8 h-8 rounded border-0 bg-transparent cursor-pointer">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <label for="color-lava" class="text-[10px] text-slate-300 mb-1">发光颜色</label>
+                        <input id="color-lava" type="color" value="#000000" class="w-8 h-8 rounded border-0 bg-transparent cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制按钮组 -->
+            <div class="pt-2 flex space-x-2">
+                <button id="btn-reset" class="flex-1 py-1.5 px-3 bg-slate-700/80 hover:bg-slate-600 rounded-lg text-slate-200 transition-colors font-medium">重置默认值</button>
+                <button id="btn-pause" class="flex-1 py-1.5 px-3 bg-orange-600/80 hover:bg-orange-500 rounded-lg text-white transition-colors font-medium">暂停旋转</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 底部居中 Toast 消息提示 -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900/90 text-slate-100 border border-slate-700 px-4 py-2 rounded-xl shadow-2xl backdrop-blur-md text-xs opacity-0 pointer-events-none transition-all duration-300">
+        控制面板已隐藏 (再次按下 <kbd class="px-1 bg-slate-800 rounded border border-slate-600">Alt + H</kbd> 显示)
+    </div>
+
+    <script>
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('您的浏览器不支持 WebGL 2，请升级或更换现代浏览器！');
+        }
+
+        // 顶点着色器 (全屏 Quad)
+        const vsSource = `#version 300 es
+        in vec2 aPosition;
+        void main() {
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+        `;
+
+        // 片段着色器 (严格遵循原始 GLSL 源代码逻辑)
+        const fsSource = `#version 300 es
+        precision highp float;
+
+        out vec4 fragColor;
+
+        uniform vec3 iResolution;
+        uniform float iTime;
+        uniform vec4 iMouse;
+        uniform sampler2D iChannel0;
+        uniform sampler2D iChannel1;
+
+        // UI 动态交互参数
+        uniform float uScale;
+        uniform float uBump;
+        uniform vec3 uLightDir;
+        uniform bool uAutoCooling;
+        uniform float uManualHeat;
+        uniform bool uBWMode;
+        uniform bool uUseTexColor;
+        uniform bool uHasHeightMap;
+
+        uniform float uRotX;
+        uniform float uRotY;
+
+        uniform vec4 uColorRockLight;
+        uniform vec4 uColorRockDark;
+        uniform vec4 uColorLava;
+
+        #define PI 3.14159265358979323846
+
+        // 光线与单位球体求交测试
+        float iSphere(vec3 ro, vec3 rd, vec4 sph) {
+            vec3 oc = ro - sph.xyz;
+            float b = dot(oc, rd);
+            float c = dot(oc, oc) - sph.w * sph.w;
+            float h = b * b - c;
+            if (h < 0.0) return -1.0;
+            return -b - sqrt(h);
+        }
+
+        // 旋转坐标系
+        vec3 rotateCoord(vec3 p) {
+            float cx = cos(uRotX), sx = sin(uRotX);
+            float cy = cos(uRotY), sy = sin(uRotY);
+            
+            float y1 = p.y * cx - p.z * sx;
+            float z1 = p.y * sx + p.z * cx;
+            
+            float x2 = p.x * cy + z1 * sy;
+            float z2 = -p.x * sy + z1 * cy;
+            
+            return vec3(x2, y1, z2);
+        }
+
+        // 贴图采样函数 (增加 lod 参数以支持平滑)
+        vec4 getTex(vec3 p, sampler2D tex, float lod) {
+            p = rotateCoord(p);
+            float lat = asin(clamp(p.y, -1.0, 1.0));
+            float lon = atan(p.x, p.z);
+            vec2 uv = vec2(lon / (2.0 * PI) + 0.5, lat / PI + 0.5);
+            return textureLod(tex, uv, lod);
+        }
+
+        float map(vec3 p) {
+            // 对凹凸贴图采样时使用一定的 LOD 进行模糊，过滤掉高频噪点（避免闪烁的像素火花）
+            if (uHasHeightMap) {
+                return getTex(p, iChannel1, 1.0).x;
+            }
+            // 如果用户只上传了颜色贴图却用来做凹凸，由于颜色图高频细节多，使用更大的 LOD 平滑
+            return getTex(p, iChannel0, 2.0).x;
+        }
+
+        // 梯度法线计算函数
+        vec3 normal(vec3 p) {
+            // 增大采样间距(epsilon)，计算更平滑的法线，进一步消除噪点
+            vec2 e = vec2(0.005, 0.0);
+            p += uBump * vec3(
+                map(p + e.xyy) - map(p - e.xyy),
+                map(p + e.yxy) - map(p - e.yxy),
+                map(p + e.yyx) - map(p - e.yyx)
+            ) / (2.0 * e.x);
+            return normalize(p);
+        }
+
+        // 简易星空噪声
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+
+        void main() {
+            vec2 fragCoord = gl_FragCoord.xy;
+            vec2 p = (2.0 * fragCoord.xy - iResolution.xy) / iResolution.y;
+            
+            // 固定机位，利用 uScale 缩放视口
+            vec3 camPos = vec3(0.0, 0.0, 4.0);
+            vec3 dir = normalize(vec3(p / uScale, -2.0));
+            
+            float dist = iSphere(camPos, dir, vec4(0.0, 0.0, 0.0, 1.0));
+            
+            vec4 col = vec4(0.0);
+            
+            if (dist > 0.0) {
+                vec3 q = camPos + dir * dist;
+                vec4 texColorData = getTex(q, iChannel0, 0.0);
+                float c = map(q);
+
+                if (uBWMode) {
+                    col = vec4(vec3(c), 1.0);
+                } else {
+                    vec3 n = normal(q);
+                    float light = clamp(dot(n, normalize(uLightDir)), 0.0, 1.0);
+                    
+                    float heat = uManualHeat;
+                    if (uAutoCooling) {
+                        heat = clamp(2.0 / pow(max(iTime, 0.01), 2.0), 0.0, 1.0);
+                    }
+
+                    vec4 rockColor;
+                    if (uUseTexColor) {
+                        rockColor = vec4(texColorData.rgb, 1.0);
+                    } else {
+                        rockColor = mix(uColorRockLight, uColorRockDark, smoothstep(0.0, 3.0, c));
+                    }
+                    
+                    vec4 lavaGlow = 5.0 * c * heat * uColorLava;
+                    float ambient = 0.05; // 稍微调亮暗部，避免背面纯黑导致误以为没铺满贴图
+                    
+                    col = (light + ambient) * rockColor + lavaGlow;
+                }
+            }
+            
+            // 绘制星空背景（调整网格密度、星星大小范围及形状随机性，使星星显著增大、形态更多样）
+            vec2 uvGrid = floor(dir.xy * 120.0);
+            vec2 uvFract = fract(dir.xy * 120.0);
+            float starHash = hash(uvGrid);
+            vec3 bg = vec3(0.0);
+            
+            if (starHash > 0.90) {
+                // 单元格内的随机中心点
+                vec2 starCenter = vec2(hash(uvGrid + 11.0), hash(uvGrid + 22.0)) * 0.7 + 0.15;
+                
+                // 引入椭圆形和不对称的形状拉伸因子，使星星形状更富随机变化
+                vec2 stretch = vec2(
+                    0.8 + 0.4 * hash(uvGrid + 66.0),
+                    0.8 + 0.4 * hash(uvGrid + 77.0)
+                );
+                vec2 dVec = (uvFract - starCenter) * stretch;
+                float d = length(dVec);
+                
+                // 增大基础大小范围 (原本 0.35 + 0.05，现放大近 2.5 倍)
+                float starSize = hash(uvGrid + 33.0) * 0.6 + 0.15;
+                // 平滑边缘，渲染更大更明亮的星星
+                float intensity = smoothstep(starSize, 0.0, d);
+                
+                // 随机闪烁相位和速度
+                float phase = hash(uvGrid + 44.0) * 100.0;
+                float blinkSpeed = 0.8 + hash(uvGrid + 55.0) * 2.0;
+                intensity *= (0.3 + 0.7 * sin(iTime * blinkSpeed + phase));
+                
+                bg = vec3(intensity * (0.7 + 0.5 * starHash));
+            }
+            
+            if (dist < 0.0) {
+                fragColor = vec4(bg, 1.0);
+            } else {
+                // 修复球体边缘过渡过大导致贴图“缩水”的漏黑现象，收紧平滑过渡范围
+                float b = dot(camPos, dir);
+                float ray_c = dot(camPos, camPos) - 1.0;
+                float h = b*b - ray_c;
+                float edge = smoothstep(0.0, 0.001, h);
+                fragColor = vec4(mix(bg, col.rgb, edge), 1.0);
+            }
+            
+            if (!uBWMode) {
+                fragColor.rgb = pow(fragColor.rgb, vec3(1.0 / 2.2));
+            }
+        }
+        `;
+
+        function createProceduralNoiseTexture(gl) {
+            const width = 512;
+            const height = 512;
+            const canvasTex = document.createElement('canvas');
+            canvasTex.width = width;
+            canvasTex.height = height;
+            const ctx = canvasTex.getContext('2d');
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            function hash_tile(x, y, w, h) {
+                x = ((x % w) + w) % w;
+                y = ((y % h) + h) % h;
+                const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+                return n - Math.floor(n);
+            }
+
+            function noise_tile(x, y, w, h) {
+                const i = Math.floor(x), j = Math.floor(y);
+                const f0 = x - i, f1 = y - j;
+                const u = f0 * f0 * (3.0 - 2.0 * f0);
+                const v = f1 * f1 * (3.0 - 2.0 * f1);
+                const a = hash_tile(i, j, w, h);
+                const b = hash_tile(i + 1, j, w, h);
+                const c = hash_tile(i, j + 1, w, h);
+                const d = hash_tile(i + 1, j + 1, w, h);
+                return a * (1.0 - u) * (1.0 - v) + b * u * (1.0 - v) + c * (1.0 - u) * v + d * u * v;
+            }
+
+            function fbm_tile(x, y, w, h, octaves) {
+                let val = 0.0, amp = 0.5;
+                for (let o = 0; o < octaves; o++) {
+                    val += noise_tile(x, y, w, h) * amp;
+                    x *= 2.0; y *= 2.0; w *= 2.0; h *= 2.0;
+                    amp *= 0.5;
+                }
+                return val;
+            }
+
+            const baseScale = 18.0;
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    let u = (x / width) * baseScale;
+                    let v = (y / height) * baseScale;
+
+                    let warpX = fbm_tile(u + 5.2, v + 1.3, baseScale, baseScale, 3);
+                    let warpY = fbm_tile(u - 2.1, v + 7.8, baseScale, baseScale, 3);
+                    
+                    let val = fbm_tile(u + warpX * 2.5, v + warpY * 2.5, baseScale, baseScale, 7);
+                    val = Math.pow(val, 1.4);
+                    
+                    const idx = (y * width + x) * 4;
+                    const byteVal = Math.floor(Math.min(255, Math.max(0, val * 255)));
+                    data[idx] = byteVal;
+                    data[idx + 1] = byteVal;
+                    data[idx + 2] = byteVal;
+                    data[idx + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvasTex);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.generateMipmap(gl.TEXTURE_2D);
+
+            return texture;
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+        const program = gl.createProgram();
+        if (vertexShader && fragmentShader) {
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+        }
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Program link error:', gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1
+        ]), gl.STATIC_DRAW);
+
+        const positionLoc = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(positionLoc);
+        gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+        let noiseTexture = createProceduralNoiseTexture(gl);
+        let currentHeightTexture = noiseTexture;
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
+        gl.uniform1i(gl.getUniformLocation(program, 'iChannel0'), 0);
+
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, currentHeightTexture);
+        gl.uniform1i(gl.getUniformLocation(program, 'iChannel1'), 1);
+
+        const colorUploadInput = document.getElementById('texture-upload-color');
+        const heightUploadInput = document.getElementById('texture-upload-height');
+        const uploadFilenameColor = document.getElementById('upload-filename-color');
+        const uploadFilenameHeight = document.getElementById('upload-filename-height');
+        const btnResetTexture = document.getElementById('btn-reset-texture');
+
+        colorUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            uploadFilenameColor.textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                    document.getElementById('chk-use-tex-color').checked = true;
+                    state.useTexColor = true;
+                    showToast('颜色贴图加载成功！已自动开启原色。');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        heightUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            uploadFilenameHeight.textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    if (currentHeightTexture === noiseTexture) {
+                        currentHeightTexture = gl.createTexture();
+                    }
+                    gl.activeTexture(gl.TEXTURE1);
+                    gl.bindTexture(gl.TEXTURE_2D, currentHeightTexture);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                    state.hasHeightMap = true;
+                    showToast('高度/法线贴图加载成功！地表立体细节已更新。');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        btnResetTexture.addEventListener('click', () => {
+            uploadFilenameColor.textContent = '1. 上传颜色贴图(Albedo)...';
+            uploadFilenameHeight.textContent = '2. 上传高度贴图(Bump)...';
+            colorUploadInput.value = '';
+            heightUploadInput.value = '';
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            
+            if (noiseTexture) gl.deleteTexture(noiseTexture);
+            if (currentHeightTexture && currentHeightTexture !== noiseTexture) {
+                gl.deleteTexture(currentHeightTexture);
+            }
+
+            noiseTexture = createProceduralNoiseTexture(gl);
+            currentHeightTexture = noiseTexture;
+            
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, noiseTexture);
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, currentHeightTexture);
+
+            document.getElementById('chk-use-tex-color').checked = false;
+            state.useTexColor = false;
+            state.hasHeightMap = false;
+            showToast('已恢复默认程序化材质');
+        });
+
+        const uniforms = {
+            iResolution: gl.getUniformLocation(program, 'iResolution'),
+            iTime: gl.getUniformLocation(program, 'iTime'),
+            iMouse: gl.getUniformLocation(program, 'iMouse'),
+            uScale: gl.getUniformLocation(program, 'uScale'),
+            uRotX: gl.getUniformLocation(program, 'uRotX'),
+            uRotY: gl.getUniformLocation(program, 'uRotY'),
+            uBump: gl.getUniformLocation(program, 'uBump'),
+            uLightDir: gl.getUniformLocation(program, 'uLightDir'),
+            uAutoCooling: gl.getUniformLocation(program, 'uAutoCooling'),
+            uManualHeat: gl.getUniformLocation(program, 'uManualHeat'),
+            uBWMode: gl.getUniformLocation(program, 'uBWMode'),
+            uUseTexColor: gl.getUniformLocation(program, 'uUseTexColor'),
+            uHasHeightMap: gl.getUniformLocation(program, 'uHasHeightMap'),
+            uColorRockLight: gl.getUniformLocation(program, 'uColorRockLight'),
+            uColorRockDark: gl.getUniformLocation(program, 'uColorRockDark'),
+            uColorLava: gl.getUniformLocation(program, 'uColorLava')
+        };
+
+        const state = {
+            scale: 0.95,
+            rotSpeed: 7.5,
+            latAmp: 15.0,
+            bump: 0.020,
+            lightX: -4.0,
+            lightY: 1.0,
+            lightZ: 2.0,
+            autoCooling: false,
+            manualHeat: 0.00,
+            bwMode: false,
+            useTexColor: false,
+            hasHeightMap: false,
+            colorRockLight: '#c46a47',
+            colorRockDark: '#381c11',
+            colorLava: '#000000',
+            isPaused: false,
+            timeOffset: 0.0
+        };
+
+        function hexToRgba(hex) {
+            const clean = hex.replace('#', '');
+            return [
+                parseInt(clean.substring(0, 2), 16) / 255.0,
+                parseInt(clean.substring(2, 4), 16) / 255.0,
+                parseInt(clean.substring(4, 6), 16) / 255.0,
+                1.0
+            ];
+        }
+
+        function setupUIBindings() {
+            const bindSlider = (id, valId, stateKey, parser = parseFloat, formatter = v => v) => {
+                const slider = document.getElementById(id);
+                const valDisplay = document.getElementById(valId);
+                slider.addEventListener('input', (e) => {
+                    const val = parser(e.target.value);
+                    state[stateKey] = val;
+                    valDisplay.textContent = formatter(val);
+                });
+            };
+
+            bindSlider('slider-scale', 'val-scale', 'scale', parseFloat, v => v.toFixed(2));
+            bindSlider('slider-rot-speed', 'val-rot-speed', 'rotSpeed', parseFloat, v => v.toFixed(1));
+            bindSlider('slider-lat-amp', 'val-lat-amp', 'latAmp', parseFloat, v => v.toFixed(1));
+            bindSlider('slider-heat', 'val-heat', 'manualHeat', parseFloat, v => v.toFixed(2));
+            bindSlider('slider-bump', 'val-bump', 'bump', parseFloat, v => v.toFixed(3));
+            bindSlider('slider-light-x', 'val-light-x', 'lightX', parseFloat, v => v.toFixed(1));
+            bindSlider('slider-light-y', 'val-light-y', 'lightY', parseFloat, v => v.toFixed(1));
+            bindSlider('slider-light-z', 'val-light-z', 'lightZ', parseFloat, v => v.toFixed(1));
+
+            const btnImg1 = document.getElementById('preset-img1');
+            const btnImg2 = document.getElementById('preset-img2');
+            const btnImg3 = document.getElementById('preset-img3');
+
+            function updatePresetHighlight(activeBtn) {
+                [btnImg1, btnImg2, btnImg3].forEach(btn => {
+                    if (btn === activeBtn) {
+                        btn.className = 'py-1.5 px-1 bg-orange-600 text-white rounded-lg font-medium text-[11px] border border-orange-400 shadow-md transition-all hover:bg-orange-500';
+                    } else {
+                        btn.className = 'py-1.5 px-1 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded-lg font-medium text-[11px] border border-slate-600 transition-all';
+                    }
+                });
+            }
+
+            btnImg1.addEventListener('click', () => {
+                state.bwMode = false;
+                state.autoCooling = false;
+                state.manualHeat = 0.00;
+                document.getElementById('slider-heat').value = 0.00;
+                document.getElementById('val-heat').textContent = '0.00';
+                document.getElementById('chk-auto-cooling').checked = false;
+                state.timeOffset = 0.0;
+                updatePresetHighlight(btnImg1);
+            });
+
+            btnImg2.addEventListener('click', () => {
+                state.bwMode = true;
+                updatePresetHighlight(btnImg2);
+            });
+
+            btnImg3.addEventListener('click', () => {
+                state.bwMode = false;
+                state.autoCooling = true;
+                state.timeOffset = 5.0;
+                document.getElementById('chk-auto-cooling').checked = true;
+                updatePresetHighlight(btnImg3);
+            });
+
+            document.getElementById('chk-auto-cooling').addEventListener('change', (e) => state.autoCooling = e.target.checked);
+            document.getElementById('chk-use-tex-color').addEventListener('change', (e) => state.useTexColor = e.target.checked);
+            document.getElementById('color-rock-light').addEventListener('input', (e) => state.colorRockLight = e.target.value);
+            document.getElementById('color-rock-dark').addEventListener('input', (e) => state.colorRockDark = e.target.value);
+
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                document.getElementById('slider-scale').value = 0.95; state.scale = 0.95; document.getElementById('val-scale').textContent = '0.95';
+                document.getElementById('slider-rot-speed').value = 7.5; state.rotSpeed = 7.5; document.getElementById('val-rot-speed').textContent = '7.5';
+                document.getElementById('slider-lat-amp').value = 15.0; state.latAmp = 15.0; document.getElementById('val-lat-amp').textContent = '15.0';
+                document.getElementById('slider-heat').value = 0.00; state.manualHeat = 0.00; document.getElementById('val-heat').textContent = '0.00';
+                document.getElementById('chk-auto-cooling').checked = false; state.autoCooling = false;
+                document.getElementById('chk-use-tex-color').checked = false; state.useTexColor = false;
+                document.getElementById('slider-bump').value = 0.020; state.bump = 0.020; document.getElementById('val-bump').textContent = '0.020';
+                document.getElementById('slider-light-x').value = -4.0; state.lightX = -4.0; document.getElementById('val-light-x').textContent = '-4.0';
+                document.getElementById('slider-light-y').value = 1.0; state.lightY = 1.0; document.getElementById('val-light-y').textContent = '1.0';
+                document.getElementById('slider-light-z').value = 2.0; state.lightZ = 2.0; document.getElementById('val-light-z').textContent = '2.0';
+                document.getElementById('color-rock-light').value = '#c46a47'; state.colorRockLight = '#c46a47';
+                document.getElementById('color-rock-dark').value = '#381c11'; state.colorRockDark = '#381c11';
+                document.getElementById('color-lava').value = '#000000'; state.colorLava = '#000000';
+                state.timeOffset = 0.0;
+                btnImg1.click();
+            });
+
+            const btnPause = document.getElementById('btn-pause');
+            btnPause.addEventListener('click', () => {
+                state.isPaused = !state.isPaused;
+                btnPause.textContent = state.isPaused ? '继续旋转' : '暂停旋转';
+                btnPause.classList.toggle('bg-orange-600/80', !state.isPaused);
+                btnPause.classList.toggle('bg-emerald-600/80', state.isPaused);
+            });
+        }
+        setupUIBindings();
+
+        const panel = document.getElementById('control-panel');
+        const header = document.getElementById('panel-header');
+        const panelBody = document.getElementById('panel-body');
+        const btnCollapse = document.getElementById('btn-collapse');
+        const iconCollapse = document.getElementById('icon-collapse');
+        const btnHide = document.getElementById('btn-hide');
+        const toast = document.getElementById('toast');
+
+        let isDragging = false;
+        let startX, startY, initialLeft, initialTop;
+        let panelVisible = true;
+        let panelCollapsed = false;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = panel.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            panel.style.right = 'auto';
+            panel.style.left = `${initialLeft}px`;
+            panel.style.top = `${initialTop}px`;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            panel.style.left = `${Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, initialLeft + dx))}px`;
+            panel.style.top = `${Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, initialTop + dy))}px`;
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        header.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button') || e.touches.length === 0) return;
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            const rect = panel.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            panel.style.right = 'auto';
+            panel.style.left = `${initialLeft}px`;
+            panel.style.top = `${initialTop}px`;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length === 0) return;
+            const dx = e.touches[0].clientX - startX;
+            const dy = e.touches[0].clientY - startY;
+            panel.style.left = `${Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, initialLeft + dx))}px`;
+            panel.style.top = `${Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, initialTop + dy))}px`;
+        });
+
+        window.addEventListener('touchend', () => isDragging = false);
+
+        btnCollapse.addEventListener('click', () => {
+            panelCollapsed = !panelCollapsed;
+            panelBody.classList.toggle('hidden', panelCollapsed);
+            iconCollapse.classList.toggle('rotate-180', panelCollapsed);
+        });
+
+        let toastTimer = null;
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        function togglePanelVisibility() {
+            panelVisible = !panelVisible;
+            panel.style.display = panelVisible ? 'flex' : 'none';
+            showToast(panelVisible ? '控制面板已显示' : '控制面板已隐藏 (按 Alt + H 恢复)');
+        }
+
+        btnHide.addEventListener('click', togglePanelVisibility);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+                e.preventDefault();
+                togglePanelVisibility();
+            }
+        });
+
+        let mouseX = 0, mouseY = 0, isMouseDown = false;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isMouseDown) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+        });
+
+        window.addEventListener('mouseup', () => isMouseDown = false);
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                isMouseDown = true;
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (isMouseDown && e.touches.length > 0) {
+                mouseX = e.touches[0].clientX;
+                mouseY = e.touches[0].clientY;
+            }
+        });
+
+        canvas.addEventListener('touchend', () => isMouseDown = false);
+
+        function handleResize() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+                gl.viewport(0, 0, width, height);
+            }
+        }
+        window.addEventListener('resize', handleResize);
+        handleResize();
+
+        let startTime = performance.now();
+        let pausedAccumulatedTime = 0;
+        let lastPauseTimestamp = 0;
+
+        function render(now) {
+            handleResize();
+
+            if (state.isPaused) {
+                if (lastPauseTimestamp === 0) lastPauseTimestamp = now;
+            } else {
+                if (lastPauseTimestamp !== 0) {
+                    pausedAccumulatedTime += (now - lastPauseTimestamp);
+                    lastPauseTimestamp = 0;
+                }
+            }
+
+            const effectiveTime = ((state.isPaused ? lastPauseTimestamp : now) - startTime - pausedAccumulatedTime) / 1000.0 + state.timeOffset;
+
+            gl.uniform3f(uniforms.iResolution, canvas.width, canvas.height, 1.0);
+            gl.uniform1f(uniforms.iTime, effectiveTime);
+            gl.uniform4f(uniforms.iMouse, mouseX, canvas.height - mouseY, isMouseDown ? 1.0 : 0.0, 0.0);
+
+            // 计算旋转
+            let currentRotX = (state.latAmp * Math.sin(0.1 * effectiveTime)) * Math.PI / 180.0;
+            let currentRotY = (state.rotSpeed * effectiveTime + 100.0) * Math.PI / 180.0;
+            
+            if (isMouseDown) {
+                currentRotX = (90.0 - 180.0 * (mouseY / canvas.height)) * Math.PI / 180.0;
+                currentRotY = (180.0 - 360.0 * (mouseX / canvas.width)) * Math.PI / 180.0;
+            }
+
+            gl.uniform1f(uniforms.uScale, state.scale);
+            gl.uniform1f(uniforms.uRotX, currentRotX);
+            gl.uniform1f(uniforms.uRotY, currentRotY);
+            gl.uniform1f(uniforms.uBump, state.bump);
+            gl.uniform3f(uniforms.uLightDir, state.lightX, state.lightY, state.lightZ);
+            gl.uniform1i(uniforms.uAutoCooling, state.autoCooling ? 1 : 0);
+            gl.uniform1i(uniforms.uManualHeat, state.manualHeat);
+            gl.uniform1i(uniforms.uBWMode, state.bwMode ? 1 : 0);
+            gl.uniform1i(uniforms.uUseTexColor, state.useTexColor ? 1 : 0);
+            gl.uniform1i(uniforms.uHasHeightMap, state.hasHeightMap ? 1 : 0);
+
+            const rgbaRockLight = hexToRgba(state.colorRockLight);
+            const rgbaRockDark = hexToRgba(state.colorRockDark);
+            const rgbaLava = hexToRgba(state.colorLava);
+
+            gl.uniform4fv(uniforms.uColorRockLight, rgbaRockLight);
+            gl.uniform4fv(uniforms.uColorRockDark, rgbaRockDark);
+            gl.uniform4fv(uniforms.uColorLava, rgbaLava);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+    </script>
+</body>
+</html>

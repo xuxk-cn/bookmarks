@@ -66,8 +66,8 @@ async function loadBgList() {
     });
   }
 
-  // 恢复上次选择
-  const saved = localStorage.getItem('bgChoice') || 'none';
+  // 恢复上次选择（首次访问默认无背景）
+  const saved = localStorage.getItem('bgChoice') !== null ? localStorage.getItem('bgChoice') : 'a4.html';
   select.value = saved;
   switchBg(saved);
 }

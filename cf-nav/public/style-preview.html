@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>导航风格选择</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #f78166;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #21262d;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    background: #161b22;
+  }
+  .card:hover {
+    border-color: #f78166;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(247,129,102,0.15);
+  }
+  .card.active {
+    border-color: #3fb950;
+    box-shadow: 0 0 0 2px rgba(63,185,80,0.3);
+  }
+  .card.active::after {
+    content: '✓ 已选择';
+    position: absolute;
+    top: 8px; right: 8px;
+    background: #3fb950;
+    color: #0d1117;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    z-index: 10;
+  }
+  .preview {
+    width: 100%;
+    height: 220px;
+    border: none;
+    display: block;
+    pointer-events: none;
+    background: #0d1117;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(22,27,34,0.98);
+    border-top: 1px solid #21262d;
+    gap: 8px;
+  }
+  .card-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e6edf3;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-file {
+    font-size: 0.78rem;
+    color: #f78166;
+    font-family: monospace;
+    font-weight: 600;
+    background: rgba(247,129,102,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(247,129,102,0.25);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .loading {
+    text-align: center;
+    color: #8b949e;
+    padding: 60px 0;
+    font-size: 0.95rem;
+    grid-column: 1/-1;
+  }
+  .action-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(13,17,23,0.95);
+    border-top: 1px solid #21262d;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+  }
+  .action-bar .selected-name {
+    font-size: 0.9rem;
+    color: #8b949e;
+  }
+  .action-bar .selected-name span {
+    color: #f78166;
+    font-weight: 600;
+  }
+  .btn-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-apply:hover { background: #2ea043; }
+  .btn-apply:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<h1>🎨 导航风格库</h1>
+<p class="subtitle">点击预览卡片选择风格样式，点击"应用"后返回导航页</p>
+
+<div class="grid" id="grid">
+  <div class="loading">正在探测风格文件...</div>
+</div>
+
+<div class="action-bar">
+  <div class="selected-name">当前选择：<span id="selected-label">未选择</span></div>
+  <button class="btn-apply" id="btn-apply" disabled>应用到导航页</button>
+</div>
+
+<script>
+(async function() {
+  const grid = document.getElementById('grid');
+  const btnApply = document.getElementById('btn-apply');
+  const selectedLabel = document.getElementById('selected-label');
+
+  let chosen = localStorage.getItem('styleChoice') || null;
+
+  function updateSelected(file, name) {
+    chosen = file;
+    selectedLabel.textContent = name;
+    btnApply.disabled = false;
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    const target = document.querySelector(`.card[data-file="${file}"]`);
+    if (target) target.classList.add('active');
+  }
+
+  function makeCard(file, name) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.file = file;
+    if (file === chosen) card.classList.add('active');
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'preview';
+    // 懒加载
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          iframe.src = `/backgrounds/${file}`;
+          observer.unobserve(iframe);
+        }
+      });
+    }, { rootMargin: '200px' });
+    observer.observe(iframe);
+
+    const footer = document.createElement('div');
+    footer.className = 'card-footer';
+    footer.innerHTML = `
+      <span class="card-name">${name}</span>
+      <span class="card-file">${file}</span>`;
+
+    card.appendChild(iframe);
+    card.appendChild(footer);
+    card.addEventListener('click', () => updateSelected(file, name));
+    return card;
+  }
+
+  // 通过 API 获取 styles 文件列表（服务端探测，结果准确）
+  const res = await fetch('/api/backgrounds');
+  const data = await res.json();
+  const found = (data.styles || []).map(s => s.file);
+  // 同时保留名称映射
+  const nameMap = {};
+  (data.styles || []).forEach(s => { nameMap[s.file] = s.name; });
+
+  grid.innerHTML = '';
+
+  if (!found.length) {
+    grid.innerHTML = '<div class="loading">未找到 styles*.html 文件，请确认在开发服务器下访问</div>';
+    return;
+  }
+
+  function nameOf(file) {
+    return nameMap[file] || file;
+  }
+
+  found.forEach(file => {
+    grid.appendChild(makeCard(file, nameOf(file)));
+  });
+
+  // 恢复已选状态
+  if (chosen) {
+    selectedLabel.textContent = nameOf(chosen);
+    btnApply.disabled = false;
+  }
+
+  // 应用按钮：把选中的 CSS 文件名写入 localStorage，跳回首页
+  btnApply.addEventListener('click', () => {
+    if (!chosen) return;
+    // 对应的 CSS 文件名：styles2.html -> styles2.css，style1.html -> style1.css
+    const cssFile = chosen.replace('.html', '.css');
+    localStorage.setItem('styleChoice', chosen);
+    localStorage.setItem('styleCSS', cssFile);
+    alert(`已选择：${chosen}\n对应CSS：${cssFile}\n\n请在导航页设置中切换到此风格，或手动将 /css/${cssFile} 引入到项目。`);
+  });
+})();
+</script>
+</body>
+</html>

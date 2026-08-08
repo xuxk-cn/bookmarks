@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态火星地表渲染器</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* 控制面板样式 */
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s, transform 0.3s;
+            user-select: none;
+            z-index: 10;
+        }
+        #control-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+        #panel-header {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px 8px 0 0;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+        }
+        #panel-header:active {
+            cursor: grabbing;
+        }
+        #toggle-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+        #panel-content {
+            padding: 15px;
+            transition: max-height 0.3s ease-out;
+            overflow: hidden;
+        }
+        #control-panel.collapsed #panel-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            border: none;
+        }
+        .control-group {
+            margin-bottom: 12px;
+        }
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #ff5722;
+        }
+        .shortcut-hint {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="glcanvas"></canvas>
+
+<div id="control-panel">
+    <div id="panel-header">
+        <span>⚙️ 渲染控制台</span>
+        <button id="toggle-btn" title="折叠/展开">-</button>
+    </div>
+    <div id="panel-content">
+        <div class="control-group">
+            <label>飞行速度 <span id="val-speed">2.0</span></label>
+            <input type="range" id="uSpeed" min="0.0" max="10.0" step="0.1" value="2.0">
+        </div>
+        <div class="control-group">
+            <label>地形起伏 <span id="val-height">1.5</span></label>
+            <input type="range" id="uHeight" min="0.1" max="4.0" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label>大气/雾气浓度 <span id="val-fog">1.2</span></label>
+            <input type="range" id="uFog" min="0.1" max="5.0" step="0.1" value="1.2">
+        </div>
+        <div class="control-group">
+            <label>地平线辉光 <span id="val-glow">1.5</span></label>
+            <input type="range" id="uGlow" min="0.1" max="3.0" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label>地表颜色(红) <span id="val-r">0.70</span></label>
+            <input type="range" id="uColorR" min="0.0" max="1.0" step="0.01" value="0.70">
+        </div>
+        <div class="control-group">
+            <label>地表颜色(绿) <span id="val-g">0.30</span></label>
+            <input type="range" id="uColorG" min="0.0" max="1.0" step="0.01" value="0.30">
+        </div>
+        <div class="control-group">
+            <label>地表颜色(蓝) <span id="val-b">0.15</span></label>
+            <input type="range" id="uColorB" min="0.0" max="1.0" step="0.01" value="0.15">
+        </div>
+        <div class="shortcut-hint">快捷键: Alt + H 显示/隐藏控制台</div>
+    </div>
+</div>
+
+<script>
+    // --- UI与交互逻辑 ---
+    const panel = document.getElementById('control-panel');
+    const header = document.getElementById('panel-header');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const content = document.getElementById('panel-content');
+
+    // 拖拽逻辑
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    header.addEventListener('mousedown', (e) => {
+        if (e.target === toggleBtn) return;
+        isDragging = true;
+        const rect = panel.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        panel.style.transition = 'none'; // 拖拽时取消过渡动画以保证流畅
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
+        
+        // 边界约束
+        newX = Math.max(0, Math.min(newX, window.innerWidth - panel.offsetWidth));
+        newY = Math.max(0, Math.min(newY, window.innerHeight - panel.offsetHeight));
+
+        panel.style.left = newX + 'px';
+        panel.style.top = newY + 'px';
+        panel.style.right = 'auto'; 
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            panel.style.transition = 'opacity 0.3s, transform 0.3s';
+        }
+    });
+
+    // 折叠逻辑
+    toggleBtn.addEventListener('click', () => {
+        panel.classList.toggle('collapsed');
+        toggleBtn.textContent = panel.classList.contains('collapsed') ? '+' : '-';
+        if (!panel.classList.contains('collapsed')) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+        } else {
+            content.style.maxHeight = null;
+        }
+    });
+    // 初始化折叠高度
+    content.style.maxHeight = content.scrollHeight + 'px';
+
+    // 快捷键隐藏/显示逻辑 (Alt+H)
+    let isPanelVisible = true;
+    window.addEventListener('keydown', (e) => {
+        if (e.altKey && e.key.toLowerCase() === 'h') {
+            e.preventDefault();
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+    });
+
+    // 参数获取逻辑
+    const getVal = (id) => parseFloat(document.getElementById(id).value);
+    const updateDisplay = (id, displayId) => {
+        const el = document.getElementById(id);
+        const disp = document.getElementById(displayId);
+        el.addEventListener('input', () => disp.textContent = el.value);
+    };
+
+    updateDisplay('uSpeed', 'val-speed');
+    updateDisplay('uHeight', 'val-height');
+    updateDisplay('uFog', 'val-fog');
+    updateDisplay('uGlow', 'val-glow');
+    updateDisplay('uColorR', 'val-r');
+    updateDisplay('uColorG', 'val-g');
+    updateDisplay('uColorB', 'val-b');
+
+
+    // --- WebGL 着色器逻辑 ---
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl2');
+
+    if (!gl) {
+        alert('您的浏览器不支持 WebGL 2.0');
+        throw new Error('WebGL 2.0 not supported');
+    }
+
+    const vsSource = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    `;
+
+    const fsSource = `#version 300 es
+        precision highp float;
+        out vec4 fragColor;
+        
+        uniform vec2 iResolution;
+        uniform float iTime;
+        
+        uniform float uSpeed;
+        uniform float uHeight;
+        uniform float uFog;
+        uniform float uGlow;
+        uniform vec3 uColor;
+
+        mat2 rot(float a) { 
+            float c = cos(a), s = sin(a); 
+            return mat2(c, -s, s, c); 
+        }
+
+        // 伪随机哈希
+        float hash(vec2 p) { 
+            return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); 
+        }
+
+        // 基础噪声
+        float noise(vec2 p) {
+            vec2 i = floor(p); 
+            vec2 f = fract(p);
+            vec2 u = f*f*(3.0-2.0*f);
+            return mix(mix(hash(i+vec2(0,0)), hash(i+vec2(1,0)), u.x),
+                       mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), u.x), u.y);
+        }
+
+        // 分形布朗运动 (fBM) 生成地形高度
+        float fbm(vec2 p) {
+            float f = 0.0, a = 0.5;
+            mat2 m = mat2(0.8, -0.6, 0.6, 0.8);
+            for(int i = 0; i < 5; i++) {
+                f += a * noise(p); 
+                p = m * p * 2.0; 
+                a *= 0.5;
+            }
+            return f;
+        }
+
+        // 场景映射，计算距离
+        float map(vec3 p) {
+            float d = p.y + 1.2; // 基础高度
+            d -= fbm(p.xz * 0.3) * uHeight;
+            return d * 0.6; // 缩放以避免伪影
+        }
+
+        // 计算法线
+        vec3 calcNormal(vec3 p) {
+            vec2 e = vec2(0.01, 0.0);
+            return normalize(vec3(
+                map(p+e.xyy)-map(p-e.xyy), 
+                map(p+e.yxy)-map(p-e.yxy), 
+                map(p+e.yyx)-map(p-e.yyx)
+            ));
+        }
+
+        void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+
+            // 摄像机设置
+            vec3 ro = vec3(0.0, 0.5, iTime * uSpeed); // 射线起点 (位置)
+            vec3 rd = normalize(vec3(uv, 1.0)); // 射线方向
+            
+            // 细微的摄像机晃动与下俯
+            rd.xy *= rot(sin(iTime * 0.2) * 0.02);
+            rd.yz *= rot(-0.05);
+
+            // 射线步进
+            float t = 0.0;
+            float tmax = 50.0;
+            vec3 p;
+            for(int i = 0; i < 120; i++) {
+                p = ro + rd * t;
+                float d = map(p);
+                if(d < 0.005 || t > tmax) break;
+                t += d;
+            }
+
+            // 光照与大气基础颜色
+            vec3 lightDir = normalize(vec3(0.0, 0.15, 1.0));
+            vec3 sunColor = vec3(1.0, 0.5, 0.1) * uGlow;
+            
+            // 天空渐变背景 (模拟火星大气)
+            vec3 skyColor = mix(vec3(0.0, 0.0, 0.0), vec3(0.9, 0.2, 0.05) * uGlow, exp(-max(rd.y, 0.0) * 12.0));
+
+            // 星空渲染 (只在地平线以上渲染)
+            if (rd.y > 0.0) {
+                float star = step(0.997, hash(rd.xy * 200.0));
+                star *= (0.5 + 0.5 * sin(iTime * 1.5 + rd.x * 50.0)); // 闪烁效果
+                skyColor += star * vec3(1.0);
+            }
+
+            vec3 col = skyColor;
+
+            // 击中地形时的着色
+            if(t < tmax) {
+                vec3 n = calcNormal(p);
+                float dif = max(dot(n, lightDir), 0.0);
+                float amb = 0.1 + 0.9 * max(n.y, 0.0); // 环境光
+
+                // 材质纹理扰动
+                vec3 mat = uColor * (0.6 + 0.4 * noise(p.xz * 4.0)); 
+                vec3 lin = dif * sunColor * 1.5 + amb * vec3(0.3, 0.1, 0.05);
+
+                col = mat * lin;
+
+                // 距离雾化 (体积散射模拟)
+                float fog = 1.0 - exp(-t * t * 0.0015 * uFog);
+                vec3 fogColor = mix(vec3(0.8, 0.3, 0.0) * uGlow, vec3(0.05, 0.0, 0.0), clamp(rd.y * 3.0, 0.0, 1.0));
+                col = mix(col, fogColor, fog);
+            }
+
+            // 水平线状地平线辉光
+            float horizonLine = exp(-abs(rd.y) * 40.0);
+            col += horizonLine * sunColor * 1.5;
+
+            // 伽马校正与对比度增强
+            col = pow(col, vec3(0.4545));
+            col = smoothstep(0.0, 1.1, col);
+
+            fragColor = vec4(col, 1.0);
+        }
+    `;
+
+    // 编译着色器
+    function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+    // 链接程序
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program link error:', gl.getProgramInfoLog(program));
+    }
+
+    // 设置全屏矩形顶点
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1.0, -1.0,  1.0, -1.0,  -1.0,  1.0,
+        -1.0,  1.0,  1.0, -1.0,   1.0,  1.0
+    ]), gl.STATIC_DRAW);
+
+    const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(positionAttributeLocation);
+    gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+    // 获取 Uniform 位置
+    const locResolution = gl.getUniformLocation(program, "iResolution");
+    const locTime = gl.getUniformLocation(program, "iTime");
+    const locSpeed = gl.getUniformLocation(program, "uSpeed");
+    const locHeight = gl.getUniformLocation(program, "uHeight");
+    const locFog = gl.getUniformLocation(program, "uFog");
+    const locGlow = gl.getUniformLocation(program, "uGlow");
+    const locColor = gl.getUniformLocation(program, "uColor");
+
+    // 渲染循环
+    function render(time) {
+        time *= 0.001; // 转换为秒
+
+        // 调整画布分辨率
+        if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+
+        gl.useProgram(program);
+
+        // 传递基础时间与分辨率
+        gl.uniform2f(locResolution, canvas.width, canvas.height);
+        gl.uniform1f(locTime, time);
+
+        // 从控制台获取参数并传递至着色器
+        gl.uniform1f(locSpeed, getVal('uSpeed'));
+        gl.uniform1f(locHeight, getVal('uHeight'));
+        gl.uniform1f(locFog, getVal('uFog'));
+        gl.uniform1f(locGlow, getVal('uGlow'));
+        gl.uniform3f(locColor, getVal('uColorR'), getVal('uColorG'), getVal('uColorB'));
+
+        // 绘制
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        requestAnimationFrame(render);
+    }
+
+    // 启动
+    requestAnimationFrame(render);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL 烟花与控制台</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505; /* 深色背景，防止闪烁 */
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        /* 画布填满全屏 */
+        #glcanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 自定义控制台的悬浮与拖拽样式 */
+        .lil-gui.root {
+            position: absolute !important;
+            top: 20px;
+            right: 20px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            transition: opacity 0.3s ease;
+        }
+
+        /* 隐藏状态 */
+        .lil-gui.root.hidden-gui {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 顶部标题栏鼠标变为拖动样式 */
+        .lil-gui .title {
+            cursor: grab !important;
+        }
+        
+        .lil-gui .title:active {
+            cursor: grabbing !important;
+        }
+
+        /* 提示信息面板 */
+        #hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="glcanvas"></canvas>
+    <div id="hint">快捷键: Alt + H 隐藏/显示控制面板</div>
+
+    <script>
+        // 顶点着色器：简单地铺满整个屏幕
+        const vsSource = `#version 300 es
+            in vec4 a_position;
+            void main() {
+                gl_Position = a_position;
+            }
+        `;
+
+        // 片段着色器：基于您提供的算法并将其适配到了 WebGL2 环境
+        const fsSource = `#version 300 es
+            precision highp float;
+
+            uniform vec3 iResolution;
+            uniform float iTime;
+            uniform vec4 iMouse;
+            uniform float u_numParticles;
+            uniform float u_numFireworks;
+            uniform float u_timeScale;
+            uniform float u_brightness;
+            uniform float u_audioAmplitude;
+            uniform float u_gravity;
+            uniform float u_colorHue;
+
+            out vec4 fragColor;
+
+            // 模拟原先 Shadertoy 中的音频输入纹理 (iChannel0)
+            float sample_at(float f) {
+                // 使用时间和频率构造一个类似于音频跳动的伪随机波形，受振幅滑杆控制
+                return (0.4 + 0.3 * sin(f * 15.0 + iTime * 4.0) + 0.3 * cos(f * 7.3 - iTime * 2.5)) * u_audioAmplitude;
+            }
+
+            float sample_multiple(float f) {
+                float delta = .1;
+                return 0.2 * (sample_at(f - 2. * delta) + sample_at(f - delta) + sample_at(f) + sample_at(f + delta) + sample_at(f + 2. * delta));
+            }
+
+            float hash11(float t) {
+                float y = fract(sin(t*6420.) + 15460.);
+                return y;
+            }
+
+            vec2 hash12(float t) {
+                float x = fract(sin(t*64878.) + 37955.);
+                float y = fract(sin(t+x*466420.) + 95460.);
+                return vec2(x, y);
+            }
+
+            vec3 explode(vec2 uv, float t, vec2 pos, vec2 dir) {
+                float ft = fract(t);
+                float ft0 = fract(t)*ft;
+                vec3 col = vec3(0.);
+                
+                // 允许的最大粒子数，实际循环由 u_numParticles 控制
+                for (float i = 1.; i <= 150.; i++) {
+                    if (i > u_numParticles) break;
+                    
+                    vec2 p = hash12(1. + i) - 0.5 + dir;
+                    p = normalize(p)*i/10.;
+                    
+                    // 重力下坠偏移计算
+                    vec2 gravPos = vec2(0., -u_gravity * ft0 * 0.15);
+                    float d = length(uv - p*ft0 - pos - gravPos);
+                    
+                    float c = (1.-ft*exp(ft)+i/50.);
+                    float brightness = 0.0005 * c * u_brightness;
+                    
+                    if (sin(t) > 0.8) {
+                        brightness += sin(t*(30. + hash11(i)*10.)) * 0.001 * u_brightness;
+                    }
+                    else if (sin(t) > -0.5) {
+                        brightness += (sin(t*(30. + hash11(i)*10.)) * 0.0005 + dir.x*0.001) * u_brightness;
+                    }
+
+                    vec3 baseCol = vec3(brightness/d)*(vec3(uv, 0.)*0.4 + 0.6);
+
+                    // 色调混合调整
+                    if (u_colorHue > 0.01) {
+                        vec3 hueShift = vec3(
+                            sin(u_colorHue * 6.28318 + 0.0),
+                            sin(u_colorHue * 6.28318 + 2.09439),
+                            sin(u_colorHue * 6.28318 + 4.18879)
+                        ) * 0.5 + 0.5;
+                        baseCol *= mix(vec3(1.0), hueShift * 1.5, u_colorHue);
+                    }
+
+                    col += baseCol;
+                }
+                return col;
+            }
+
+            void main() {
+                vec2 fragCoord = gl_FragCoord.xy;
+                vec2 uv = fragCoord.xy / iResolution.xy * 2. - 1.;
+                uv.x *= iResolution.x / iResolution.y;
+
+                float t = iTime * u_timeScale;
+                vec3 col = vec3(0.);  
+                
+                bool isMouseDown = iMouse.z > 0.;
+                vec2 m = (iMouse.xy / iResolution.xy * 2. - 1.);
+                m.x *= iResolution.x / iResolution.y;
+
+                for (float i = 1.; i <= 100.; i++) {
+                    if (i > u_numFireworks) break;
+                    
+                    vec2 p = hash12(-0.5 + i)-0.5;
+                    p = p*2.*i/12.;
+                    
+                    float amplitudex = sample_multiple(p.x + i*2.)*10.;
+                    float amplitudey = sample_multiple(p.y + i*2.)*10.;
+                    vec2 dir = vec2(sin(amplitudex), cos(amplitudey));
+                    
+                    col += explode(uv, fract(t)+i*3.14, p+dir*0.1, dir);
+                }    
+                
+                fragColor = vec4(col, 1.);
+                fragColor = clamp(fragColor, vec4(0.05), vec4(1.0));
+            }
+        `;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function initWebGL() {
+            const canvas = document.getElementById('glcanvas');
+            const gl = canvas.getContext('webgl2');
+            if (!gl) {
+                alert('您的浏览器不支持 WebGL2');
+                return null;
+            }
+
+            const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(program));
+                return null;
+            }
+
+            // 全屏三角形顶点数据 (覆盖范围为 -1 到 1)
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            const positions = new Float32Array([
+                -1.0, -1.0,
+                 1.0, -1.0,
+                -1.0,  1.0,
+                -1.0,  1.0,
+                 1.0, -1.0,
+                 1.0,  1.0,
+            ]);
+            gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+            return { gl, program, canvas, positionBuffer };
+        }
+
+        // 系统状态与滑杆参数管理
+        const state = {
+            numParticles: 20,
+            numFireworks: 20,
+            brightness: 1.0,
+            audioAmplitude: 1.0,
+            gravity: 0.5,
+            colorHue: 0.0,
+            timeScale: 1.0,
+            mouseX: 0,
+            mouseY: 0,
+            mouseZ: 0,
+            mouseW: 0
+        };
+
+        let gui;
+        function initGUI() {
+            gui = new lil.GUI({ title: '🎆 烟花控制面板 (Alt+H)' });
+            
+            // 数量与规模滑杆组
+            const f1 = gui.addFolder('数量与规模');
+            f1.add(state, 'numParticles', 5, 150, 1).name('单花粒子数 (滑杆)');
+            f1.add(state, 'numFireworks', 1, 80, 1).name('烟花并发数 (滑杆)');
+            f1.open();
+
+            // 视觉与效果滑杆组
+            const f2 = gui.addFolder('视觉与光效');
+            f2.add(state, 'brightness', 0.1, 3.0, 0.1).name('爆炸亮度 (滑杆)');
+            f2.add(state, 'audioAmplitude', 0.0, 3.0, 0.1).name('振幅强度 (滑杆)');
+            f2.add(state, 'gravity', -1.0, 2.0, 0.1).name('重力效应 (滑杆)');
+            f2.add(state, 'colorHue', 0.0, 1.0, 0.01).name('色彩变换 (滑杆)');
+            f2.open();
+
+            // 速度与演变滑杆组
+            const f3 = gui.addFolder('速度演变');
+            f3.add(state, 'timeScale', 0.0, 5.0, 0.1).name('演变速率 (滑杆)');
+            f3.open();
+
+            // --- 实现 GUI 的拖拽功能 ---
+            const guiDOM = gui.domElement;
+            const titleBar = guiDOM.querySelector('.title');
+            
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+
+            titleBar.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                
+                const rect = guiDOM.getBoundingClientRect();
+                initialLeft = rect.left;
+                initialTop = rect.top;
+                
+                guiDOM.style.right = 'auto';
+                guiDOM.style.left = initialLeft + 'px';
+                guiDOM.style.top = initialTop + 'px';
+                
+                e.preventDefault();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                let newLeft = initialLeft + dx;
+                let newTop = initialTop + dy;
+                newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - guiDOM.offsetWidth));
+                newTop = Math.max(0, Math.min(newTop, window.innerHeight - titleBar.offsetHeight));
+
+                guiDOM.style.left = newLeft + 'px';
+                guiDOM.style.top = newTop + 'px';
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // --- 实现 Alt+H 隐藏/显示快捷键 ---
+            window.addEventListener('keydown', (e) => {
+                if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                    if (guiDOM.classList.contains('hidden-gui')) {
+                        guiDOM.classList.remove('hidden-gui');
+                    } else {
+                        guiDOM.classList.add('hidden-gui');
+                    }
+                }
+            });
+        }
+
+        function main() {
+            const setup = initWebGL();
+            if (!setup) return;
+            const { gl, program, canvas, positionBuffer } = setup;
+
+            initGUI();
+
+            // 获取Uniform变量位置
+            const locations = {
+                a_position: gl.getAttribLocation(program, 'a_position'),
+                iResolution: gl.getUniformLocation(program, 'iResolution'),
+                iTime: gl.getUniformLocation(program, 'iTime'),
+                iMouse: gl.getUniformLocation(program, 'iMouse'),
+                u_numParticles: gl.getUniformLocation(program, 'u_numParticles'),
+                u_numFireworks: gl.getUniformLocation(program, 'u_numFireworks'),
+                u_timeScale: gl.getUniformLocation(program, 'u_timeScale'),
+                u_brightness: gl.getUniformLocation(program, 'u_brightness'),
+                u_audioAmplitude: gl.getUniformLocation(program, 'u_audioAmplitude'),
+                u_gravity: gl.getUniformLocation(program, 'u_gravity'),
+                u_colorHue: gl.getUniformLocation(program, 'u_colorHue')
+            };
+
+            // 处理窗口自适应大小
+            function resize() {
+                canvas.width = window.innerWidth * window.devicePixelRatio;
+                canvas.height = window.innerHeight * window.devicePixelRatio;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            // 鼠标交互监听
+            canvas.addEventListener('mousedown', (e) => {
+                state.mouseZ = 1.0;
+                state.mouseX = e.clientX;
+                state.mouseY = canvas.clientHeight - e.clientY; // 翻转Y轴
+            });
+            canvas.addEventListener('mousemove', (e) => {
+                if (state.mouseZ > 0.0) {
+                    state.mouseX = e.clientX;
+                    state.mouseY = canvas.clientHeight - e.clientY;
+                }
+            });
+            window.addEventListener('mouseup', () => {
+                state.mouseZ = 0.0;
+            });
+
+            // 渲染主循环
+            function render(time) {
+                time *= 0.001; // 转换为秒
+
+                gl.useProgram(program);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.enableVertexAttribArray(locations.a_position);
+                gl.vertexAttribPointer(locations.a_position, 2, gl.FLOAT, false, 0, 0);
+
+                // 注入当前的Uniform参数
+                gl.uniform3f(locations.iResolution, canvas.width, canvas.height, 1.0);
+                gl.uniform1f(locations.iTime, time);
+                gl.uniform4f(locations.iMouse, state.mouseX, state.mouseY, state.mouseZ, state.mouseW);
+                
+                // 注入滑杆控制参数
+                gl.uniform1f(locations.u_numParticles, state.numParticles);
+                gl.uniform1f(locations.u_numFireworks, state.numFireworks);
+                gl.uniform1f(locations.u_timeScale, state.timeScale);
+                gl.uniform1f(locations.u_brightness, state.brightness);
+                gl.uniform1f(locations.u_audioAmplitude, state.audioAmplitude);
+                gl.uniform1f(locations.u_gravity, state.gravity);
+                gl.uniform1f(locations.u_colorHue, state.colorHue);
+
+                // 绘制两个三角形填满画布
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                requestAnimationFrame(render);
+            }
+            
+            requestAnimationFrame(render);
+        }
+
+        // 启动应用
+        window.onload = main;
+    </script>
+</body>
+</html>
