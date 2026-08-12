@@ -44,7 +44,7 @@
             border-radius: 50%;
             background: #ffffff;
             cursor: pointer;
-            margin-top: -6px; /* 根据轨道高度调整居中 */
+            margin-top: -6px;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
         }
         
@@ -67,8 +67,8 @@
     <!-- WebGL Canvas -->
     <canvas id="glcanvas"></canvas>
 
-    <!-- 控制面板 -->
-    <div id="control-panel" class="absolute top-5 left-5 w-72 rounded-xl glass-panel transition-all duration-300 z-50 flex flex-col">
+    <!-- 控制台默认隐藏，Alt+H 呼出 -->
+    <div id="control-panel" class="absolute top-5 left-5 w-72 rounded-xl glass-panel transition-all duration-300 z-50 flex flex-col" style="opacity: 0; pointer-events: none;">
         <!-- 标题栏 (可拖动) -->
         <div id="panel-header" class="flex justify-between items-center p-3 cursor-move border-b border-white/10 group">
             <div class="flex items-center gap-2">
@@ -104,7 +104,7 @@
             <!-- 云层颜色控制 -->
             <div class="flex flex-col gap-1.5 mt-1">
                 <div class="flex justify-between items-center text-gray-300 text-sm font-medium">
-                    <label for="color-picker">基础色调</label>
+                    <label for="color-picker">基础色调 (轻微染色)</label>
                     <span id="color-val" class="font-mono text-pink-300 font-bold uppercase">#FFFFFF</span>
                 </div>
                 <div class="relative w-full h-8 rounded overflow-hidden border border-white/20">
@@ -278,15 +278,28 @@
             vec3 col = scn.rgb;
             col = iLerp(col.bgr, col.rgb, clamp(1.-prm1,0.05,1.));
             
-            // 1. 去除原作者偏黄的 Gamma (原为 vec3(.55,0.65,0.6))，统一 Gamma
+            // 1. 统一 Gamma
             col = pow(col, vec3(0.65));
             
-            // 2. 将云层的原生色调（红蓝绿噪音）提取为纯粹的光影灰度 (Luminance)
+            // 2. 提取光影灰度 (Luminance)
             float luminance = dot(col, vec3(0.299, 0.587, 0.114));
-            vec3 grayscale = vec3(luminance);
             
-            // 3. 将你的纯净颜色映射到灰度云层上，并略微提亮以保持通透感
-            col = grayscale * u_cloudColor * 1.5;
+            // 【重写】3. 多段色彩渐变映射，还原参考图的丰富层次：
+            //    深紫阴影 -> 暖橙中间调 -> 金色高光 -> 炽白核心
+            vec3 deep   = vec3(0.30, 0.18, 0.42);  // 紫色阴影
+            vec3 mid    = vec3(0.72, 0.38, 0.18);  // 暖橙中间调
+            vec3 glow   = vec3(1.00, 0.78, 0.30);  // 金色高光
+            vec3 bright = vec3(1.00, 0.96, 0.85);  // 炽白核心
+            
+            vec3 rich = mix(deep, mid,   smoothstep(0.05, 0.45, luminance));
+            rich      = mix(rich, glow,  smoothstep(0.45, 0.75, luminance));
+            rich      = mix(rich, bright,smoothstep(0.78, 0.98, luminance));
+            
+            // 4. 在暗部叠加一层淡淡的蓝紫雾气，增加空间层次感
+            rich += col * vec3(0.10, 0.08, 0.16) * (1.0 - luminance);
+            
+            // 5. 基础色调只作为轻微染色，不再把画面压成单一颜色
+            col = rich * mix(vec3(1.0), u_cloudColor, 0.35) * 1.35;
 
             // Vignette
             col *= pow( 16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y), 0.12)*0.7+0.3; 
@@ -358,18 +371,17 @@
         const colorLoc = gl.getUniformLocation(program, 'u_cloudColor');
 
         // 6. 控制变量状态
-        let flightSpeed = 0.10; // 默认飞行速度 multiplier
-        let cloudDensity = 1.12; // 默认密度
-        let cloudColor = [1.0, 1.0, 1.0]; // 默认颜色设为纯白
-        let renderScale = 0.5; // 默认渲染分辨率比例（降至50%以提升帧率）
+        let flightSpeed = 0.10;
+        let cloudDensity = 1.12;
+        let cloudColor = [1.0, 1.0, 1.0]; // 默认纯白 = 不染色，显示完整多色彩渐变
+        let renderScale = 0.5;
 
-        let accumulatedTime = 0.0; // 累加时间（保证速度为0时完美冻结帧）
+        let accumulatedTime = 0.0;
         let lastTimestamp = performance.now();
         let mouseX = 0, mouseY = 0;
 
         // --- UI 控制面板逻辑 ---
         
-        // 绑定速度滑块
         const speedSlider = document.getElementById('speed-slider');
         const speedValDisplay = document.getElementById('speed-val');
         speedSlider.addEventListener('input', (e) => {
@@ -377,7 +389,6 @@
             speedValDisplay.innerText = flightSpeed.toFixed(2);
         });
 
-        // 绑定密度滑块
         const densitySlider = document.getElementById('density-slider');
         const densityValDisplay = document.getElementById('density-val');
         densitySlider.addEventListener('input', (e) => {
@@ -385,7 +396,6 @@
             densityValDisplay.innerText = cloudDensity.toFixed(2);
         });
 
-        // 辅助函数：Hex 转归一化 RGB (0.0~1.0)
         function hexToRgb(hex) {
             let r = 0, g = 0, b = 0;
             if (hex.length == 7) {
@@ -396,7 +406,6 @@
             return [r, g, b];
         }
 
-        // 绑定颜色选择器
         const colorPicker = document.getElementById('color-picker');
         const colorValDisplay = document.getElementById('color-val');
         colorPicker.addEventListener('input', (e) => {
@@ -405,7 +414,6 @@
             cloudColor = hexToRgb(hex);
         });
 
-        // 绑定画质滑块事件
         const qualitySlider = document.getElementById('quality-slider');
         const qualityValDisplay = document.getElementById('quality-val');
         qualitySlider.addEventListener('input', (e) => {
@@ -413,11 +421,9 @@
             qualityValDisplay.innerText = Math.round(renderScale * 100) + '%';
         });
 
-        // 鼠标拖拽查看视角交互
         window.addEventListener('mousemove', (e) => {
-            // 将屏幕坐标映射到 0 到 屏幕宽高 的范围内，着色器内部会做中心化
             mouseX = e.clientX;
-            mouseY = window.innerHeight - e.clientY; // WebGL Y轴翻转
+            mouseY = window.innerHeight - e.clientY;
         });
 
         // 控制面板拖拽逻辑
@@ -427,21 +433,20 @@
         let startX, startY, initialX, initialY;
 
         header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('#toggle-btn')) return; // 点击折叠按钮时不触发拖拽
+            if (e.target.closest('#toggle-btn')) return;
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
             const rect = panel.getBoundingClientRect();
             initialX = rect.left;
             initialY = rect.top;
-            panel.style.transition = 'none'; // 拖动时取消过渡动画
+            panel.style.transition = 'none';
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            // 确保不拖出屏幕边界
             const newX = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, initialX + dx));
             const newY = Math.max(0, Math.min(window.innerHeight - header.offsetHeight, initialY + dy));
             
@@ -451,7 +456,7 @@
 
         window.addEventListener('mouseup', () => {
             isDragging = false;
-            panel.style.transition = 'all 0.3s ease'; // 恢复过渡动画
+            panel.style.transition = 'all 0.3s ease';
         });
 
         // 控制面板折叠逻辑
@@ -469,7 +474,7 @@
                 panelContent.style.opacity = '0';
                 chevronIcon.style.transform = 'rotate(-90deg)';
             } else {
-                panelContent.style.maxHeight = '500px'; // 足够大的高度以容纳内容
+                panelContent.style.maxHeight = '500px';
                 panelContent.style.paddingTop = '1rem';
                 panelContent.style.paddingBottom = '1rem';
                 panelContent.style.opacity = '1';
@@ -478,10 +483,10 @@
         }
 
         toggleBtn.addEventListener('click', togglePanel);
-        header.addEventListener('dblclick', togglePanel); // 双击标题栏也可折叠
+        header.addEventListener('dblclick', togglePanel);
 
-        // Alt+H 快捷键隐藏/显示面板
-        let isPanelVisible = true;
+        // Alt+H 快捷键隐藏/显示面板（默认隐藏）
+        let isPanelVisible = false;
         window.addEventListener('keydown', (e) => {
             if (e.altKey && e.key.toLowerCase() === 'h') {
                 e.preventDefault();
@@ -493,14 +498,11 @@
 
         // 7. 渲染循环
         function render(now) {
-            // 计算时间增量 (秒)
             const dt = (now - lastTimestamp) * 0.001;
             lastTimestamp = now;
 
-            // 核心：基于速度累加时间。当飞行速度为 0 时，dt * 0 = 0，使得 iTime 保持绝对静止
             accumulatedTime += dt * flightSpeed;
 
-            // 适应视口大小并应用渲染缩放比例 (防卡顿核心逻辑)
             const targetWidth = Math.floor(window.innerWidth * renderScale);
             const targetHeight = Math.floor(window.innerHeight * renderScale);
 
@@ -510,21 +512,35 @@
                 gl.viewport(0, 0, canvas.width, canvas.height);
             }
 
-            // 传递 Uniform 变量
             gl.uniform3f(resLoc, canvas.width, canvas.height, 1.0);
             gl.uniform1f(timeLoc, accumulatedTime); 
             gl.uniform2f(mouseLoc, mouseX, mouseY);
             gl.uniform1f(densityLoc, cloudDensity);
             gl.uniform3fv(colorLoc, cloudColor);
 
-            // 绘制
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
             requestAnimationFrame(render);
         }
 
-        // 启动动画循环
         requestAnimationFrame(render);
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a18.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

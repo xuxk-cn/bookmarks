@@ -1,0 +1,3595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的导航</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #38bdf8;
+            --hover-bg: #334155;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        header {
+            padding: 2rem 1rem;
+            text-align: center;
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+            color: var(--accent-color);
+            letter-spacing: 0.1rem;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .navbar button {
+            background: transparent;
+            border: 1px solid var(--hover-bg);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .navbar button:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .navbar button.active {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            border-color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .search-box {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            border: 1px solid var(--hover-bg);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            background: var(--hover-bg);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .card img {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            border-radius: 0.5rem;
+            object-fit: contain;
+            background: #fff;
+            padding: 4px;
+        }
+
+        .card .title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        #tooltip {
+            position: fixed;
+            background: rgba(15, 23, 42, 0.95);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            max-width: 280px;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--accent-color);
+            backdrop-filter: blur(4px);
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                padding: 0 1rem 2rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+<script src="icons.js"></script>
+</head>
+<body>
+
+<header>
+    <h1>我的导航</h1>
+    <nav class="navbar" id="nav"></nav>
+    <div style="margin-top:1rem;">
+        <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--text-secondary);">
+            <input type="checkbox" id="sound-toggle" checked
+                style="width:16px;height:16px;accent-color:var(--accent-color);cursor:pointer;">
+            悬停音效
+        </label>
+    </div>
+</header>
+
+<div class="search-box">
+    <input type="text" id="search" placeholder="搜索书签...">
+</div>
+
+<main id="main" class="container"></main>
+
+<div id="tooltip"></div>
+
+<script id="data" type="application/json">
+{
+  "categories": [
+    {
+      "title": "resourse",
+      "items": [
+        {
+          "title": "doyoudo官网",
+          "url": "https://www.doyoudo.com/",
+          "icon": "",
+          "hover": "doy ou do 是一个在线设计与视频制作学习平台，提供AE、PR、PS、C4D、剪辑、动画等软件教程。网站包含课程、案例教学和设计资源，适合学习数字内容创作技能。",
+          "valid": true
+        },
+        {
+          "title": "果汁实验室",
+          "url": "http://guozhivip.com/lab/",
+          "icon": "",
+          "hover": "果汁实验室是一个提供设计工具、在线实验项目和创意资源的网站，包含字体、图片处理、生成工具等内容，主要用于设计学习、素材获取和效率工具体验。",
+          "valid": true
+        },
+        {
+          "title": "zfont.cn",
+          "url": "http://zfont.cn/",
+          "icon": "",
+          "hover": "zfont.cn 是一个中文字体资源网站，提供字体搜索、预览、下载和字体分类整理功能，用户可以查找不同风格字体，用于设计、排版和文字创作。",
+          "valid": true
+        },
+        {
+          "title": "创意视频素材",
+          "url": "https://mixkit.co/free-stock-video/",
+          "icon": "",
+          "hover": "Mixkit 是一个免费高清视频素材网站，提供大量免版权视频片段、音乐和模板资源，涵盖自然、城市、人物、商业等类别，适合视频剪辑和内容制作。",
+          "valid": true
+        },
+        {
+          "title": "免费Pexels视频",
+          "url": "https://www.pexels.com/",
+          "icon": "",
+          "hover": "Pexels 是一个免费的图片和视频素材平台，提供高清摄影图片、短视频素材和创作者作品，支持按关键词搜索，可用于设计、网站、视频等项目。",
+          "valid": true
+        },
+        {
+          "title": "Pixabay视频素材",
+          "url": "https://pixabay.com/",
+          "icon": "",
+          "hover": "Pixabay 是综合免费素材库，提供免版权图片、音乐、视频和 3D 资源下载，适用于视频制作、设计项目和内容创作场景。",
+          "valid": true
+        },
+        {
+          "title": "电影视频素材",
+          "url": "https://www.51miz.com/",
+          "icon": "",
+          "hover": "51MIZ 是一个影视和设计素材平台，提供视频素材、图片、音乐、模板等资源，覆盖广告、影视制作、PPT设计等场景，部分资源需要授权使用。",
+          "valid": true
+        },
+        {
+          "title": "Panzoid",
+          "url": "https://panzoid.com/",
+          "icon": "",
+          "hover": "Panzoid 是一个在线视频动画制作平台，主要用于创建3D片头、频道片头和动画效果。提供Clipmaker工具、模板和社区作品，适合制作视频开场动画。",
+          "valid": true
+        },
+        {
+          "title": "WDFXW文档",
+          "url": "https://www.wdfxw.net/",
+          "icon": "",
+          "hover": "WDFXW文档网提供各类文档资源下载，包括行业资料、报告、论文、办公文档和技术文件，用户可通过分类和搜索查找需要的资料。",
+          "valid": true
+        },
+        {
+          "title": "小白盘",
+          "url": "https://www.xiaobaipan.com/",
+          "icon": "",
+          "hover": "小白盘是一个网盘资源搜索平台，主要用于搜索和整理百度网盘等网络资源，提供关键词查询功能，帮助用户快速定位公开分享文件。",
+          "valid": true
+        },
+        {
+          "title": "标准库",
+          "url": "http://www.bzko.com/",
+          "icon": "",
+          "hover": "标准库是一个标准信息查询网站，提供国家标准、行业标准和相关规范资料查询，方便用户查阅工程、生产、技术领域的标准文件。",
+          "valid": true
+        },
+        {
+          "title": "国家标准全文公开",
+          "url": "http://openstd.samr.gov.cn/bzgk/gb/",
+          "icon": "",
+          "hover": "国家标准全文公开系统由国家标准化管理机构提供，用于查询和阅读公开的国家标准全文，包括标准编号、名称、发布日期和具体内容。",
+          "valid": true
+        },
+        {
+          "title": "食品伙伴网",
+          "url": "http://down.foodmate.net/",
+          "icon": "",
+          "hover": "食品伙伴网下载中心提供食品行业相关资料下载，包括食品标准、法规文件、检测方法、行业资料和技术文档，服务食品企业和相关从业人员。",
+          "valid": true
+        },
+        {
+          "title": "Poliigon for 3D",
+          "url": "https://www.poliigon.com/",
+          "icon": "",
+          "hover": "Poliigon 是一个3D模型材质资源平台，提供高质量纹理、HDR环境贴图和3D资产，主要用于建筑可视化、游戏开发和三维渲染制作。",
+          "valid": true
+        },
+        {
+          "title": "ListURLs",
+          "url": "https://listurls.com/",
+          "icon": "",
+          "hover": "ListURLs 是一个网址整理和分享工具，用于收集、管理和批量展示链接列表，方便用户整理网页资源、工具集合和资料导航。",
+          "valid": true
+        },
+        {
+          "title": "网盘分析",
+          "url": "https://empty-meadow-a40f.227620164.workers.dev/",
+          "icon": "",
+          "hover": "网盘分析是一个在线资源分析工具，用于检测和处理网盘分享链接，帮助用户分析公开资源信息，提供资源整理和查询相关功能。",
+          "valid": true
+        },
+        {
+          "title": "阿里盘搜",
+          "url": "https://www.alipansou.com/",
+          "icon": "",
+          "hover": "阿里盘搜是一个阿里云盘资源搜索网站，通过关键词查找用户分享的阿里云盘文件，方便获取公开分享的视频、文档、软件等资源。",
+          "valid": true
+        },
+        {
+          "title": "创客帖-PPT模板",
+          "url": "https://www.chuangkit.com/",
+          "icon": "",
+          "hover": "创客帖是一个设计资源平台，提供PPT模板、海报模板、设计素材和在线编辑工具，用户可以快速制作演示文稿和视觉设计作品。",
+          "valid": true
+        },
+        {
+          "title": "视频及图片素材",
+          "url": "https://isorepublic.com/",
+          "icon": "",
+          "hover": "ISO Republic 是一个免费摄影素材网站，提供高质量图片和视频资源，涵盖自然、建筑、人物、商业等主题，可用于设计和内容制作。",
+          "valid": true
+        },
+        {
+          "title": "龋齿一号",
+          "url": "http://www.gfxcamp.com/",
+          "icon": "",
+          "hover": "GFXCamp 是一个CG资源分享网站，提供3D模型、贴图、插件、教程、影视后期素材等资源，覆盖三维设计和视觉制作领域。",
+          "valid": true
+        },
+        {
+          "title": "混剪侠 自媒体网址导航",
+          "url": "https://www.yugaopian.cn/",
+          "icon": "",
+          "hover": "混剪侠是一个自媒体资源导航网站，整理视频制作、剪辑工具、素材网站、运营工具等资源，方便内容创作者查找相关网站。",
+          "valid": true
+        },
+        {
+          "title": "耳聆网-音效素材库",
+          "url": "https://www.ear0.com/",
+          "icon": "",
+          "hover": "耳聆网是一个免费音效素材库，提供环境音、自然声、生活音、影视音效等资源，可用于视频剪辑、游戏开发和音频制作。",
+          "valid": true
+        },
+        {
+          "title": "免费字体",
+          "url": "https://www.hellofont.cn/",
+          "icon": "",
+          "hover": "HelloFont 是一个中文字体服务平台，提供字体搜索、字体识别、字体授权查询和字体管理功能，帮助设计人员查找和使用合适字体。",
+          "valid": true
+        },
+        {
+          "title": "矢量图标库",
+          "url": "https://www.iconfont.cn/",
+          "icon": "",
+          "hover": "Iconfont 是阿里巴巴旗下矢量图标库，提供大量SVG图标资源，支持在线搜索、编辑、下载和管理，广泛用于网页和应用设计。",
+          "valid": true
+        },
+        {
+          "title": "大众脸影视后期特效",
+          "url": "https://www.lookae.com/",
+          "icon": "",
+          "hover": "LookAE 是一个影视后期资源网站，提供AE插件、PR插件、教程、模板、特效资源和行业资讯，服务影视后期制作人员。",
+          "valid": true
+        },
+        {
+          "title": "台词找影片素材",
+          "url": "https://33tc.net/",
+          "icon": "",
+          "hover": "台词找影片素材是一个通过影视台词搜索影片片段的工具，帮助用户根据对白内容定位电影电视剧素材，适用于混剪和视频创作。",
+          "valid": true
+        },
+        {
+          "title": "找台词",
+          "url": "http://www.zhaotaici.cn/",
+          "icon": "",
+          "hover": "找台词是一个影视台词搜索网站，用户可以输入关键词查找电影电视剧中的相关对白，用于寻找影片片段和内容分析。",
+          "valid": true
+        },
+        {
+          "title": "AE脚本/扩展-捡屁笑",
+          "url": "https://jpsmile.com/",
+          "icon": "",
+          "hover": "捡屁笑提供AE脚本、插件、扩展工具和后期制作资源，主要服务After Effects用户，提高动画制作、特效处理和视频剪辑效率。",
+          "valid": true
+        },
+        {
+          "title": "用户脚本",
+          "url": "https://greasyfork.org/zh-CN/scripts",
+          "icon": "",
+          "hover": "Greasy Fork 是一个用户脚本分享平台，提供大量浏览器脚本，用于修改网页功能、增强网站体验、自动化操作等，支持多种浏览器扩展使用。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "tools",
+      "items": [
+        {
+          "title": "字幕- SubHD",
+          "url": "https://subhd.tv/",
+          "icon": "",
+          "hover": "SubHD 是一个字幕资源搜索与下载网站，提供电影、电视剧、纪录片等多语言字幕文件。用户可通过影片名称搜索字幕，并下载适用于播放器使用的字幕资源。",
+          "valid": true
+        },
+        {
+          "title": "免费字体",
+          "url": "https://www.maoken.com/",
+          "icon": "",
+          "hover": "猫啃网是一个免费字体资源网站，提供中文字体、英文字体、设计字体等下载服务，并按风格和用途分类，方便设计人员查找和使用字体资源。",
+          "valid": true
+        },
+        {
+          "title": "Magic Studio：利用 AI 制作精美图像",
+          "url": "https://magicstudio.com/zh/",
+          "icon": "",
+          "hover": "Magic Studio 是AI图像处理平台，提供图片背景移除、对象删除、图片生成、增强和编辑功能，用于快速处理视觉素材。",
+          "valid": true
+        },
+        {
+          "title": "书法欣赏",
+          "url": "http://www.yac8.com/",
+          "icon": "",
+          "hover": "书法欣赏网提供中国书法作品展示和资料查询，收录历代书法名家作品、字体样式、书法知识等内容，方便学习欣赏传统书法艺术。",
+          "valid": true
+        },
+        {
+          "title": "大叔汁源",
+          "url": "https://www.kdocs.cn/l/ceZS4cRWJBxs",
+          "icon": "",
+          "hover": "大叔汁源是一个资源分享链接集合，主要提供软件、工具、影视或其他网络资源整理，通过在线文档形式分享资源信息，方便用户查找下载。",
+          "valid": true
+        },
+        {
+          "title": "欢迎使用Colab",
+          "url": "https://colab.research.google.com/",
+          "icon": "",
+          "hover": "Google Colab 是一个基于云端的 Python 编程和计算环境，主要用于数据分析、机器学习和人工智能模型实验。用户无需本地安装环境即可运行 Jupyter Notebook，并可调用云端 GPU、TPU 等计算资源，适合算法测试、模型训练和代码分享。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "soft",
+      "items": [
+        {
+          "title": "便携版",
+          "url": "https://portableapps.com/",
+          "icon": "",
+          "hover": "PortableApps 是一个便携软件平台，提供无需安装即可运行的软件集合，包括浏览器、办公工具、开发工具等，支持将应用安装到U盘或移动设备中使用。",
+          "valid": true
+        },
+        {
+          "title": "密码破解工具",
+          "url": "https://xenarmor.com/",
+          "icon": "",
+          "hover": "XenArmor 是一个密码恢复和安全审计工具网站，提供针对浏览器、邮件、网络客户端等软件保存密码的恢复工具，用于密码管理和安全测试场景。",
+          "valid": true
+        },
+        {
+          "title": "伊朗-破解软件",
+          "url": "https://soft98.ir/",
+          "icon": "",
+          "hover": "Soft98 是一个伊朗软件资源网站，提供Windows软件、系统工具、驱动程序、设计软件和多媒体工具下载，主要面向波斯语用户的软件资源收集。",
+          "valid": true
+        },
+        {
+          "title": "破解软件",
+          "url": "https://lrepacks.net/",
+          "icon": "",
+          "hover": "LRepacks 是一个软件资源分享网站，主要提供经过重新打包的软件版本，包括安装优化、便携版和多语言软件资源，覆盖设计、办公、系统等类别。",
+          "valid": true
+        },
+        {
+          "title": "软件个锤子",
+          "url": "https://www.rjgcz.com/",
+          "icon": "",
+          "hover": "软件个锤子是一个软件资源分享平台，整理Windows软件、工具应用和实用程序下载信息，提供软件介绍、版本信息和相关资源链接。",
+          "valid": true
+        },
+        {
+          "title": "软仓",
+          "url": "https://ruancang.net/",
+          "icon": "",
+          "hover": "软仓是一个软件资源网站，提供Windows应用、办公软件、系统工具和常用软件整理下载，帮助用户查找不同类型的软件资源。",
+          "valid": true
+        },
+        {
+          "title": "LocalSend-分享文件",
+          "url": "https://localsend.org/zh-CN",
+          "icon": "",
+          "hover": "LocalSend 是一个开源局域网文件传输工具，支持Windows、macOS、Linux、Android和iOS设备之间无线互传文件，无需服务器或账号。",
+          "valid": true
+        },
+        {
+          "title": "CyberMania （网络狂热）",
+          "url": "https://www.cybermania.ws/",
+          "icon": "",
+          "hover": "CyberMania 是一个软件和技术资源社区，提供软件工具、网络安全、系统优化、技术讨论等内容，用户可以交流和获取相关资源信息。",
+          "valid": true
+        },
+        {
+          "title": "格子社区",
+          "url": "http://www.ffcell.com/",
+          "icon": "",
+          "hover": "格子社区是一个综合资源交流社区，提供软件、技术教程、工具分享和用户交流内容，方便用户获取互联网相关资源和经验。",
+          "valid": true
+        },
+        {
+          "title": "易破解",
+          "url": "https://www.ypojie.com/",
+          "icon": "",
+          "hover": "易破解是一个软件资源分享网站，主要提供Windows软件、工具、插件和应用下载信息，同时包含软件教程和使用说明。",
+          "valid": true
+        },
+        {
+          "title": "后期菌资源村",
+          "url": "http://www.houqijun.vip/Index_index.html",
+          "icon": "",
+          "hover": "后期菌资源村是一个影视后期资源网站，提供AE、PR、C4D等软件插件、模板、素材和教程资源，面向视频制作和后期设计用户。",
+          "valid": true
+        },
+        {
+          "title": "插件",
+          "url": "https://www.aigei.com/",
+          "icon": "",
+          "hover": "Aigei（爱给网）是一个数字资源平台，提供音效、音乐、3D模型、视频素材、游戏素材和设计资源下载，服务创作者获取制作素材。",
+          "valid": true
+        },
+        {
+          "title": "万能命令",
+          "url": "https://wannengrun.com/zh/",
+          "icon": "",
+          "hover": "万能命令是一个在线工具导航平台，提供各种效率工具、AI工具、开发工具和网络服务入口，帮助用户快速查找实用在线功能。",
+          "valid": true
+        },
+        {
+          "title": "3D模型",
+          "url": "http://www.gfxcamp.com/",
+          "icon": "",
+          "hover": "GFXCamp 是一个CG资源分享网站，提供3D模型、贴图、插件、教程、影视后期素材等资源，覆盖三维设计和视觉制作领域。",
+          "valid": true
+        },
+        {
+          "title": "文件共享",
+          "url": "https://blaze.vercel.app/",
+          "icon": "",
+          "hover": "Blaze 是一个在线文件共享工具，支持用户通过浏览器快速上传和分享文件，提供简单的临时文件传输功能，无需复杂配置。",
+          "valid": true
+        },
+        {
+          "title": "3D Models",
+          "url": "https://www.artec3d.com/",
+          "icon": "",
+          "hover": "Artec 3D 是一个三维扫描和3D模型资源平台，提供高精度扫描设备、3D扫描软件以及部分专业级3D模型数据资源。",
+          "valid": true
+        },
+        {
+          "title": "3D模型",
+          "url": "https://3dmodels.org/zh/",
+          "icon": "",
+          "hover": "3DModels.org 是一个3D模型资源网站，提供建筑、家具、人物、车辆等三维模型下载，支持多种格式，用于渲染和三维设计。",
+          "valid": true
+        },
+        {
+          "title": "3D People Models",
+          "url": "https://renderpeople.com/",
+          "icon": "",
+          "hover": "RenderPeople 是一个专业3D人物模型资源平台，提供高质量扫描人物模型、动画角色和纹理资源，主要用于影视、游戏和建筑可视化。",
+          "valid": true
+        },
+        {
+          "title": "AE模板免费",
+          "url": "https://www.newcger.com/",
+          "icon": "",
+          "hover": "NewCGer 是一个CG资源分享网站，提供AE模板、视频素材、插件、教程和影视后期资源，面向动画制作和视频剪辑用户。",
+          "valid": true
+        },
+        {
+          "title": "100font",
+          "url": "https://www.100font.com/",
+          "icon": "",
+          "hover": "100font 是一个免费字体资源网站，提供中文字体、英文字体下载和字体分类浏览，方便设计人员查找适合项目使用的字体。",
+          "valid": true
+        },
+        {
+          "title": "哔哩视频解析",
+          "url": "https://weibo.iiilab.com/",
+          "icon": "",
+          "hover": "微博视频解析工具是一个在线视频解析服务，支持部分视频网站视频链接解析，可用于获取视频播放地址和在线播放功能。",
+          "valid": true
+        },
+        {
+          "title": "佛系软件",
+          "url": "https://foxirj.com/",
+          "icon": "",
+          "hover": "佛系软件是一个软件分享网站，提供Windows应用、系统工具、绿色软件和实用程序下载，帮助用户寻找日常使用的软件资源。",
+          "valid": true
+        },
+        {
+          "title": "3322软件",
+          "url": "http://www.32r.com/",
+          "icon": "",
+          "hover": "3322软件站是一个软件下载平台，提供电脑软件、手机应用、游戏、驱动和系统工具下载，覆盖多个软件分类和版本信息。",
+          "valid": true
+        },
+        {
+          "title": "实用的应用",
+          "url": "http://www.zuijiastore.com/",
+          "icon": "",
+          "hover": "最佳应用商店是一个应用资源网站，提供Windows软件、手机应用和实用工具整理，帮助用户发现和下载常用应用程序。",
+          "valid": true
+        },
+        {
+          "title": "狐狸-AE模板",
+          "url": "https://fox-studio.net/",
+          "icon": "",
+          "hover": "Fox Studio 是一个AE模板和影视后期资源网站，提供动画模板、特效素材、插件和视频制作资源，主要服务后期制作人员。",
+          "valid": true
+        },
+        {
+          "title": "CG插件",
+          "url": "https://www.cgown.com/",
+          "icon": "",
+          "hover": "CGOwn 是一个CG资源网站，提供三维模型、材质、插件、教程和设计资源，面向3D建模、渲染和视觉制作用户。",
+          "valid": true
+        },
+        {
+          "title": "分秒帧",
+          "url": "https://app.mediatrack.cn/",
+          "icon": "",
+          "hover": "分秒帧是一款在线视频审片和媒体协作平台，支持视频上传、在线标注、评论反馈和团队协作，用于影视制作流程管理。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "视频",
+      "items": [
+        {
+          "title": "Reddit - 互联网的核心",
+          "url": "https://www.reddit.com/",
+          "icon": "",
+          "hover": "Reddit 是一个社区讨论平台，用户围绕科技、影视、游戏、学习、新闻等主题创建版块交流内容，通过帖子、评论和投票机制分享信息和观点。",
+          "valid": true
+        },
+        {
+          "title": "Instagram",
+          "url": "https://www.instagram.com/",
+          "icon": "",
+          "hover": "Instagram 是一个图片和短视频社交平台，提供照片发布、Reels短视频、直播、私信和内容推荐功能，用户主要用于分享生活、创作内容和关注兴趣账号。",
+          "valid": true
+        },
+        {
+          "title": "Telegram",
+          "url": "https://web.telegram.org/a/",
+          "icon": "",
+          "hover": "Telegram 是一个即时通讯平台，支持文字聊天、群组、频道、文件传输和机器人功能，提供跨设备同步能力，常用于社区交流和信息分发。",
+          "valid": true
+        },
+        {
+          "title": "抖音",
+          "url": "https://www.douyin.com/?recommend=1",
+          "icon": "",
+          "hover": "抖音是中国短视频内容平台，提供短视频发布、直播、电商、搜索和内容推荐功能，用户可观看、创作和传播各种类型的视频内容。",
+          "valid": true
+        },
+        {
+          "title": "快手",
+          "url": "https://www.kuaishou.com/new-reco",
+          "icon": "",
+          "hover": "快手是短视频和直播平台，提供视频发布、直播互动、电商交易和创作者工具，内容覆盖生活记录、娱乐、知识和商业领域。",
+          "valid": true
+        },
+        {
+          "title": "小红书",
+          "url": "https://www.xiaohongshu.com/",
+          "icon": "",
+          "hover": "小红书是生活方式内容社区，用户通过图文和短视频分享购物、美食、旅行、美妆、生活经验等内容，并支持搜索和社区互动。",
+          "valid": true
+        },
+        {
+          "title": "哔哩哔哩",
+          "url": "https://www.bilibili.com/",
+          "icon": "",
+          "hover": "哔哩哔哩是综合视频社区，提供动画、游戏、科技、学习、影视、直播等内容，支持弹幕互动、视频创作和创作者运营。",
+          "valid": true
+        },
+        {
+          "title": "X.COM",
+          "url": "https://x.com/xuxk17125",
+          "icon": "",
+          "hover": "X（原Twitter）是全球社交信息平台，支持短消息发布、图片视频分享、实时讨论和话题传播，常用于获取新闻动态和公众观点。",
+          "valid": true
+        },
+        {
+          "title": "西瓜创作平台",
+          "url": "https://studio.ixigua.com/",
+          "icon": "",
+          "hover": "西瓜创作平台是字节跳动旗下视频创作者后台，提供视频发布、数据分析、收益管理、内容运营和创作工具，帮助创作者管理账号。",
+          "valid": true
+        },
+        {
+          "title": "今日头条",
+          "url": "https://www.toutiao.com/",
+          "icon": "",
+          "hover": "今日头条是资讯内容平台，根据用户兴趣推荐新闻、文章、视频等内容，同时提供创作者发布内容、数据分析和流量管理功能。",
+          "valid": true
+        },
+        {
+          "title": "好看视频",
+          "url": "https://haokan.baidu.com/",
+          "icon": "",
+          "hover": "好看视频是百度旗下短视频平台，提供短视频观看、搜索、创作发布和内容推荐功能，覆盖生活、知识、娱乐等多个内容领域。",
+          "valid": true
+        },
+        {
+          "title": "老王导航",
+          "url": "https://nav.eooce.com/",
+          "icon": "",
+          "hover": "老王导航是一个网址导航站，整理影视、工具、资源、AI、技术等网站入口，方便用户快速访问常用互联网服务和资源平台。",
+          "valid": true
+        },
+        {
+          "title": "科技lion导航",
+          "url": "https://dh.kejilion.pro/",
+          "icon": "",
+          "hover": "科技lion导航是一个科技类网址导航平台，收录AI工具、开发资源、技术网站和实用服务链接，帮助用户快速查找相关网络资源。",
+          "valid": true
+        },
+        {
+          "title": "TikTok",
+          "url": "https://www.tiktok.com/en/",
+          "icon": "",
+          "hover": "TikTok 是国际版短视频平台，提供短视频创作、观看、直播、电商和内容推荐功能，面向全球用户传播娱乐、知识和生活类内容。",
+          "valid": true
+        },
+        {
+          "title": "百家号",
+          "url": "https://baijiahao.baidu.com/",
+          "icon": "",
+          "hover": "百家号是百度旗下内容创作平台，支持文章、图文、视频发布，提供内容分发、数据分析和创作者收益管理功能。",
+          "valid": true
+        },
+        {
+          "title": "Product Hunt – The best new products in tech.",
+          "url": "https://www.producthunt.com/?bc=1",
+          "icon": "",
+          "hover": "Product Hunt 是一个新产品发现社区，用户可以浏览和讨论软件、AI工具、创业项目等创新产品，并通过投票和评论交流体验。",
+          "valid": true
+        },
+        {
+          "title": "芭提雅",
+          "url": "https://ioc.pattaya.go.th/",
+          "icon": "",
+          "hover": "芭提雅相关网站主要提供泰国芭提雅地区公共信息服务，包括旅游、城市管理、政府公告和本地相关资讯查询。",
+          "valid": true
+        },
+        {
+          "title": "泰国海滩监控",
+          "url": "https://www.thailandnomads.com/",
+          "icon": "",
+          "hover": "泰国海滩监控类网站提供泰国部分地区海滩、旅游区域的实时摄像头信息，用户可查看天气、海况和旅游环境情况。",
+          "valid": true
+        },
+        {
+          "title": "热门网络摄像头",
+          "url": "https://www.camscape.com/",
+          "icon": "",
+          "hover": "Camscape 是一个全球网络摄像头目录网站，整理公开网络摄像头资源，用户可以浏览不同地区城市、自然景观和公共区域实时画面。",
+          "valid": true
+        },
+        {
+          "title": "破解APK",
+          "url": "https://liteapks.com/",
+          "icon": "",
+          "hover": "LiteAPKs 是一个安卓APK资源网站，主要提供修改版应用和游戏APK下载信息，包括应用介绍、版本更新和安装资源。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "AIGC",
+      "items": [
+        {
+          "title": "GitHub",
+          "url": "https://github.com/",
+          "icon": "",
+          "hover": "GitHub 是全球最大的代码托管和开源协作平台，提供代码仓库管理、版本控制、Issue讨论、项目协作和开发者社区功能，广泛用于软件开发和开源项目维护。",
+          "valid": true
+        },
+        {
+          "title": "模型库-魔搭社区",
+          "url": "https://modelscope.cn/models",
+          "icon": "",
+          "hover": "魔搭社区是阿里推出的AI模型开放平台，提供大语言模型、多模态模型、算法模型和数据集资源，支持模型体验、下载、训练和开发应用。",
+          "valid": true
+        },
+        {
+          "title": "Hugging Face",
+          "url": "https://huggingface.co/",
+          "icon": "",
+          "hover": "Hugging Face 是人工智能模型和数据集共享平台，提供大量开源机器学习模型、数据集、代码工具和在线演示空间，服务AI研究与应用开发。",
+          "valid": true
+        },
+        {
+          "title": "Hugging Face-Mirror",
+          "url": "https://hf-mirror.com/",
+          "icon": "",
+          "hover": "Hugging Face Mirror 是 Hugging Face 的镜像访问服务，用于加速模型、数据集和代码资源下载，主要解决部分地区访问速度慢或连接不稳定问题。",
+          "valid": true
+        },
+        {
+          "title": "NovelAI.Dev",
+          "url": "https://novelai.dev/",
+          "icon": "",
+          "hover": "NovelAI.Dev 是围绕NovelAI和AI绘画资源的网站，提供模型、提示词、参数教程等资料，帮助用户学习AI绘图。",
+          "valid": true
+        },
+        {
+          "title": "Civitai Models",
+          "url": "https://civitai.com/models",
+          "icon": "",
+          "hover": "Civitai 是一个AI绘画模型分享社区，主要提供Stable Diffusion模型、LoRA、Embedding、提示词和生成作品展示，方便用户下载和交流模型资源。",
+          "valid": true
+        },
+        {
+          "title": "LiblibAI",
+          "url": "https://www.liblib.art/",
+          "icon": "",
+          "hover": "LiblibAI 是国内AI绘画模型分享平台，提供Stable Diffusion模型、LoRA、工作流和绘画作品，支持模型下载、在线生成和创作者交流。",
+          "valid": true
+        },
+        {
+          "title": "SD法术解析",
+          "url": "https://spell.novelai.dev/",
+          "icon": "",
+          "hover": "SD法术解析是一个Stable Diffusion参数和提示词解析工具，帮助用户分析AI绘画生成信息，包括模型、采样器、提示词和生成配置。",
+          "valid": true
+        },
+        {
+          "title": "cobalt",
+          "url": "https://cobalt.tools/",
+          "icon": "",
+          "hover": "cobalt 是一个开源媒体下载工具，支持从多个社交平台获取视频、音频和图片资源，提供简洁网页界面，强调无需复杂配置即可使用。",
+          "valid": true
+        },
+        {
+          "title": "PaywallBuster",
+          "url": "https://paywallbuster.com/",
+          "icon": "",
+          "hover": "PaywallBuster 是一个帮助访问付费墙内容的工具，主要用于处理部分网站文章访问限制，帮助用户获取公开可访问的信息内容。",
+          "valid": true
+        },
+        {
+          "title": "中等",
+          "url": "https://medium.com/",
+          "icon": "",
+          "hover": "Medium 是一个在线内容发布平台，聚集科技、创业、写作、设计等领域文章，用户可以阅读专业内容，也可以发布个人文章和观点。",
+          "valid": true
+        },
+        {
+          "title": "FMHY",
+          "url": "https://fmhy.net/",
+          "icon": "",
+          "hover": "FMHY 是一个综合资源导航社区，整理免费软件、工具、学习资料、媒体资源和网络服务链接，方便用户查找互联网公开资源。",
+          "valid": true
+        },
+        {
+          "title": "巨量创意",
+          "url": "https://cc.oceanengine.com/",
+          "icon": "",
+          "hover": "巨量创意是字节跳动旗下广告创意平台，提供广告素材分析、视频模板、创意案例和营销工具，帮助企业和创作者制作推广内容。",
+          "valid": true
+        },
+        {
+          "title": "AIGC工具收集-戚同学",
+          "url": "https://lilac-guilty-188.notion.site/155afebca4c7804b9c14d485c15ae191?v=155afebca4c78158b00b000c15874f0a",
+          "icon": "",
+          "hover": "AIGC工具收集是一个人工智能工具整理页面，汇总文本生成、图片生成、视频制作、办公效率等AI应用，方便用户查找不同场景的AI工具。",
+          "valid": true
+        },
+        {
+          "title": "艾文AIGC工具库",
+          "url": "https://tauacgr5lqv.feishu.cn/docx/VCB6dsoxGoqhClxgDDocl0ignwd",
+          "icon": "",
+          "hover": "艾文AIGC工具库是一个AI工具资源整理文档，收录人工智能应用、提示词工具、创作平台和相关资料，帮助用户快速了解AIGC生态。",
+          "valid": true
+        },
+        {
+          "title": "艾文AIGC知识库",
+          "url": "https://tauacgr5lqv.feishu.cn/docx/ZnPedHE3loaQ5MxwE7TctC6PnNh",
+          "icon": "",
+          "hover": "艾文AIGC知识库是一个人工智能学习资料库，整理AIGC基础知识、工具教程、应用案例和行业资料，用于学习和了解生成式AI技术。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "AI",
+      "items": [
+        {
+          "title": "AI提示词库",
+          "url": "https://www.aishort.top/",
+          "icon": "",
+          "hover": "AI提示词库是一个提示词资源网站，收集和整理适用于AI绘画、文本生成、办公等场景的提示词案例，帮助用户查找、学习和优化AI模型输入指令。",
+          "valid": true
+        },
+        {
+          "title": "Wan_AI-视频",
+          "url": "https://wan.video/",
+          "icon": "",
+          "hover": "Wan_AI 是一个AI视频生成平台，提供文本生成视频、图像生成视频等功能，支持用户通过输入提示词创建短视频内容和视觉效果。",
+          "valid": true
+        },
+        {
+          "title": "即梦AI",
+          "url": "https://jimeng.jianying.com/",
+          "icon": "",
+          "hover": "即梦AI是字节跳动旗下AI创作平台，提供AI绘画、图片生成、视频生成、智能编辑等功能，支持通过文字描述快速创建视觉内容。",
+          "valid": true
+        },
+        {
+          "title": "Dreamina",
+          "url": "https://dreamina.capcut.com/",
+          "icon": "",
+          "hover": "Dreamina 是CapCut旗下AI创作工具，提供图片生成、视频生成、AI特效和创意编辑功能，用于辅助用户制作数字内容。",
+          "valid": true
+        },
+        {
+          "title": "灵光AI",
+          "url": "https://www.lingguang.com/chat",
+          "icon": "",
+          "hover": "灵光是 AI 助手平台，提供智能聊天、内容生成、知识查询和任务辅助功能，帮助用户完成信息处理和创作工作。",
+          "valid": true
+        },
+        {
+          "title": "腾讯混元",
+          "url": "https://hunyuan.tencent.com/",
+          "icon": "",
+          "hover": "腾讯混元是腾讯推出的大语言模型服务平台，提供文本生成、智能问答、内容创作、代码辅助和企业级AI应用能力。",
+          "valid": true
+        },
+        {
+          "title": "绘想-AI视频创作平台",
+          "url": "https://huixiang.baidu.com/index",
+          "icon": "",
+          "hover": "绘想AI是百度推出的AI视频创作平台，支持文字生成视频、图片动画化、视频编辑等功能，用于快速制作AI生成视频内容。",
+          "valid": true
+        },
+        {
+          "title": "Vheer | 100% free image generator",
+          "url": "https://vheer.com/",
+          "icon": "",
+          "hover": "Vheer 是在线 AI 图像生成与编辑平台，提供文字生成图片、图片风格转换、背景处理等功能，用于快速制作视觉设计素材。",
+          "valid": true
+        },
+        {
+          "title": "阶跃AI",
+          "url": "https://www.stepfun.com/",
+          "icon": "",
+          "hover": "阶跃AI是阶跃星辰推出的人工智能平台，提供大语言模型、多模态理解、智能助手和AI应用开发服务。",
+          "valid": true
+        },
+        {
+          "title": "可灵 AI",
+          "url": "https://klingai.kuaishou.com/",
+          "icon": "",
+          "hover": "可灵AI是快手推出的视频生成平台，支持文字生成视频、图片生成视频、视频编辑和动态效果制作，用于AI视频创作。",
+          "valid": true
+        },
+        {
+          "title": "KLING AI",
+          "url": "https://klingai.com/global/",
+          "icon": "",
+          "hover": "KLING AI 是可灵AI国际版平台，提供基于生成式AI的视频和图像创作功能，支持全球用户通过文本或图片生成动态内容。",
+          "valid": true
+        },
+        {
+          "title": "OpenCut -去除人物",
+          "url": "https://opencut.net/",
+          "icon": "",
+          "hover": "OpenCut 是开源 AI 视频编辑工具，提供视频剪辑、字幕处理和自动化编辑功能，支持用户快速完成短视频制作流程。",
+          "valid": true
+        },
+        {
+          "title": "删除照片中的物体",
+          "url": "https://magicstudio.com/zh/",
+          "icon": "",
+          "hover": "Magic Studio 是AI图像处理平台，提供图片背景移除、对象删除、图片生成、增强和编辑功能，用于快速处理视觉素材。",
+          "valid": true
+        },
+        {
+          "title": "PromeAI：免费的AI图像生成器和编辑器",
+          "url": "https://www.promeai.pro/zh-CN",
+          "icon": "",
+          "hover": "PromeAI 是面向设计场景的 AI 图像处理平台，提供智能扩图、图像生成、背景替换、图片增强和设计辅助功能，帮助用户快速处理建筑、产品和创意视觉素材。",
+          "valid": true
+        },
+        {
+          "title": "天翼AI",
+          "url": "https://www.teleai.com.cn/",
+          "icon": "",
+          "hover": "天翼AI是中国电信推出的人工智能服务平台，提供AI助手、智能问答、内容生成和行业应用相关服务。",
+          "valid": true
+        },
+        {
+          "title": "Seko",
+          "url": "https://seko.sensetime.com/",
+          "icon": "",
+          "hover": "Seko 是商汤推出的AI智能助手平台，提供多模态交互、知识问答、内容生成和智能应用服务。",
+          "valid": true
+        },
+        {
+          "title": "SeaArt AI-海艺",
+          "url": "https://www.seaart.ai/zhCN",
+          "icon": "",
+          "hover": "SeaArt AI 是一个AI绘画创作平台，提供模型调用、文生图、图生图、LoRA资源和作品社区功能。",
+          "valid": true
+        },
+        {
+          "title": "海艺AI - SeaArt AI",
+          "url": "https://www.seaart.me/zhCN",
+          "icon": "",
+          "hover": "海艺AI是SeaArt AI中文平台，提供AI绘画生成、模型资源、提示词创作和作品分享功能，支持用户进行图像创作。",
+          "valid": true
+        },
+        {
+          "title": "AI工具箱 - 米你AI",
+          "url": "https://www.miai.pro/tools-panel",
+          "icon": "",
+          "hover": "米你AI工具箱是一个AI工具集合平台，整合文本生成、图片处理、办公辅助等多类AI功能，方便用户快速使用不同AI工具。",
+          "valid": true
+        },
+        {
+          "title": "跃问视频",
+          "url": "https://yuewen.cn/videos",
+          "icon": "",
+          "hover": "跃问视频是跃问AI提供的视频创作功能，支持视频理解、分析和相关AI处理任务，帮助用户处理视频内容。",
+          "valid": true
+        },
+        {
+          "title": "Coze-扣子",
+          "url": "https://www.coze.com/",
+          "icon": "",
+          "hover": "Coze（扣子）是字节跳动推出的 AI 智能体开发平台，支持创建聊天机器人、工作流应用和自动化 AI 助手。",
+          "valid": true
+        },
+        {
+          "title": "SJinn",
+          "url": "https://sjinn.ai/",
+          "icon": "",
+          "hover": "SJinn 是 AI 创作平台，提供图像生成、视觉设计和创意内容制作功能，帮助用户通过人工智能快速生成数字艺术作品。",
+          "valid": true
+        },
+        {
+          "title": "AI 生成",
+          "url": "https://www.ssemble.com/",
+          "icon": "",
+          "hover": "Ssemble 是一个AI视频制作工具，提供视频编辑、自动剪辑、字幕生成和内容处理功能，帮助用户快速制作视频。",
+          "valid": true
+        },
+        {
+          "title": "Recraft-ai-生成矢量图形-图标-插画",
+          "url": "https://www.recraft.ai/",
+          "icon": "",
+          "hover": "Recraft 是AI图像设计平台，支持生成矢量图、图标、插画和品牌视觉素材，并提供图像编辑和设计调整功能。",
+          "valid": true
+        },
+        {
+          "title": "labs.google/fx",
+          "url": "https://labs.google/fx/zh",
+          "icon": "",
+          "hover": "Google Labs FX 是谷歌实验性AI工具集合平台，提供图像生成、音乐生成、创意实验等AI功能，用于体验最新生成式AI技术。",
+          "valid": true
+        },
+        {
+          "title": "MOKI - 我用AI做短片",
+          "url": "https://www.moki.cn/",
+          "icon": "",
+          "hover": "MOKI 是一个AI短片创作平台，支持通过文字生成视频、角色设计、剧情创作和视频制作，帮助用户制作AI短片。",
+          "valid": true
+        },
+        {
+          "title": "无限画布",
+          "url": "https://www.florafauna.ai/",
+          "icon": "",
+          "hover": "Flora 是一个AI无限画布创作工具，提供多种AI模型协同工作空间，支持图像生成、设计探索和创意流程管理。",
+          "valid": true
+        },
+        {
+          "title": "硅基",
+          "url": "https://cloud.siliconflow.cn/",
+          "icon": "",
+          "hover": "硅基流动是AI模型服务平台，提供大模型API调用、推理服务和模型部署能力，支持开发者构建AI应用。",
+          "valid": true
+        },
+        {
+          "title": "蓝鲸",
+          "url": "https://lanjing.ai/",
+          "icon": "",
+          "hover": "蓝鲸AI是一个人工智能工具和服务平台，提供AI模型、应用工具和相关资源，帮助用户探索生成式AI应用。",
+          "valid": true
+        },
+        {
+          "title": "AI 智慧岛",
+          "url": "https://chat.lify.vip/chat",
+          "icon": "",
+          "hover": "AI智慧岛是一个AI聊天助手平台，提供智能问答、文本生成、知识查询等功能，支持多种AI交互任务。",
+          "valid": true
+        },
+        {
+          "title": "TransPixar AI 透明视觉",
+          "url": "https://transpixarai.org/",
+          "icon": "",
+          "hover": "TransPixar AI 是一个AI透明视觉处理工具，主要用于生成透明背景视觉内容和处理图像透明效果，适合设计和视频制作场景。",
+          "valid": true
+        },
+        {
+          "title": "AI Plus",
+          "url": "https://www.yixiaai.com/",
+          "icon": "",
+          "hover": "AI Plus 是一个人工智能应用平台，提供AI工具、内容生成和智能服务，帮助用户完成文本、图片等创作任务。",
+          "valid": true
+        },
+        {
+          "title": "星火绘镜",
+          "url": "https://typemovie.art/",
+          "icon": "",
+          "hover": "星火绘镜是科大讯飞推出的AI视频创作工具，支持文字生成视频、图片生成动画和智能视频制作功能。",
+          "valid": true
+        },
+        {
+          "title": "开拍",
+          "url": "https://www.kaipai.com/",
+          "icon": "",
+          "hover": "开拍是一款AI视频创作工具，提供智能拍摄、视频剪辑、数字人、字幕处理等功能，适用于短视频制作。",
+          "valid": true
+        },
+        {
+          "title": "NovelAI.Dev",
+          "url": "https://novelai.dev/",
+          "icon": "",
+          "hover": "NovelAI.Dev 是围绕NovelAI和AI绘画资源的网站，提供模型、提示词、参数教程等资料，帮助用户学习AI绘图。",
+          "valid": true
+        },
+        {
+          "title": "deforum",
+          "url": "https://deforum.art/",
+          "icon": "",
+          "hover": "Deforum 是一个Stable Diffusion视频生成项目，支持通过AI模型制作动画视频、镜头运动和图像序列效果。",
+          "valid": true
+        },
+        {
+          "title": "AI工具集官网",
+          "url": "https://ai-bot.cn/",
+          "icon": "",
+          "hover": "AI工具集是一个AI工具导航网站，整理文本、图片、视频、办公、开发等领域的AI应用，方便用户查找工具资源。",
+          "valid": true
+        },
+        {
+          "title": "抠抠图",
+          "url": "https://www.koukoutu.com/",
+          "icon": "",
+          "hover": "抠抠图是一个在线AI图片处理工具，提供图片抠图、背景移除、图片编辑等功能，用于快速处理图片素材。",
+          "valid": true
+        },
+        {
+          "title": "AI技术社区",
+          "url": "https://www.aibl.vip/",
+          "icon": "",
+          "hover": "AI技术社区是一个人工智能交流平台，提供AI资讯、技术讨论、工具分享和行业内容，面向AI学习者和开发者。",
+          "valid": true
+        },
+        {
+          "title": "长视频分割",
+          "url": "https://app.ssemble.com/signup",
+          "icon": "",
+          "hover": "Ssemble长视频分割工具是一个AI视频处理服务，支持将长视频自动切分为短视频片段，并辅助生成适合发布的内容。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "ai",
+      "items": [
+        {
+          "title": "Try NVIDIA NIM APIs",
+          "url": "https://build.nvidia.com/",
+          "icon": "",
+          "hover": "NVIDIA API 是英伟达提供的 AI 模型和开发服务平台，主要提供大语言模型、视觉模型、语音模型等 API 接口。开发者可以通过平台调用 NVIDIA 提供的模型能力，用于构建聊天助手、智能应用、企业 AI 服务等项目。",
+          "valid": true
+        },
+        {
+          "title": "Nemotron 3 Super-英伟达",
+          "url": "https://nemotron3super.com/zh",
+          "icon": "",
+          "hover": "Nemotron 3 Super 是英伟达推出的 AI 大模型相关平台，提供模型介绍、能力展示和使用入口，主要用于自然语言处理、智能问答和企业级 AI 应用开发。",
+          "valid": true
+        },
+        {
+          "title": "EaseMate AI无限免费",
+          "url": "https://www.easemate.ai/tw",
+          "icon": "",
+          "hover": "EaseMate AI 是一个在线 AI 工具平台，提供文本生成、AI 对话、图片生成、文件处理等功能，帮助用户完成内容创作、信息整理和日常办公任务。",
+          "valid": true
+        },
+        {
+          "title": "Z Image Turbo",
+          "url": "https://huggingface.co/spaces/mrfakename/Z-Image-Turbo",
+          "icon": "",
+          "hover": "Z Image Turbo 是 Hugging Face 上的 AI 图像生成演示空间，基于文本提示快速生成图片，展示模型在速度和图像质量方面的生成能力。",
+          "valid": true
+        },
+        {
+          "title": "CodeFormer -老照片修复",
+          "url": "https://huggingface.co/spaces/sczhou/CodeFormer",
+          "icon": "",
+          "hover": "CodeFormer 是基于 AI 的老照片修复工具，可通过深度学习技术增强人脸细节、修复模糊照片和提升低质量人像图片清晰度。",
+          "valid": true
+        },
+        {
+          "title": "Perplexity",
+          "url": "https://www.perplexity.ai/",
+          "icon": "",
+          "hover": "Perplexity 是 AI 搜索与问答平台，结合大语言模型和网页检索能力，根据用户问题提供带来源引用的信息整理和知识查询服务。",
+          "valid": true
+        },
+        {
+          "title": "Free AI Image Generator",
+          "url": "https://freegen.app/",
+          "icon": "",
+          "hover": "Free AI Image Generator 是在线 AI 图片生成工具，通过文字描述生成图像，支持用户快速创建插画、设计素材和创意视觉内容。",
+          "valid": true
+        },
+        {
+          "title": "Invideo AI - 无限制地创建视频",
+          "url": "https://invideo.io/",
+          "icon": "",
+          "hover": "Invideo AI 是 AI 视频创作平台，可根据文字描述自动生成视频脚本、画面、配音和剪辑内容，帮助用户快速制作短视频和宣传视频。",
+          "valid": true
+        },
+        {
+          "title": "AI艺术生成器-卡通",
+          "url": "https://nsfwaiartgenerator.io/",
+          "icon": "",
+          "hover": "AI艺术生成器-卡通 是在线 AI 艺术图片生成工具，支持通过文本提示创建卡通风格、艺术化图像和创意视觉作品。",
+          "valid": true
+        },
+        {
+          "title": "维希尔 |在线图像生成器",
+          "url": "https://vheer.com/",
+          "icon": "",
+          "hover": "Vheer 是在线 AI 图像生成与编辑平台，提供文字生成图片、图片风格转换、背景处理等功能，用于快速制作视觉设计素材。",
+          "valid": true
+        },
+        {
+          "title": "GenTube:",
+          "url": "https://www.gentube.app/",
+          "icon": "",
+          "hover": "GenTube 是 AI 图像生成平台，用户可以通过文字提示创建图片，并探索社区生成作品，用于创意设计和视觉内容制作。",
+          "valid": true
+        },
+        {
+          "title": "Fliki - AI 语音将文本转换为视频",
+          "url": "https://fliki.ai/",
+          "icon": "",
+          "hover": "Fliki 是 AI 视频制作工具，可将文本转换为带有 AI 配音、素材和字幕的视频，适用于短视频、教育内容和营销视频制作。",
+          "valid": true
+        },
+        {
+          "title": "www.krea.ai",
+          "url": "https://www.krea.ai/home",
+          "icon": "",
+          "hover": "Krea AI 是实时 AI 创作平台，提供图片生成、视频生成、图像增强和设计辅助功能，支持创作者进行实时视觉内容创作。",
+          "valid": true
+        },
+        {
+          "title": "Raphael - 免费",
+          "url": "https://raphael.app/zh",
+          "icon": "",
+          "hover": "Raphael 是免费 AI 图像生成工具，支持通过文字描述生成图片，无需复杂设置，适合快速创建各种风格的视觉作品。",
+          "valid": true
+        },
+        {
+          "title": "Viggle AI-生视频和运动控制",
+          "url": "https://viggle.ai/home",
+          "icon": "",
+          "hover": "Viggle AI 是 AI 视频生成和动作控制平台，可让人物图片生成动态视频，实现角色动作迁移和动画效果制作。",
+          "valid": true
+        },
+        {
+          "title": "PixVerse-AI",
+          "url": "https://app.pixverse.ai/onboard",
+          "icon": "",
+          "hover": "PixVerse AI 是 AI 视频生成平台，支持文字生成视频、图片转视频、视频特效和动画创作，用于快速制作创意视频内容。",
+          "valid": true
+        },
+        {
+          "title": "RenderNet AI",
+          "url": "https://rendernet.ai/",
+          "icon": "",
+          "hover": "RenderNet AI 是 AI 人物和图像生成平台，提供角色一致性控制、人物设计、场景生成等功能，适用于影视、游戏和数字内容创作。",
+          "valid": true
+        },
+        {
+          "title": "AI办公智能体先驱",
+          "url": "https://skywork.ai/home",
+          "icon": "",
+          "hover": "Skywork AI 是 AI 办公智能体平台，提供文档生成、资料分析、研究辅助和自动化办公功能，帮助用户处理复杂工作任务。",
+          "valid": true
+        },
+        {
+          "title": "视频变成短片",
+          "url": "https://klap.app/",
+          "icon": "",
+          "hover": "Klap 是 AI 视频剪辑工具，可将长视频自动分析并转换为适合社交平台发布的短视频，支持智能裁剪、字幕和重点提取。",
+          "valid": true
+        },
+        {
+          "title": "AI 视频套件 | AKOOL",
+          "url": "https://akool.com/zh-cn",
+          "icon": "",
+          "hover": "AKOOL 是 AI 视频创作套件，提供数字人、视频换脸、头像生成、视频翻译和营销内容制作等企业级 AI 视频功能。",
+          "valid": true
+        },
+        {
+          "title": "SJinn",
+          "url": "https://sjinn.ai/",
+          "icon": "",
+          "hover": "SJinn 是 AI 创作平台，提供图像生成、视觉设计和创意内容制作功能，帮助用户通过人工智能快速生成数字艺术作品。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "AI大语言",
+      "items": [
+        {
+          "title": "Qwen Chat",
+          "url": "https://chat.qwen.ai/",
+          "icon": "",
+          "hover": "Qwen Chat 是阿里通义千问提供的 AI 对话平台，支持智能问答、文本创作、代码辅助、文档分析和多轮对话等功能，帮助用户完成知识查询与内容处理任务。",
+          "valid": true
+        },
+        {
+          "title": "千问",
+          "url": "https://www.qianwen.com/",
+          "icon": "",
+          "hover": "千问是阿里推出的 AI 助手平台，提供自然语言对话、写作辅助、资料总结、代码生成、图片理解等能力，面向办公、学习和日常信息处理场景。",
+          "valid": true
+        },
+        {
+          "title": "ChatGPT",
+          "url": "https://chatgpt.com/",
+          "icon": "",
+          "hover": "ChatGPT 是 OpenAI 提供的通用 AI 助手，支持文本对话、代码编写、文件分析、图像理解和内容创作，可用于学习、办公和开发辅助。",
+          "valid": true
+        },
+        {
+          "title": "DeepSeek",
+          "url": "https://chat.deepseek.com/",
+          "icon": "",
+          "hover": "DeepSeek 是深度求索推出的 AI 对话平台，提供智能问答、代码生成、数学推理、文件分析等功能，支持复杂问题分析和开发辅助。",
+          "valid": true
+        },
+        {
+          "title": "智谱清言",
+          "url": "https://chatglm.cn/",
+          "icon": "",
+          "hover": "智谱清言是智谱 AI 推出的智能助手平台，基于大语言模型提供聊天问答、内容生成、代码辅助、知识检索和办公效率工具。",
+          "valid": true
+        },
+        {
+          "title": "智谱-海外",
+          "url": "https://chat.z.ai/",
+          "icon": "",
+          "hover": "智谱海外版是智谱 AI 面向国际用户推出的 AI 对话服务，提供大模型聊天、文本生成、代码辅助和多语言智能交互功能。",
+          "valid": true
+        },
+        {
+          "title": "智谱",
+          "url": "https://www.zhipuai.cn/",
+          "icon": "",
+          "hover": "智谱是中国人工智能企业智谱 AI 官方平台，提供大模型技术、开放 API、模型服务和企业级 AI 应用解决方案。",
+          "valid": true
+        },
+        {
+          "title": "Grok",
+          "url": "https://grok.com/",
+          "icon": "",
+          "hover": "Grok 是 xAI 开发的 AI 助手，集成实时信息处理能力，支持聊天问答、知识查询、文本创作和复杂问题分析等功能。",
+          "valid": true
+        },
+        {
+          "title": "Kimi.ai",
+          "url": "https://kimi.moonshot.cn/",
+          "icon": "",
+          "hover": "Kimi.ai 是月之暗面推出的 AI 助手，擅长长文本处理，支持文件阅读、资料总结、智能问答和内容创作等任务。",
+          "valid": true
+        },
+        {
+          "title": "豆包-海外版",
+          "url": "https://www.dola.com/chat",
+          "icon": "",
+          "hover": "Dola 是豆包海外版 AI 助手，提供聊天问答、文本生成、信息整理和智能辅助功能，面向海外用户提供多语言 AI 服务。",
+          "valid": true
+        },
+        {
+          "title": "豆包",
+          "url": "https://www.doubao.com/chat/",
+          "icon": "",
+          "hover": "豆包是字节跳动推出的 AI 助手，支持智能聊天、写作生成、图片理解、学习辅导、办公辅助和多种内容创作任务。",
+          "valid": true
+        },
+        {
+          "title": "腾讯元宝",
+          "url": "https://yuanbao.tencent.com/chat",
+          "icon": "",
+          "hover": "腾讯元宝是腾讯推出的 AI 助手平台，基于大语言模型提供聊天问答、资料分析、文件处理、内容生成和办公辅助功能。",
+          "valid": true
+        },
+        {
+          "title": "MiniMax-国际版",
+          "url": "https://www.minimax.io/",
+          "icon": "",
+          "hover": "MiniMax Audio 是 AI 音频生成平台，提供文本转语音、声音克隆、音乐生成和音频处理功能，用于制作语音内容和音频作品。",
+          "valid": true
+        },
+        {
+          "title": "MiniMax",
+          "url": "https://agent.minimaxi.com/",
+          "icon": "",
+          "hover": "MiniMax 是国产 AI 模型服务平台，提供大语言模型、智能体开发、语音技术和多模态 AI 能力，支持开发者构建应用。",
+          "valid": true
+        },
+        {
+          "title": "通义万相",
+          "url": "https://tongyi.aliyun.com/wanxiang/",
+          "icon": "",
+          "hover": "通义万相是阿里通义推出的 AI 图像生成平台，支持文字生成图片、图片编辑、风格转换和视觉内容创作。",
+          "valid": true
+        },
+        {
+          "title": "通义tongyi.ai",
+          "url": "https://tongyi.aliyun.com/",
+          "icon": "",
+          "hover": "通义是阿里云推出的大模型 AI 平台，提供智能对话、文本生成、代码辅助、多模态理解和企业 AI 服务能力。",
+          "valid": true
+        },
+        {
+          "title": "OpenAI",
+          "url": "https://openai.com/",
+          "icon": "",
+          "hover": "OpenAI 是人工智能研究与产品开发机构，提供 ChatGPT、GPT 系列模型、API 服务和开发工具，用于构建智能应用。",
+          "valid": true
+        },
+        {
+          "title": "百灵大模型",
+          "url": "https://ling.tbox.cn/chat",
+          "icon": "",
+          "hover": "百灵大模型是面向用户开放的 AI 对话服务，提供智能问答、文本生成、知识查询和内容辅助等大模型应用功能。",
+          "valid": true
+        },
+        {
+          "title": "文心一言",
+          "url": "https://yiyan.baidu.com/",
+          "icon": "",
+          "hover": "文心一言是百度推出的生成式 AI 助手，支持知识问答、内容创作、代码辅助、图片理解和多场景智能交互。",
+          "valid": true
+        },
+        {
+          "title": "跃问",
+          "url": "https://yuewen.cn/chats/new",
+          "icon": "",
+          "hover": "跃问是阶跃星辰推出的 AI 助手平台，支持智能聊天、长文本阅读、资料分析、内容生成和多模态交互功能。",
+          "valid": true
+        },
+        {
+          "title": "Cici - 你的 AI 助手",
+          "url": "https://www.cici.com/chat/",
+          "icon": "",
+          "hover": "Cici 是字节跳动推出的海外 AI 助手，支持聊天问答、写作辅助、学习帮助、信息整理和日常任务处理。",
+          "valid": true
+        },
+        {
+          "title": "HyperAI超神经",
+          "url": "https://hyper.ai/cn",
+          "icon": "",
+          "hover": "HyperAI 超神经是人工智能资讯与资源平台，提供 AI 技术文章、模型介绍、行业资讯、工具资源和学习资料。",
+          "valid": true
+        },
+        {
+          "title": "bolt.new",
+          "url": "https://bolt.new/",
+          "icon": "",
+          "hover": "bolt.new 是 AI 编程开发平台，可通过自然语言生成网站和应用代码，支持在线编辑、运行和快速构建 Web 项目。",
+          "valid": true
+        },
+        {
+          "title": "ChatAI",
+          "url": "https://ybb.chatleft.com/",
+          "icon": "",
+          "hover": "ChatAI 是在线 AI 聊天工具，提供智能问答、文本生成、内容辅助和多轮对话功能，用于日常信息处理。",
+          "valid": true
+        },
+        {
+          "title": "灵光",
+          "url": "https://www.lingguang.com/chat",
+          "icon": "",
+          "hover": "灵光是 AI 助手平台，提供智能聊天、内容生成、知识查询和任务辅助功能，帮助用户完成信息处理和创作工作。",
+          "valid": true
+        },
+        {
+          "title": "Pinterest-pose",
+          "url": "https://www.pinterest.com/",
+          "icon": "",
+          "hover": "Pinterest 是图片灵感和视觉收藏平台，用户可搜索、保存和分享图片素材，常用于设计参考、创意收集和视觉发现。",
+          "valid": true
+        },
+        {
+          "title": "PoseMy-poses with 3D models",
+          "url": "https://posemy.art/",
+          "icon": "",
+          "hover": "PoseMy 是 3D 人体姿势参考工具，提供可调整的人体模型和动作姿态，用于绘画、角色设计和动画制作参考。",
+          "valid": true
+        },
+        {
+          "title": "Quick-poses",
+          "url": "https://quickposes.com/en",
+          "icon": "",
+          "hover": "QuickPoses 是绘画训练姿势素材网站，提供随机人物动作图片和计时练习功能，帮助艺术学习者提升人体速写能力。",
+          "valid": true
+        },
+        {
+          "title": "Magic Poser Web",
+          "url": "https://webapp.magicposer.com/",
+          "icon": "",
+          "hover": "Magic Poser Web 是在线 3D 人体姿态设计工具，支持调整人物模型、动作、视角和光照，用于绘画和角色创作参考。",
+          "valid": true
+        },
+        {
+          "title": "云原生运维圈镜像站",
+          "url": "http://dockerimage.gbfeng.com/",
+          "icon": "",
+          "hover": "云原生运维圈镜像站是 Docker 镜像资源镜像服务，用于提供容器镜像下载和加速访问，方便云原生环境部署使用。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "AI声音",
+      "items": [
+        {
+          "title": "Hedra",
+          "url": "https://www.hedra.com/",
+          "icon": "",
+          "hover": "Hedra 是 AI 视频创作平台，支持通过文本、图片和声音生成角色动画视频，可实现数字人物驱动、表情动作控制和多模态内容制作。",
+          "valid": true
+        },
+        {
+          "title": "海绵音乐",
+          "url": "https://www.haimian.com/",
+          "icon": "",
+          "hover": "海绵音乐是 AI 音乐创作平台，支持通过文字描述生成歌曲、旋律和伴奏，提供音乐生成、编辑和创作辅助功能。",
+          "valid": true
+        },
+        {
+          "title": "MiniMax-与用户共创智能",
+          "url": "https://www.minimaxi.com/",
+          "icon": "",
+          "hover": "MiniMax 是人工智能技术平台，提供大语言模型、语音生成、视频生成、多模态交互等 AI 能力，支持开发者和用户创建智能应用。",
+          "valid": true
+        },
+        {
+          "title": "MiniMax Audio | AI Audio Generator",
+          "url": "https://www.minimax.io/",
+          "icon": "",
+          "hover": "MiniMax Audio 是 AI 音频生成平台，提供文本转语音、声音克隆、音乐生成和音频处理功能，用于制作语音内容和音频作品。",
+          "valid": true
+        },
+        {
+          "title": "Descript: Edit Videos",
+          "url": "https://www.descript.com/",
+          "icon": "",
+          "hover": "Descript 是 AI 视频和音频编辑工具，通过文本方式编辑媒体内容，支持自动转录、字幕生成、声音处理和视频剪辑功能。",
+          "valid": true
+        },
+        {
+          "title": "最真实的语音AI",
+          "url": "https://elevenlabs.io/",
+          "icon": "",
+          "hover": "ElevenLabs 是 AI 语音生成平台，提供自然语音合成、声音克隆、多语言配音和语音转换功能，适用于视频、有声内容制作。",
+          "valid": true
+        },
+        {
+          "title": "模思配音",
+          "url": "https://mossland.mosi.cn/",
+          "icon": "",
+          "hover": "模思配音是 AI 配音工具，提供文本转语音、角色声音选择和语音生成服务，用于短视频、宣传片和内容创作配音。",
+          "valid": true
+        },
+        {
+          "title": "Suno 提示词",
+          "url": "https://sunoprompt.com/",
+          "icon": "",
+          "hover": "Suno 提示词是围绕 AI 音乐生成的提示词资源网站，提供 Suno 音乐创作提示词参考，帮助用户生成歌曲和音乐作品。",
+          "valid": true
+        },
+        {
+          "title": "逻辑智能",
+          "url": "https://luoji.cn/",
+          "icon": "",
+          "hover": "Logic Intelligence Technology 是逻辑智能英文平台，提供 AI 技术研发、智能模型服务和人工智能应用相关产品介绍。",
+          "valid": true
+        },
+        {
+          "title": "Logic Intelligence Technology",
+          "url": "https://luoji.cn/",
+          "icon": "",
+          "hover": "Logic Intelligence Technology 是逻辑智能英文平台，提供 AI 技术研发、智能模型服务和人工智能应用相关产品介绍。",
+          "valid": true
+        },
+        {
+          "title": "Claw Cloud",
+          "url": "https://us-east-1.run.claw.cloud/",
+          "icon": "",
+          "hover": "ClawCloud Run 是一个云端应用运行平台，主要用于部署和托管 Web 应用、API 服务以及开发项目。平台提供容器化运行环境，用户可以上传代码并快速部署在线服务，适合个人项目和开发测试。",
+          "valid": true
+        },
+        {
+          "title": "AI声音生成",
+          "url": "https://musichero.ai/zh-CN/sound-effect",
+          "icon": "",
+          "hover": "AI声音生成是在线 AI 音效生成工具，支持通过文字描述生成背景音、环境音和各种声音效果，用于视频和创意制作。",
+          "valid": true
+        },
+        {
+          "title": "Audio — Stability AI",
+          "url": "https://stability.ai/stable-audio",
+          "icon": "",
+          "hover": "Stable Audio 是 Stability AI 推出的 AI 音频生成服务，可根据文本描述创建音乐、音效和音频片段，支持创意音频制作。",
+          "valid": true
+        },
+        {
+          "title": "labs.google/fx",
+          "url": "https://labs.google/fx",
+          "icon": "",
+          "hover": "Google Labs FX 是谷歌 AI 实验平台，提供 Imagen、音乐生成等实验性人工智能工具，用于体验最新生成式 AI 技术。",
+          "valid": true
+        },
+        {
+          "title": "Beatoven.ai",
+          "url": "https://www.beatoven.ai/",
+          "icon": "",
+          "hover": "Beatoven.ai 是 AI 背景音乐生成平台，可根据视频、场景和情绪需求生成原创音乐，适用于内容创作者制作配乐。",
+          "valid": true
+        },
+        {
+          "title": "Free TTS",
+          "url": "https://freetts.com/text-to-speech",
+          "icon": "",
+          "hover": "Free TTS 是在线文字转语音工具，支持将文本转换为自然语音，提供多语言、多声音选择，用于朗读和音频制作。",
+          "valid": true
+        },
+        {
+          "title": "海豚Ai",
+          "url": "https://www.ttson.cn/",
+          "icon": "",
+          "hover": "海豚AI是 AI 语音处理平台，提供文字转语音、声音生成和配音功能，帮助用户快速制作语音内容。",
+          "valid": true
+        },
+        {
+          "title": "马克配音",
+          "url": "https://ttsmaker.cn/",
+          "icon": "",
+          "hover": "马克配音是在线 AI 配音平台，提供文字转语音、多角色声音选择和语音生成服务，适用于短视频和商业内容制作。",
+          "valid": true
+        },
+        {
+          "title": "Online Audio Converter",
+          "url": "https://onlineaudioconverter.com/",
+          "icon": "",
+          "hover": "Online Audio Converter 是在线音频格式转换工具，支持 MP3、WAV、AAC 等格式互转，并提供音频压缩和处理功能。",
+          "valid": true
+        },
+        {
+          "title": "Fish Audio",
+          "url": "https://fish.audio/zh-CN/",
+          "icon": "",
+          "hover": "Fish Audio 是 AI 语音生成平台，提供语音合成、声音克隆和多语言语音模型服务，用于配音和语音应用开发。",
+          "valid": true
+        },
+        {
+          "title": "音乐创作",
+          "url": "https://www.mureka.ai/",
+          "icon": "",
+          "hover": "Mureka 是 AI 音乐创作平台，支持通过文字生成歌曲、旋律和完整音乐作品，并提供音乐创作辅助功能。",
+          "valid": true
+        },
+        {
+          "title": "AI Music",
+          "url": "https://audiomatic.io/",
+          "icon": "",
+          "hover": "Audiomatic 是 AI 音乐生成工具，支持自动创建音乐、音效和音频内容，帮助用户快速制作数字音频作品。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "反推提示词",
+      "items": [
+        {
+          "title": "图像扩图",
+          "url": "https://www.promeai.pro/zh-CN",
+          "icon": "",
+          "hover": "PromeAI 是面向设计场景的 AI 图像处理平台，提供智能扩图、图像生成、背景替换、图片增强和设计辅助功能，帮助用户快速处理建筑、产品和创意视觉素材。",
+          "valid": true
+        },
+        {
+          "title": "Joy Caption",
+          "url": "https://huggingface.co/spaces/fancyfeast/joy-caption-beta-one",
+          "icon": "",
+          "hover": "Joy Caption Beta One 是 Hugging Face 上的 AI 图像描述模型演示工具，可根据图片内容自动生成文字提示词，用于图像理解、数据标注和 AI 绘图提示词制作。",
+          "valid": true
+        },
+        {
+          "title": "Joy Caption Alpha Two",
+          "url": "https://huggingface.co/spaces/fancyfeast/joy-caption-alpha-two",
+          "icon": "",
+          "hover": "Joy Caption Alpha Two 是基于视觉语言模型的图片描述生成工具，能够分析图像细节并输出自然语言描述，帮助用户生成 AI 绘图所需的提示信息。",
+          "valid": true
+        },
+        {
+          "title": "图像提示词",
+          "url": "https://imagetoprompt.ai/zh",
+          "icon": "",
+          "hover": "ImageToPrompt 是 AI 图像提示词生成工具，可以上传图片并自动分析画面内容、风格、构图和元素，生成适用于 AI 绘画模型的文字提示词。",
+          "valid": true
+        },
+        {
+          "title": "图像提示词生成",
+          "url": "https://describepicture.org/zh/",
+          "icon": "",
+          "hover": "DescribePicture 是图片分析和提示词生成工具，通过人工智能识别图片中的对象、场景和视觉风格，将图片内容转换为文字描述或 AI 绘图提示词。",
+          "valid": true
+        },
+        {
+          "title": "PromLib·AI提示词画廊",
+          "url": "https://promlib.com/",
+          "icon": "",
+          "hover": "PromLib 是 AI 绘画提示词资源库，收集和整理不同风格的生成式 AI 提示词案例，帮助用户查找、学习和优化图像生成参数。",
+          "valid": true
+        },
+        {
+          "title": "YouTube Video Downloader",
+          "url": "https://yt1ss.pro/en199",
+          "icon": "",
+          "hover": "YouTube Video Downloader 是在线视频下载工具，支持输入 YouTube 视频链接进行解析，可下载视频或音频文件，用于个人离线观看和内容整理。",
+          "valid": true
+        },
+        {
+          "title": "视频下载-YB",
+          "url": "https://downr.org/",
+          "icon": "",
+          "hover": "Downr 是在线视频下载网站，支持多个视频平台链接解析，可将在线视频转换为本地文件，提供视频下载和音频提取功能。",
+          "valid": true
+        },
+        {
+          "title": "无水印解析",
+          "url": "https://dy.kukutool.com/",
+          "icon": "",
+          "hover": "Kukutool 无水印解析工具支持短视频链接解析，可下载部分平台视频内容，主要用于去除视频平台附带的水印并保存媒体文件。",
+          "valid": true
+        },
+        {
+          "title": "Instagram下载",
+          "url": "https://fastvidl.com/instagram-reel-downloader-free",
+          "icon": "",
+          "hover": "FastVidl Instagram Downloader 是 Instagram 内容下载工具，支持下载 Instagram Reels 等视频内容，方便用户保存公开分享的视频素材。",
+          "valid": true
+        },
+        {
+          "title": "解析",
+          "url": "https://www.v2ob.com/",
+          "icon": "",
+          "hover": "V2OB 是在线视频解析工具，支持通过链接获取网络视频资源，提供视频下载、解析和媒体内容处理相关功能。",
+          "valid": true
+        },
+        {
+          "title": "短视频去水印下载",
+          "url": "https://www.yinziai.com/",
+          "icon": "",
+          "hover": "印子AI短视频下载工具支持短视频平台内容解析，可下载视频文件并处理部分水印信息，用于素材整理和视频保存。",
+          "valid": true
+        },
+        {
+          "title": "在线视频下载1080",
+          "url": "https://www.datatool.vip/",
+          "icon": "",
+          "hover": "DataTool 是在线视频处理平台，提供高清视频下载、视频解析和媒体资源处理功能，支持用户获取网络视频文件。",
+          "valid": true
+        },
+        {
+          "title": "视频下载-高清",
+          "url": "https://www.bestvideow.com/",
+          "icon": "",
+          "hover": "BestVideoW 是在线视频下载工具，支持解析视频链接并下载高清格式内容，提供视频保存和音频提取等基础功能。",
+          "valid": true
+        },
+        {
+          "title": "视频下载",
+          "url": "https://y2mp3.net/",
+          "icon": "",
+          "hover": "Y2MP3 是在线视频转换工具，主要用于将网络视频转换为 MP3 音频文件，也支持部分视频格式下载功能。",
+          "valid": true
+        },
+        {
+          "title": "Medio AI-视频下载",
+          "url": "https://medio.cool/en/",
+          "icon": "",
+          "hover": "Medio AI 是 AI 视频下载和处理工具，支持在线视频获取、媒体内容管理以及相关 AI 辅助功能，用于视频素材整理和处理。",
+          "valid": true
+        },
+        {
+          "title": "去文字-下视频",
+          "url": "https://vgo.pub/",
+          "icon": "",
+          "hover": "VGO 是在线视频处理工具，提供视频下载、文字去除等功能，帮助用户处理视频中的字幕、文字覆盖和视觉元素。",
+          "valid": true
+        },
+        {
+          "title": "小红书下载",
+          "url": "https://dy.kukutool.com/xiaohongshu",
+          "icon": "",
+          "hover": "Kukutool 小红书下载工具支持解析小红书内容链接，可保存公开图片和视频素材，方便用户进行内容收集和整理。",
+          "valid": true
+        },
+        {
+          "title": "视频去水印字幕logo① - 看往",
+          "url": "https://tupian.32cd.com/index.html#/user/login",
+          "icon": "",
+          "hover": "看往视频处理工具提供视频去水印、字幕和文字处理功能，支持在线编辑视频中的部分视觉元素，用于短视频素材加工。",
+          "valid": true
+        },
+        {
+          "title": "TikTok水印去除",
+          "url": "https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal",
+          "icon": "",
+          "hover": "WatermarkRemover.io 是 AI 视频水印去除工具，可自动识别并移除视频中的水印区域，支持 TikTok 等平台视频处理。",
+          "valid": true
+        },
+        {
+          "title": "Tiktok Downloader",
+          "url": "https://snaptik.app/en2",
+          "icon": "",
+          "hover": "SnapTik 是 TikTok 视频下载工具，支持通过 TikTok 视频链接获取视频文件，可下载部分无水印版本内容。",
+          "valid": true
+        },
+        {
+          "title": "玩转节点",
+          "url": "https://wanzhuanmi.com/",
+          "icon": "",
+          "hover": "玩转节点是网络资源和工具分享平台，提供节点信息、技术教程以及相关网络工具资源，帮助用户获取和管理相关服务。",
+          "valid": true
+        },
+        {
+          "title": "米贝分享",
+          "url": "https://www.mibei77.com/",
+          "icon": "",
+          "hover": "米贝分享是资源分享平台，提供软件、工具、教程等内容整理和下载服务，面向用户提供数字资源获取入口。",
+          "valid": true
+        },
+        {
+          "title": "飞影数字人 - 官方创作入口",
+          "url": "https://hifly.cc/",
+          "icon": "",
+          "hover": "飞影数字人是 AI 数字人创作平台，提供虚拟人物生成、数字人口播、视频制作和内容创作工具，帮助用户制作 AI 视频。",
+          "valid": true
+        },
+        {
+          "title": "OpenCut - 去字幕",
+          "url": "https://opencut.net/",
+          "icon": "",
+          "hover": "OpenCut 是开源 AI 视频编辑工具，提供视频剪辑、字幕处理和自动化编辑功能，支持用户快速完成短视频制作流程。",
+          "valid": true
+        },
+        {
+          "title": "AI 图像生成-放大和照片编辑器",
+          "url": "https://visuali.io/",
+          "icon": "",
+          "hover": "Visuali 是 AI 图像生成和编辑平台，提供图片生成、图像放大、照片增强、智能修复和视觉效果处理功能。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "YouTube",
+      "items": [
+        {
+          "title": "youtube无版权声音",
+          "url": "https://www.youtube.com/user/NoCopyrightSounds",
+          "icon": "",
+          "hover": "NoCopyrightSounds（NCS）是 YouTube 上的免版权音乐频道，提供电子音乐、背景音乐等音频资源，创作者可根据授权规则将音乐用于视频、直播和其他内容制作。",
+          "valid": true
+        },
+        {
+          "title": "YouTube Music",
+          "url": "https://music.youtube.com/",
+          "icon": "",
+          "hover": "YouTube Music 是 YouTube 提供的音乐流媒体服务，包含歌曲、音乐专辑、音乐视频和个性化推荐功能，用户可在线播放、搜索和管理音乐收藏。",
+          "valid": true
+        },
+        {
+          "title": "YouTube Studio",
+          "url": "https://www.youtube.com/account",
+          "icon": "",
+          "hover": "YouTube Studio 是 YouTube 创作者管理后台，提供视频上传、频道数据分析、评论管理、收益查看、版权检测和内容管理等创作者工具。",
+          "valid": true
+        },
+        {
+          "title": "YouTube",
+          "url": "https://www.youtube.com/",
+          "icon": "",
+          "hover": "YouTube 是全球视频分享平台，用户可以上传、观看和分享视频内容，提供视频搜索、直播、频道订阅、评论互动和创作者生态功能。",
+          "valid": true
+        },
+        {
+          "title": "YouTube免版税音乐",
+          "url": "https://tunetank.com/",
+          "icon": "",
+          "hover": "TuneTank 是免版税音乐和音效资源平台，提供视频背景音乐、音效素材和创作者授权服务，帮助内容创作者寻找适合的视频配乐资源。",
+          "valid": true
+        },
+        {
+          "title": "youtube免版权音乐",
+          "url": "https://ncs.io/",
+          "icon": "",
+          "hover": "NCS 是 NoCopyrightSounds 官方音乐平台，提供免费使用的电子音乐资源，创作者可以按照授权要求将音乐用于 YouTube、短视频和其他媒体内容。",
+          "valid": true
+        },
+        {
+          "title": "youtube免费视频图片",
+          "url": "https://www.pexels.com/zh-cn/",
+          "icon": "",
+          "hover": "Pexels 是一个免费图片和视频素材共享平台，主要提供摄影作品、插画和短视频素材下载。网站支持关键词搜索、分类浏览、高清素材获取，用户可以将资源用于设计、网页制作、视频剪辑和商业创作项目。",
+          "valid": true
+        },
+        {
+          "title": "youtube免费视频图片",
+          "url": "https://pixabay.com/",
+          "icon": "",
+          "hover": "Pixabay 是综合免费素材库，提供免版权图片、音乐、视频和 3D 资源下载，适用于视频制作、设计项目和内容创作场景。",
+          "valid": true
+        },
+        {
+          "title": "p5.js Web Editor",
+          "url": "https://editor.p5js.org/",
+          "icon": "",
+          "hover": "p5.js Web Editor 是在线 JavaScript 创意编程编辑器，支持编写、运行和分享 p5.js 项目，可用于生成动画、交互艺术和数据可视化作品。",
+          "valid": true
+        },
+        {
+          "title": "p5.js -模板",
+          "url": "https://openprocessing.org/",
+          "icon": "",
+          "hover": "OpenProcessing 是基于 Processing 和 p5.js 的创意代码社区，提供大量可参考的程序艺术作品、代码模板和在线创作环境。",
+          "valid": true
+        },
+        {
+          "title": "FMHY",
+          "url": "https://fmhy.pages.dev/",
+          "icon": "",
+          "hover": "FMHY 是 Free Media Heck Yeah 资源导航网站，整理免费软件、影视、音乐、学习工具和网络资源链接，方便用户查找各类免费服务。",
+          "valid": true
+        },
+        {
+          "title": "SkyReels｜从脚本到视频",
+          "url": "https://www.skyreels.ai/home/",
+          "icon": "",
+          "hover": "SkyReels 是 AI 视频生成平台，支持从文字脚本生成视频内容，提供角色创建、场景生成和视频制作功能，用于短片和创意内容生产。",
+          "valid": true
+        },
+        {
+          "title": "相逢解析站",
+          "url": "https://pan.xfyzyyb.xyz/user/parse",
+          "icon": "",
+          "hover": "相逢解析站是网盘资源解析工具，提供链接解析相关服务，帮助用户处理部分网络存储资源访问和文件获取流程。",
+          "valid": true
+        },
+        {
+          "title": "相逢储物站-解析密码",
+          "url": "https://pan.xfyzyyb.xyz/ms.html",
+          "icon": "",
+          "hover": "相逢储物站是网盘资源管理辅助页面，提供解析密码查询和相关资源访问入口，用于配合网盘文件解析和分享使用。",
+          "valid": true
+        },
+        {
+          "title": "百度网盘不限速，手机电脑都能用",
+          "url": "https://jyjc.cloudns.org/bdwpbxs_1",
+          "icon": "",
+          "hover": "百度网盘不限速工具是网络资源辅助服务，提供百度网盘文件下载加速相关功能，帮助用户改善部分文件下载速度和访问体验。",
+          "valid": true
+        },
+        {
+          "title": "一致性",
+          "url": "https://ideogram.ai/character",
+          "icon": "",
+          "hover": "Ideogram Character 是 Ideogram AI 提供的角色一致性功能，用于生成和保持 AI 图片中人物形象特征，适合连续角色设计和视觉创作。",
+          "valid": true
+        },
+        {
+          "title": "无版权图-声音-视频-3D",
+          "url": "https://pixabay.com/",
+          "icon": "",
+          "hover": "Pixabay 是综合免费素材库，提供免版权图片、音乐、视频和 3D 资源下载，适用于视频制作、设计项目和内容创作场景。",
+          "valid": true
+        },
+        {
+          "title": "PS-key",
+          "url": "https://gen.paramore.su/",
+          "icon": "",
+          "hover": "PS-key 是 Photoshop 相关资源页面，提供图像处理软件资源信息和相关内容入口，主要用于设计工具获取和使用参考。",
+          "valid": true
+        },
+        {
+          "title": "Animagraffs-关于一切的动画信息图。",
+          "url": "https://animagraffs.com/",
+          "icon": "",
+          "hover": "Animagraffs 是动画信息图网站，通过高质量动画和交互式图解解释科技、机械、生物等复杂主题，帮助用户直观理解知识内容。",
+          "valid": true
+        },
+        {
+          "title": "Adobe Photoshop",
+          "url": "https://photoshop.adobe.com/",
+          "icon": "",
+          "hover": "Adobe Photoshop 是 Adobe 提供的专业图像编辑软件，支持照片修图、图像合成、数字绘画、设计制作和 AI 图像处理等功能。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "Google",
+      "items": [
+        {
+          "title": "Gmail",
+          "url": "https://mail.google.com/mail/u/0/",
+          "icon": "",
+          "hover": "Gmail 是 Google 提供的电子邮件服务，支持邮件收发、分类管理、垃圾邮件过滤、搜索、附件存储和多设备同步，适用于个人通信和企业办公场景。",
+          "valid": true
+        },
+        {
+          "title": "Google图书合作伙伴",
+          "url": "https://play.google.com/books/publish/",
+          "icon": "",
+          "hover": "Google 图书合作伙伴是面向出版者的平台，允许作者和出版社上传电子书、管理图书信息、设置销售区域，并通过 Google Play 图书渠道发布内容。",
+          "valid": true
+        },
+        {
+          "title": "云计算服务 | Google Cloud",
+          "url": "https://cloud.google.com/",
+          "icon": "",
+          "hover": "Google Cloud 是谷歌云计算平台，提供云服务器、数据库、人工智能、机器学习、大数据分析、存储和开发工具，帮助企业构建和部署云端应用。",
+          "valid": true
+        },
+        {
+          "title": "Google Gemini",
+          "url": "https://gemini.google.com/app",
+          "icon": "",
+          "hover": "Google Gemini 是谷歌推出的 AI 助手，支持文本对话、代码生成、图片理解、文件分析和知识查询，可用于学习、办公和开发辅助。",
+          "valid": true
+        },
+        {
+          "title": "Google AI Studio",
+          "url": "https://aistudio.google.com/",
+          "icon": "",
+          "hover": "Google AI Studio 是面向开发者的生成式 AI 开发平台，提供 Gemini 模型调用、提示词测试、API 调试和应用原型开发功能。",
+          "valid": true
+        },
+        {
+          "title": "Google DeepMind",
+          "url": "https://deepmind.google/",
+          "icon": "",
+          "hover": "Google DeepMind 是谷歌人工智能研究机构，负责开发先进 AI 模型和技术，研究方向包括大语言模型、机器人、科学计算和生成式人工智能。",
+          "valid": true
+        },
+        {
+          "title": "Google Antigravity",
+          "url": "https://antigravity.google/",
+          "icon": "",
+          "hover": "Google Antigravity 是谷歌推出的实验性 AI 开发相关项目，提供人工智能工具和技术体验入口，用于探索新型 AI 应用开发方式。",
+          "valid": true
+        },
+        {
+          "title": "Veo - Google DeepMind",
+          "url": "https://deepmind.google/models/veo/",
+          "icon": "",
+          "hover": "Veo 是 Google DeepMind 开发的视频生成模型，能够根据文字描述生成高质量视频内容，支持场景创建、镜头控制和视觉效果生成。",
+          "valid": true
+        },
+        {
+          "title": "Whisk - labs.google/fx",
+          "url": "https://labs.google/fx/zh/tools/whisk",
+          "icon": "",
+          "hover": "Whisk 是 Google Labs 推出的 AI 图像创作工具，支持用户通过图片和文字提示生成新的视觉内容，用于创意设计和图像实验。",
+          "valid": true
+        },
+        {
+          "title": "Code Wiki",
+          "url": "https://codewiki.google/",
+          "icon": "",
+          "hover": "Code Wiki 是谷歌提供的代码理解工具，利用 AI 分析代码库结构、生成文档说明和解释代码逻辑，帮助开发者快速理解项目。",
+          "valid": true
+        },
+        {
+          "title": "谷歌-flow",
+          "url": "https://flow.google/",
+          "icon": "",
+          "hover": "Flow 是 Google 推出的 AI 视频创作工具，结合生成式 AI 能力帮助用户通过文字、图像等方式创建和编辑视频内容。",
+          "valid": true
+        },
+        {
+          "title": "Google AdSense",
+          "url": "https://adsense.google.com/",
+          "icon": "",
+          "hover": "Google AdSense 是谷歌网站广告服务平台，允许网站和内容创作者通过展示广告获得收益，并提供广告管理、数据统计和优化工具。",
+          "valid": true
+        },
+        {
+          "title": "Google",
+          "url": "https://www.google.com/",
+          "icon": "",
+          "hover": "Google 是全球搜索引擎和互联网服务平台，提供网页搜索、地图、邮箱、云服务、办公工具和多种数字产品服务。",
+          "valid": true
+        },
+        {
+          "title": "Google 翻译",
+          "url": "https://translate.google.com/?sl=en&tl=uk&op=translate",
+          "icon": "",
+          "hover": "Google 翻译是在线多语言翻译工具，支持文本、网页、图片和语音翻译，提供多种语言之间的自动翻译和语言识别功能。",
+          "valid": true
+        },
+        {
+          "title": "Google 云端硬盘",
+          "url": "https://drive.google.com/drive/quota",
+          "icon": "",
+          "hover": "Google 云端硬盘是云存储服务，支持文件上传、保存、共享和协作编辑，可与 Google 文档、表格等办公工具结合使用。",
+          "valid": true
+        },
+        {
+          "title": "Google Labs",
+          "url": "https://labs.google/",
+          "icon": "",
+          "hover": "Google Labs 是谷歌实验性产品展示平台，提供 AI 工具、新技术项目和创新应用体验，让用户测试谷歌研发中的新功能。",
+          "valid": true
+        },
+        {
+          "title": "Google Skills",
+          "url": "https://www.skills.google/",
+          "icon": "",
+          "hover": "Google Skills 是谷歌云学习平台，提供云计算、人工智能、数据分析、安全等课程和实验环境，帮助用户学习相关技术。",
+          "valid": true
+        },
+        {
+          "title": "google安全性",
+          "url": "https://myaccount.google.com/security?spm=5176.28103460.0.0.7f8d63087H75Te",
+          "icon": "",
+          "hover": "Google 安全性页面是 Google 账号安全管理中心，提供密码管理、两步验证、安全检查、设备管理和登录活动查看功能。",
+          "valid": true
+        },
+        {
+          "title": "谷歌NotebookLM",
+          "url": "https://notebooklm.google.com/",
+          "icon": "",
+          "hover": "NotebookLM 是 Google 推出的 AI 笔记和研究助手，支持上传文档资料，通过 AI 进行总结、问答、分析和知识整理。",
+          "valid": true
+        },
+        {
+          "title": "更改gmail所在地",
+          "url": "https://policies.google.com/country-association-form",
+          "icon": "",
+          "hover": "账号关联地区请求页面用于申请修改 Google 账号国家或地区关联信息，主要处理账户地区识别、服务限制和区域设置问题。",
+          "valid": true
+        },
+        {
+          "title": "Genie 3 — Google DeepMind",
+          "url": "https://deepmind.google/models/genie/",
+          "icon": "",
+          "hover": "Genie 是 Google DeepMind 开发的 AI 世界模型项目，能够根据图像、文本等输入生成可交互环境，用于探索人工智能理解现实世界的能力。",
+          "valid": true
+        },
+        {
+          "title": "Imagen - Google DeepMind",
+          "url": "https://deepmind.google/models/imagen/",
+          "icon": "",
+          "hover": "Imagen 是 Google DeepMind 的图像生成模型，支持根据文字描述生成高质量图片，并提供图像编辑和视觉内容创作能力。",
+          "valid": true
+        },
+        {
+          "title": "Disco",
+          "url": "https://labs.google/disco",
+          "icon": "",
+          "hover": "Disco 是 Google Labs 推出的实验性 AI 工具，用于探索生成式人工智能在创意、内容制作和交互体验方面的应用。",
+          "valid": true
+        },
+        {
+          "title": "账号关联地区请求",
+          "url": "https://policies.google.com/country-association-form",
+          "icon": "",
+          "hover": "账号关联地区请求页面用于申请修改 Google 账号国家或地区关联信息，主要处理账户地区识别、服务限制和区域设置问题。",
+          "valid": true
+        },
+        {
+          "title": "Firebase Studio",
+          "url": "https://idx.google.com/",
+          "icon": "",
+          "hover": "Firebase Studio 是谷歌提供的 AI 辅助应用开发环境，支持快速创建、测试和部署 Web 应用，并结合 Firebase 后端服务。",
+          "valid": true
+        },
+        {
+          "title": "Opal",
+          "url": "https://opal.google/?mode=canvas",
+          "icon": "",
+          "hover": "Opal 是 Google Labs 的 AI 应用实验工具，支持用户通过自然语言创建简单 AI 工作流和应用原型，用于快速验证创意。",
+          "valid": true
+        },
+        {
+          "title": "OpenCode |开源AI编码代理",
+          "url": "https://opencode.ai/",
+          "icon": "",
+          "hover": "OpenCode 是开源 AI 编程代理工具，支持开发者通过自然语言完成代码生成、项目分析、代码修改和开发任务自动化。",
+          "valid": true
+        },
+        {
+          "title": "OpenRouter",
+          "url": "https://openrouter.ai/",
+          "icon": "",
+          "hover": "OpenRouter 是一个 AI 模型 API 聚合平台，主要连接多个人工智能模型供应商，为开发者提供统一接口访问不同大语言模型。用户可以通过一个 API 调用多个模型，方便进行模型比较、应用开发和成本管理。",
+          "valid": true
+        },
+        {
+          "title": "Stitch",
+          "url": "https://stitch.withgoogle.com/",
+          "icon": "",
+          "hover": "Stitch 是 Google 推出的 AI 设计工具，可根据文字描述生成界面设计方案，帮助开发者和设计师快速创建 UI 原型。",
+          "valid": true
+        },
+        {
+          "title": "运动定格-Higgsfield",
+          "url": "https://higgsfield.ai/",
+          "icon": "",
+          "hover": "Higgsfield 是 AI 视频生成和动态效果制作平台，提供图像动画、镜头运动、人物动作生成等视频创作功能。",
+          "valid": true
+        },
+        {
+          "title": "Facebook",
+          "url": "https://www.facebook.com/",
+          "icon": "",
+          "hover": "Facebook 是社交网络平台，提供用户交流、内容发布、群组管理、视频分享、广告投放和社交互动功能。",
+          "valid": true
+        },
+        {
+          "title": "Coze-扣子",
+          "url": "https://www.coze.com/",
+          "icon": "",
+          "hover": "Coze（扣子）是字节跳动推出的 AI 智能体开发平台，支持创建聊天机器人、工作流应用和自动化 AI 助手。",
+          "valid": true
+        },
+        {
+          "title": "Overview - OpenAI API",
+          "url": "https://platform.openai.com/docs/overview",
+          "icon": "",
+          "hover": "OpenAI API 是开发者接口平台，提供 GPT 系列模型调用、文本生成、图像处理、语音能力和 AI 应用开发文档。",
+          "valid": true
+        },
+        {
+          "title": "Intangible Studio",
+          "url": "https://studio.intangible.ai/",
+          "icon": "",
+          "hover": "Intangible Studio 是 AI 创意工具平台，提供生成式设计、图像创作和视觉内容制作功能，用于探索人工智能辅助创作流程。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "电影",
+      "items": [
+        {
+          "title": "奈飞工厂",
+          "url": "https://www.netflixgc.com/",
+          "icon": "",
+          "hover": "奈飞工厂是一个影视在线播放聚合网站，主要提供电影、电视剧、纪录片、动漫、综艺等视频内容分类浏览与在线播放功能。网站支持影片搜索、专题整理、热门推荐等功能，方便用户根据类型或关键词查找影视资源。([netflixgc.org][1])",
+          "valid": true
+        },
+        {
+          "title": "音范丝",
+          "url": "https://www.yinfans.net/",
+          "icon": "",
+          "hover": "音范丝是一个以高清影视资源整理为核心的影音资源站，主要收录蓝光原盘、4K影片、高清电影等内容，并提供影片介绍、版本信息和资源索引。网站偏向电影收藏和高清影音爱好者使用，注重影片画质与音轨信息整理。([yinfans.me][2])",
+          "valid": true
+        },
+        {
+          "title": "低端影视",
+          "url": "https://www.hjdpj.com/",
+          "icon": "",
+          "hover": "低端影视是一个影视内容在线播放平台，主要提供电影、电视剧等视频资源的分类浏览、影片搜索和在线播放服务。网站通常按照影片类型、年份、地区等方式整理内容，方便用户快速查找不同影视作品。([Reddit][3])",
+          "valid": true
+        },
+        {
+          "title": "低端影视-",
+          "url": "https://www.iqingtun.com/",
+          "icon": "",
+          "hover": "低端影视- 是一个与低端影视名称相近的影视播放网站，主要功能包括影视资源展示、分类筛选、关键词搜索和在线播放。网站面向电影电视剧观看需求，提供较为简洁的视频浏览入口，帮助用户查找不同类型影视内容。([Reddit][3])",
+          "valid": true
+        },
+        {
+          "title": "大米星球",
+          "url": "https://www.5zsz.net/",
+          "icon": "",
+          "hover": "大米星球是一个在线视频影视资源站，主要提供电影、电视剧、动漫、综艺等内容浏览和在线播放功能。网站通过分类导航、影片搜索、更新列表等方式组织影视内容，用户可以根据片名或分类查找相关视频。",
+          "valid": true
+        },
+        {
+          "title": "剧圈圈",
+          "url": "https://www.jqqzx.me/",
+          "icon": "",
+          "hover": "剧圈圈是一个影视播放与资源整理网站，主要面向电视剧、电影等内容观看需求，提供影片分类、搜索、在线播放等基础功能。网站通过影视目录和更新内容展示，帮助用户浏览近期或热门影视作品。",
+          "valid": true
+        },
+        {
+          "title": "南瓜影院",
+          "url": "http://www.tjwqjz.com/",
+          "icon": "",
+          "hover": "南瓜影院是一个在线视频影视平台，主要提供电影、电视剧等影视内容的浏览和播放服务。网站通常包含影片分类、搜索入口、更新列表等功能，用户可以根据影片名称或类型查找需要观看的视频内容。",
+          "valid": true
+        },
+        {
+          "title": "Flixbaba - 免费在线观看高清电影",
+          "url": "https://flixbaba.tv/",
+          "icon": "",
+          "hover": "Flixbaba 是一个提供免费在线视频观看服务的网站，主要聚合电影、电视剧等影视内容，并提供影片搜索、分类浏览和在线播放功能。网站面向海外影视观看需求，支持用户通过影片名称查找相关内容。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "身份",
+      "items": [
+        {
+          "title": "Cloudflare IP Batch Test Tool",
+          "url": "http://ip.flares.cloud/",
+          "icon": "",
+          "hover": "IP优选是一个 Cloudflare IP 测试和筛选工具，主要用于检测不同 Cloudflare 节点 IP 的响应速度、延迟和可用性。用户可以通过批量测试结果选择网络表现较好的 IP 地址，用于 CDN 配置、访问优化和网络调试。",
+          "valid": true
+        },
+        {
+          "title": "Cloudflare",
+          "url": "https://dash.cloudflare.com/",
+          "icon": "",
+          "hover": "Cloudflare 是一个提供网站安全、防护和网络加速服务的平台，控制面板用于管理域名解析、DNS 设置、CDN 加速、SSL/TLS 证书、防火墙规则以及各种网络安全功能。用户可以通过该后台管理托管在 Cloudflare 上的网站和相关服务配置。",
+          "valid": true
+        },
+        {
+          "title": "Online UUID",
+          "url": "https://www.uuidgenerator.net/",
+          "icon": "",
+          "hover": "Online UUID 是一个在线 UUID 生成工具，主要用于快速创建符合标准格式的唯一标识符。网站支持生成随机 UUID，可用于软件开发中的数据库主键、接口参数、设备标识、测试数据生成等场景，帮助开发人员快速获取唯一字符串。",
+          "valid": true
+        },
+        {
+          "title": "欢迎使用 Colab",
+          "url": "https://colab.research.google.com/",
+          "icon": "",
+          "hover": "Google Colab 是一个基于云端的 Python 编程和计算环境，主要用于数据分析、机器学习和人工智能模型实验。用户无需本地安装环境即可运行 Jupyter Notebook，并可调用云端 GPU、TPU 等计算资源，适合算法测试、模型训练和代码分享。",
+          "valid": true
+        },
+        {
+          "title": "美国地址生成器",
+          "url": "https://ratenn.com/american.html",
+          "icon": "",
+          "hover": "美国地址生成器是一个在线随机地址生成工具，主要用于生成美国地区的虚拟地址信息，包括街道、城市、州、邮编等字段。该类工具常用于软件测试、表单测试、开发调试等场景，帮助用户快速创建符合格式要求的地址数据。",
+          "valid": true
+        },
+        {
+          "title": "美国地址生成器",
+          "url": "https://www.meiguodizhi.com/",
+          "icon": "",
+          "hover": "美国地址生成器是一个提供美国随机地址数据生成的网站，支持生成不同州、城市的模拟地址信息。网站主要用于测试注册流程、数据库录入、程序开发验证等用途，可快速提供结构化的地址样本，而非真实用户地址。",
+          "valid": true
+        },
+        {
+          "title": "美国身份证生成",
+          "url": "https://shenfendaquan.com/",
+          "icon": "",
+          "hover": "美国身份证生成是一个用于生成模拟美国身份信息的网站，主要提供虚拟身份数据生成，例如姓名、编号、出生信息等字段。该工具通常用于开发测试、表单验证和数据模拟场景，帮助开发人员测试系统对身份数据的处理能力。",
+          "valid": true
+        },
+        {
+          "title": "美国随机地址生成器",
+          "url": "https://addressgenerator.top/zh/",
+          "icon": "",
+          "hover": "美国随机地址生成器是一个在线地址模拟工具，支持生成美国地区的随机地址信息，并提供中文界面方便查询使用。网站主要用于软件测试、注册流程模拟和开发调试，可快速创建符合美国地址格式的数据样本。",
+          "valid": true
+        },
+        {
+          "title": "Open Proxy List - Free VPN &amp; Proxy",
+          "url": "https://openproxylist.com/",
+          "icon": "",
+          "hover": "Open Proxy List 是一个免费代理服务器查询网站，主要提供公开代理 IP 地址、端口、协议类型、国家位置和可用状态等信息。用户可以通过列表查找代理节点，用于网络测试、代理配置、连接验证和开发调试等场景。",
+          "valid": true
+        },
+        {
+          "title": "浏览器添加",
+          "url": "edge://flags/",
+          "icon": "",
+          "hover": "Edge Flags 是 Microsoft Edge 浏览器的实验功能设置页面，用户可以通过该页面开启或关闭浏览器隐藏功能和测试特性。该页面主要用于开发测试、性能优化和体验新功能，例如启用实验性 API、界面调整或浏览器行为修改。",
+          "valid": true
+        },
+        {
+          "title": "GIT-code",
+          "url": "https://github.com/cmliu/edgetunnel/blob/main/_worker.js",
+          "icon": "",
+          "hover": "GIT-code 是 GitHub 上的一个代码文件页面，展示 cmliu/edgetunnel 项目中的 _worker.js 文件。该代码主要用于基于 Cloudflare Workers 实现网络代理相关功能，用户可以查看源码、复制代码或根据项目说明进行部署修改。",
+          "valid": true
+        },
+        {
+          "title": "Open Proxy List",
+          "url": "https://openproxylist.com/",
+          "icon": "",
+          "hover": "Open Proxy List 是一个免费代理服务器查询网站，主要提供公开代理 IP 地址、端口、协议类型、国家位置和可用状态等信息。用户可以通过列表查找代理节点，用于网络测试、代理配置、连接验证和开发调试等场景。",
+          "valid": true
+        },
+        {
+          "title": "fofa.info",
+          "url": "https://fofa.info/",
+          "icon": "",
+          "hover": "FOFA 是一个网络空间搜索引擎，主要用于互联网资产测绘和安全研究。平台通过搜索网络设备、网站、服务器、端口、服务特征等公开信息，帮助安全人员进行资产发现、漏洞分析、网络监控和安全评估。",
+          "valid": true
+        },
+        {
+          "title": "5订单",
+          "url": "https://5sim.net/zh/login",
+          "icon": "",
+          "hover": "5sim 是一个提供在线短信验证码服务的平台，主要用于接收不同国家和地区手机号码的短信验证码。网站提供虚拟号码租用、验证码接收等功能，常用于开发测试、账号验证流程测试以及需要临时号码的场景。",
+          "valid": true
+        },
+        {
+          "title": "Psiphon",
+          "url": "https://psiphon.ca/zh/",
+          "icon": "",
+          "hover": "Psiphon 是一款开源网络代理工具，主要通过 VPN、SSH 和 HTTP 代理等技术帮助用户建立网络连接。官方网站提供软件下载、使用说明和相关支持信息，主要面向需要改善网络访问环境和保护连接隐私的用户。",
+          "valid": true
+        },
+        {
+          "title": "nthLink",
+          "url": "https://www.nthlink.com/zh/",
+          "icon": "",
+          "hover": "nthLink 是一个网络连接工具，主要提供基于代理技术的访问服务。网站提供客户端软件下载和使用说明，通过优化连接方式帮助用户建立稳定网络通道，适用于网络访问、隐私保护和连接测试等场景。",
+          "valid": true
+        },
+        {
+          "title": "ip优选",
+          "url": "http://ip.flares.cloud/",
+          "icon": "",
+          "hover": "IP优选是一个 Cloudflare IP 测试和筛选工具，主要用于检测不同 Cloudflare 节点 IP 的响应速度、延迟和可用性。用户可以通过批量测试结果选择网络表现较好的 IP 地址，用于 CDN 配置、访问优化和网络调试。",
+          "valid": true
+        },
+        {
+          "title": "全球主机监控 - IP优选网站",
+          "url": "https://stock.hostmonit.com/CloudFlareYes",
+          "icon": "",
+          "hover": "全球主机监控 - IP优选网站是一个用于监控全球服务器节点和 Cloudflare IP 状态的平台，主要提供 IP 延迟检测、节点测速、可用性查询等功能。用户可以查看不同地区网络连接表现，辅助选择更稳定的服务器或 CDN 节点。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "壁纸",
+      "items": [
+        {
+          "title": "图片exif信息查看",
+          "url": "https://www.itutool.com/tools/exif-viewer",
+          "icon": "",
+          "hover": "图片EXIF信息查看是一个在线图片元数据查询工具，主要用于读取图片文件中的EXIF信息，包括拍摄设备、镜头参数、拍摄时间、GPS定位、分辨率等数据。用户可以上传图片快速查看隐藏在文件中的技术信息，适用于摄影分析、图片管理和信息检查。",
+          "valid": true
+        },
+        {
+          "title": "EXIF信息查看器",
+          "url": "https://exif.tuchong.com/view/15317329/",
+          "icon": "",
+          "hover": "EXIF信息查看器是一个用于查看图片EXIF元数据的在线工具，主要提供照片信息解析功能。用户可以通过上传图片查看相机型号、曝光参数、焦距、ISO、拍摄时间以及其他嵌入式信息，方便摄影爱好者分析照片来源和拍摄设置。",
+          "valid": true
+        },
+        {
+          "title": "图片EXIF信息查看器",
+          "url": "https://51tools.info/image-exif/",
+          "icon": "",
+          "hover": "图片EXIF信息查看器是一个图片元数据检测工具，支持读取常见图片格式中的EXIF数据。网站主要用于查看图片拍摄设备、时间、地理位置、尺寸等详细属性，可帮助用户检测图片信息、学习摄影参数或进行文件管理。",
+          "valid": true
+        },
+        {
+          "title": "高端时尚- SSENSE",
+          "url": "https://www.ssense.com/zh-us",
+          "icon": "",
+          "hover": "SSENSE 是一个国际时尚电商平台，主要销售设计师品牌服装、鞋履、包袋、配饰以及艺术文化相关商品。网站提供来自全球品牌的商品展示、分类筛选、品牌介绍和在线购买功能，面向高端时尚消费者和设计师品牌用户。",
+          "valid": true
+        },
+        {
+          "title": "NET-奢侈品",
+          "url": "https://www.net-a-porter.com/zh-us/",
+          "icon": "",
+          "hover": "NET-A-PORTER 是一个面向女性消费者的高端时尚购物网站，主要提供奢侈品牌服装、鞋子、手袋、珠宝和美容产品。平台集合多个国际设计师品牌，提供商品展示、时尚资讯、分类搜索和在线购物服务。",
+          "valid": true
+        },
+        {
+          "title": "Shopbop - 时装",
+          "url": "https://www.shopbop.com/",
+          "icon": "",
+          "hover": "Shopbop 是一个在线时装购物平台，主要销售女性服装、鞋履、包袋、配饰等时尚商品。网站收录多个国际品牌，提供商品分类浏览、尺码筛选、品牌搜索和购物功能，方便用户购买日常及设计师风格服饰。",
+          "valid": true
+        },
+        {
+          "title": "FARFETCH - 时装",
+          "url": "https://www.farfetch.com/",
+          "icon": "",
+          "hover": "FARFETCH 是一个全球奢侈时尚电商平台，连接众多精品买手店和设计师品牌，提供服装、鞋履、包袋、配饰等商品。网站支持全球购物、品牌搜索、商品筛选和潮流资讯查看，主要服务高端时尚消费需求。",
+          "valid": true
+        },
+        {
+          "title": "VOGU-时装",
+          "url": "https://www.vogue.com.cn/",
+          "icon": "",
+          "hover": "VOGUE 是一个时尚资讯平台，主要提供服装趋势、设计师动态、明星造型、美妆、文化活动等内容。网站通过文章、图片、专题报道等形式展示全球时尚行业信息，同时提供品牌、秀场和潮流趋势相关资讯。",
+          "valid": true
+        },
+        {
+          "title": "免费素材图片",
+          "url": "https://www.pexels.com/zh-cn/",
+          "icon": "",
+          "hover": "Pexels 是一个免费图片和视频素材共享平台，主要提供摄影作品、插画和短视频素材下载。网站支持关键词搜索、分类浏览、高清素材获取，用户可以将资源用于设计、网页制作、视频剪辑和商业创作项目。",
+          "valid": true
+        },
+        {
+          "title": "壁纸3",
+          "url": "https://unsplash.com/",
+          "icon": "",
+          "hover": "Unsplash 是一个免费的高质量图片素材平台，主要收录摄影师上传的高清照片资源。网站提供自然、人物、建筑、科技等多个分类，支持图片搜索和下载，常用于设计项目、网站配图、演示文稿和视觉创作。",
+          "valid": true
+        },
+        {
+          "title": "壁纸1",
+          "url": "https://wallhaven.cc/",
+          "icon": "",
+          "hover": "Wallhaven 是一个高清壁纸资源网站，主要提供电脑桌面、手机壁纸等图片资源。网站支持按分辨率、颜色、分类、标签进行筛选，并提供大量动漫、风景、艺术和摄影类壁纸，适合用户寻找高清背景图片。",
+          "valid": true
+        },
+        {
+          "title": "壁纸2",
+          "url": "https://wallpaperscraft.com/",
+          "icon": "",
+          "hover": "WallpapersCraft 是一个壁纸下载网站，主要提供电脑、手机和平板设备使用的高清壁纸资源。网站按照设备分辨率和图片分类整理内容，用户可以搜索自然、城市、动漫、游戏等主题壁纸并下载使用。",
+          "valid": true
+        },
+        {
+          "title": "自由皮克",
+          "url": "https://www.freepik.com/",
+          "icon": "",
+          "hover": "Freepik 是一个综合设计素材平台，主要提供图片、矢量图、PSD文件、图标、模板等设计资源。网站支持关键词搜索和分类浏览，设计人员可以获取平面设计、网页设计、营销物料等项目所需素材。",
+          "valid": true
+        },
+        {
+          "title": "奢侈品牌",
+          "url": "https://www.mytheresa.com/cn/zh",
+          "icon": "",
+          "hover": "Mytheresa 是一个国际奢侈品电商平台，主要销售高端服装、鞋履、手袋、珠宝和配饰等商品。网站集合多个奢侈品牌，提供品牌分类、商品搜索、时尚内容展示以及在线购买服务。",
+          "valid": true
+        },
+        {
+          "title": "位图转矢量图",
+          "url": "https://vectorizer.ai/",
+          "icon": "",
+          "hover": "Vectorizer.ai 是一个在线位图转矢量图工具，主要用于将 JPG、PNG 等像素图片转换为 SVG 等矢量格式。网站通过自动识别图像边缘和颜色区域生成可缩放图形，适用于Logo处理、设计编辑和印刷制作。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "API-VPS",
+      "items": [
+        {
+          "title": "Unlimited-API",
+          "url": "https://unlimited.surf/",
+          "icon": "",
+          "hover": "",
+          "valid": true
+        },
+        {
+          "title": "Oracle Cloud",
+          "url": "https://www.oracle.com/cn/cloud/free/",
+          "icon": "",
+          "hover": "Oracle Cloud 是甲骨文提供的云计算服务平台，主要提供云服务器、数据库、存储、网络、安全和人工智能相关服务。免费套餐页面用于申请和管理部分永久免费云资源，适合开发测试、学习云计算以及部署个人应用。",
+          "valid": true
+        },
+        {
+          "title": "NVIDIA Air VPS",
+          "url": "https://dsx-air.nvidia.com/",
+          "icon": "",
+          "hover": "NVIDIA Air VPS 是英伟达面向开发者提供的云端 AI 实验环境平台，主要用于运行 GPU 加速计算任务、测试人工智能模型和开发 AI 应用。平台提供 NVIDIA 硬件环境、开发工具和相关资源，方便用户进行模型训练与推理实验。",
+          "valid": true
+        },
+        {
+          "title": "英伟达-API",
+          "url": "https://build.nvidia.com/",
+          "icon": "",
+          "hover": "NVIDIA API 是英伟达提供的 AI 模型和开发服务平台，主要提供大语言模型、视觉模型、语音模型等 API 接口。开发者可以通过平台调用 NVIDIA 提供的模型能力，用于构建聊天助手、智能应用、企业 AI 服务等项目。",
+          "valid": true
+        },
+        {
+          "title": "Kimi  API Service",
+          "url": "https://platform.moonshot.ai/",
+          "icon": "",
+          "hover": "Kimi API Service 是月之暗面提供的模型接口服务平台，主要用于调用 Kimi 大语言模型能力。开发者可以通过 API 接入文本生成、内容理解、长文本处理等功能，将 AI 能力集成到应用、网站和自动化工具中。",
+          "valid": true
+        },
+        {
+          "title": "MiniMax API",
+          "url": "https://platform.minimax.io/",
+          "icon": "",
+          "hover": "MiniMax API 是 MiniMax 提供的人工智能模型开放接口平台，主要提供文本生成、对话、语音、多模态等 AI 能力调用。开发者可以通过 API 将 MiniMax 模型集成到软件应用、智能助手和内容生成工具中。",
+          "valid": true
+        },
+        {
+          "title": "Xiaomi MiMo API Open Platform",
+          "url": "https://platform.xiaomimimo.com/",
+          "icon": "",
+          "hover": "Xiaomi MiMo API Open Platform 是小米 MiMo 模型开放平台，主要提供小米自研 AI 模型的 API 调用服务。平台面向开发者开放模型能力，可用于自然语言处理、智能问答、代码辅助和其他人工智能应用开发。",
+          "valid": true
+        },
+        {
+          "title": "魔搭社区",
+          "url": "https://www.modelscope.cn/my/overview",
+          "icon": "",
+          "hover": "魔搭社区（ModelScope）是阿里达摩院推出的人工智能模型和数据开放平台，主要提供开源模型、数据集、算法工具和在线实验环境。用户可以浏览、下载、测试和部署各种 AI 模型，用于机器学习研究和应用开发。",
+          "valid": true
+        },
+        {
+          "title": "免费开源的机器翻译API 🌐",
+          "url": "https://libretranslate.com/",
+          "icon": "",
+          "hover": "LibreTranslate 是一个开源免费的机器翻译 API 服务平台，主要提供多语言文本自动翻译接口。开发者可以通过 API 将翻译功能集成到网站、软件或自动化工具中，支持多种语言之间的文本转换。",
+          "valid": true
+        },
+        {
+          "title": "CURSOR API",
+          "url": "https://api.cursorai.art/login",
+          "icon": "",
+          "hover": "CURSOR API 是一个提供 Cursor 相关 AI 服务接口的平台，主要用于调用代码生成、智能编程辅助等 AI 能力。用户可以通过接口方式接入相关模型服务，用于软件开发、代码补全和程序辅助功能实现。",
+          "valid": true
+        },
+        {
+          "title": "免费VPS-run.freecloud",
+          "url": "https://run.freecloud.ltd/",
+          "icon": "",
+          "hover": "run.freecloud 是一个提供免费云计算资源的平台，主要面向开发者提供在线运行环境、服务器资源或测试环境。用户可以用于部署简单应用、运行程序、学习服务器配置以及进行云端开发实验。",
+          "valid": true
+        },
+        {
+          "title": "腾讯云",
+          "url": "https://console.cloud.tencent.com/",
+          "icon": "",
+          "hover": "腾讯云是腾讯提供的云计算服务平台，主要提供云服务器、数据库、对象存储、CDN、安全服务、人工智能接口等基础设施。控制台用于管理云资源、创建实例、配置服务和查看账户使用情况。",
+          "valid": true
+        },
+        {
+          "title": "OpenRouter",
+          "url": "https://openrouter.ai/",
+          "icon": "",
+          "hover": "OpenRouter 是一个 AI 模型 API 聚合平台，主要连接多个人工智能模型供应商，为开发者提供统一接口访问不同大语言模型。用户可以通过一个 API 调用多个模型，方便进行模型比较、应用开发和成本管理。",
+          "valid": true
+        },
+        {
+          "title": "ClawCloud Run",
+          "url": "https://us-east-1.run.claw.cloud/",
+          "icon": "",
+          "hover": "ClawCloud Run 是一个云端应用运行平台，主要用于部署和托管 Web 应用、API 服务以及开发项目。平台提供容器化运行环境，用户可以上传代码并快速部署在线服务，适合个人项目和开发测试。",
+          "valid": true
+        },
+        {
+          "title": "智谱API",
+          "url": "https://bigmodel.cn/usercenter/proj-mgmt/apikeys",
+          "icon": "",
+          "hover": "智谱 API 是智谱 AI 提供的大语言模型开放接口平台，主要提供 GLM 系列模型调用服务。开发者可以通过 API 实现智能问答、文本生成、代码辅助、知识处理等功能，用于构建各种 AI 应用。",
+          "valid": true
+        },
+        {
+          "title": "阿里云百炼平台API",
+          "url": "https://bailian.console.aliyun.com/cn-beijing/",
+          "icon": "",
+          "hover": "阿里云百炼平台 API 是阿里云提供的生成式 AI 应用开发平台，主要提供通义系列模型和相关 AI 服务接口。用户可以通过 API 调用模型能力，实现智能客服、内容生成、知识问答和企业级 AI 应用开发。",
+          "valid": true
+        },
+        {
+          "title": "鑫源API",
+          "url": "https://xinyuanai666.com/login",
+          "icon": "",
+          "hover": "鑫源 API 是一个提供人工智能接口服务的平台，主要用于提供模型调用、AI 能力接入等功能。用户可以通过平台获取 API 接口，将相关人工智能能力集成到个人项目、自动化工具或应用程序中。",
+          "valid": true
+        },
+        {
+          "title": "阶跃星辰API",
+          "url": "https://platform.stepfun.com/",
+          "icon": "",
+          "hover": "阶跃星辰 API 是阶跃星辰提供的大模型开放平台，主要提供 Step 系列人工智能模型接口。开发者可以调用文本理解、内容生成、多轮对话等模型能力，用于开发智能助手、企业应用和 AI 产品。",
+          "valid": true
+        },
+        {
+          "title": "智谱-国际",
+          "url": "https://z.ai/subscribe",
+          "icon": "",
+          "hover": "智谱-国际是智谱 AI 面向海外用户提供的模型服务入口，主要用于访问 GLM 系列模型订阅和 API 相关服务。平台支持国际用户管理账户、查看模型服务以及使用人工智能接口能力。",
+          "valid": true
+        },
+        {
+          "title": "HubuHost.com",
+          "url": "https://hubuhost.com/",
+          "icon": "",
+          "hover": "HubuHost.com 是一个虚拟主机和服务器服务平台，主要提供网站托管、云服务器、域名相关服务。用户可以购买或管理主机资源，用于部署博客、网站、Web 应用以及个人项目。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "AI-3D",
+      "items": [
+        {
+          "title": "Hitem3D",
+          "url": "https://hitem3d.ai/",
+          "icon": "",
+          "hover": "Hitem3D 是一个基于人工智能的 3D 模型生成平台，主要用于通过文本描述或图片输入自动创建三维模型。网站面向游戏开发、数字内容制作、产品设计等场景，帮助用户快速生成可用于后续编辑、渲染和展示的 3D 资产。",
+          "valid": true
+        },
+        {
+          "title": "AI生成3D场景能手调",
+          "url": "https://www.intangible.ai/",
+          "icon": "",
+          "hover": "AI生成3D场景能手调（Intangible AI）是一个利用人工智能生成和编辑三维场景的平台，主要用于根据文字描述创建 3D 环境、空间布局和数字场景。该工具适合游戏开发、虚拟空间设计、影视预览等需要快速构建三维环境的应用场景。",
+          "valid": true
+        },
+        {
+          "title": "3D溜溜网",
+          "url": "https://user.3d66.com/",
+          "icon": "",
+          "hover": "3D溜溜网是一个综合性的 3D 设计资源平台，主要提供 3D 模型、材质、贴图、设计教程等资源。网站服务于建筑设计、室内设计、工业设计等领域，用户可以下载素材、浏览作品，并获取三维设计相关资源。",
+          "valid": true
+        },
+        {
+          "title": "Tripo-3D",
+          "url": "https://www.tripo3d.ai/app/home",
+          "icon": "",
+          "hover": "Tripo3D 是一个 AI 三维模型生成平台，主要通过文字描述或图片输入快速生成 3D 模型。平台支持模型创建、编辑和导出功能，可用于游戏开发、动画制作、虚拟现实、产品展示等数字内容生产场景。",
+          "valid": true
+        },
+        {
+          "title": "HYPER-3D",
+          "url": "https://hyper3d.ai/",
+          "icon": "",
+          "hover": "HYPER3D 是一个人工智能 3D 内容生成工具，主要用于将文本或图像转换为三维模型资源。平台帮助用户降低传统建模成本，可用于游戏资产制作、虚拟世界搭建、数字人开发和其他三维内容创作任务。",
+          "valid": true
+        },
+        {
+          "title": "AI 3D模型生成器",
+          "url": "https://www.meshy.ai/",
+          "icon": "",
+          "hover": "Meshy-3D 是 Meshy 平台的 3D 模型生成服务，主要提供 AI 自动建模、纹理生成和模型转换功能。用户可以输入文字提示或上传图片生成三维模型，并用于游戏资产制作、动画设计、虚拟展示等数字创作领域。",
+          "valid": true
+        },
+        {
+          "title": "用于角色动画的 AI-3D",
+          "url": "https://www.kinetix.tech/",
+          "icon": "",
+          "hover": "Kinetix 是一个专注于 AI 角色动画生成的平台，主要用于为 3D 角色自动创建动作和动画效果。用户可以通过 AI 技术生成角色运动、动作捕捉效果，并将动画应用于游戏、虚拟角色、元宇宙内容等场景。",
+          "valid": true
+        },
+        {
+          "title": "腾讯混元3D",
+          "url": "https://3d.hunyuan.tencent.com/",
+          "icon": "",
+          "hover": "腾讯混元3D 是腾讯推出的 AI 三维内容生成平台，主要提供文本生成 3D 模型、图片生成 3D 模型等能力。用户可以利用人工智能快速创建三维资产，用于游戏开发、数字内容制作、虚拟场景搭建等应用。",
+          "valid": true
+        },
+        {
+          "title": "免费下载 3D 模型",
+          "url": "https://makerworld.com/zh",
+          "icon": "",
+          "hover": "MakerWorld 是一个 3D 打印模型分享平台，主要提供用户上传、下载和交流 3D 打印模型资源。网站包含大量可打印模型文件，支持模型搜索、分类浏览和社区互动，适用于 3D 打印爱好者和创作者。",
+          "valid": true
+        },
+        {
+          "title": "Rendair | AI-3D",
+          "url": "https://app.rendair.ai/chat/821421",
+          "icon": "",
+          "hover": "Rendair 是一个结合人工智能的 3D 内容生成和设计辅助平台，主要用于通过 AI 创建或优化三维场景、模型和视觉效果。用户可以利用自然语言交互完成设计需求描述，提高 3D 制作和渲染流程效率。",
+          "valid": true
+        },
+        {
+          "title": "Meshy-3D",
+          "url": "https://www.meshy.ai/",
+          "icon": "",
+          "hover": "Meshy-3D 是 Meshy 平台的 3D 模型生成服务，主要提供 AI 自动建模、纹理生成和模型转换功能。用户可以输入文字提示或上传图片生成三维模型，并用于游戏资产制作、动画设计、虚拟展示等数字创作领域。",
+          "valid": true
+        },
+        {
+          "title": "NexodusAI-2D Images to 3D Models",
+          "url": "https://nexodusai.com/",
+          "icon": "",
+          "hover": "NexodusAI 是一个图片转 3D 模型的人工智能工具，主要用于将二维图像转换为具有空间结构的三维模型。平台通过 AI 分析图片内容生成 3D 资产，适用于产品设计、游戏开发、数字展示和快速原型制作等场景。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "APK-Proxy",
+      "items": [
+        {
+          "title": "APP的收入",
+          "url": "https://www.paywallscreens.com/",
+          "icon": "",
+          "hover": "APP的收入（Paywall Screens）是一个用于分析移动应用付费墙设计的网站，主要收集和展示不同 App 的订阅页面、价格方案和付费引导界面。用户可以通过案例了解应用如何设计会员体系、订阅流程和收入转化页面，适合产品经理和开发者参考。",
+          "valid": true
+        },
+        {
+          "title": "Android应用商店",
+          "url": "https://cn.aptoide.com/",
+          "icon": "",
+          "hover": "Aptoide 是一个 Android 应用分发平台，主要提供应用程序搜索、下载和管理功能。网站收录大量 Android 应用和游戏资源，用户可以浏览分类、查看应用信息并下载安装包，开发者也可以通过平台发布自己的应用。",
+          "valid": true
+        },
+        {
+          "title": "APKPure使用免费",
+          "url": "https://apkpure.com/cn/",
+          "icon": "",
+          "hover": "APKPure 是一个 Android APK 下载平台，主要提供应用安装包搜索、下载和版本管理功能。网站收录大量海外 Android 应用和游戏，支持查看应用详情、历史版本、更新信息，并提供 APK 文件下载，方便用户获取应用安装包。",
+          "valid": true
+        },
+        {
+          "title": "Free APK Downloads",
+          "url": "https://www.apkmirror.com/",
+          "icon": "",
+          "hover": "APKMirror 是一个 Android 应用 APK 文件下载网站，主要提供官方应用安装包和历史版本资源。平台重点收录经过验证的 APK 文件，用户可以根据应用名称、版本号和发布时间查找安装包，适用于应用更新、旧版本回退和设备兼容测试。",
+          "valid": true
+        },
+        {
+          "title": "APKCombo",
+          "url": "https://apkcombo.com/zh/",
+          "icon": "",
+          "hover": "APKCombo 是一个 Android 应用资源下载平台，主要提供 APK、XAPK、APKS 等格式应用文件。网站支持应用搜索、分类浏览、版本查看和下载安装，用户可以获取不同地区或不同版本的 Android 应用程序。",
+          "valid": true
+        },
+        {
+          "title": "Free  Proxy",
+          "url": "https://openproxylist.com/",
+          "icon": "",
+          "hover": "Open Proxy List 是一个免费代理服务器查询网站，主要提供公开代理 IP 地址、端口、协议类型、国家位置和可用状态等信息。用户可以通过列表查找代理节点，用于网络测试、代理配置、连接验证和开发调试等场景。",
+          "valid": true
+        },
+        {
+          "title": "测速",
+          "url": "https://www.itdog.cn/ping/",
+          "icon": "",
+          "hover": "ITDOG 测速是一个网络检测工具平台，主要提供 Ping 测试、网站测速、线路检测、延迟分析等功能。用户可以输入目标域名或 IP 地址，查看不同地区节点的访问速度、响应时间和网络连通情况，用于服务器优化和网络故障排查。",
+          "valid": true
+        },
+        {
+          "title": "DNS 查询网站",
+          "url": "https://dnschecker.org/",
+          "icon": "",
+          "hover": "DNS Checker 是一个在线 DNS 查询和解析检测工具，主要用于查看域名在全球不同地区的 DNS 解析结果。网站支持查询 A、AAAA、CNAME、MX、NS 等多种 DNS 记录，帮助用户检查域名配置、生效状态以及解析异常问题。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "Nano Banana",
+      "items": [
+        {
+          "title": "Patreon",
+          "url": "https://www.patreon.com/document-verification",
+          "icon": "",
+          "hover": "",
+          "valid": true
+        },
+        {
+          "title": "倒计时管理",
+          "url": "https://transpilot.cc.cd/countdown-app/mgr_c8f2a1.php",
+          "icon": "",
+          "hover": "倒计时管理是一个用于创建和管理在线倒计时任务的网页工具，主要提供倒计时设置、时间管理和任务提醒功能。用户可以通过网页快速创建不同用途的计时页面，用于活动安排、项目节点管理、工作计划提醒等场景。",
+          "valid": true
+        },
+        {
+          "title": "小云雀网页版",
+          "url": "https://xyq.jianying.com/home?tab_name=home",
+          "icon": "",
+          "hover": "小云雀网页版是剪映推出的在线 AI 创作工具平台，主要提供图片生成、视频创作、智能编辑等功能。用户可以通过网页使用人工智能辅助完成内容制作，包括素材生成、创意设计和视频处理，适合自媒体、营销和日常创作使用。",
+          "valid": true
+        },
+        {
+          "title": "小云雀国际版",
+          "url": "https://www.pippit.ai/home?",
+          "icon": "",
+          "hover": "小云雀国际版（Pippit AI）是一个面向海外用户的 AI 内容创作平台，主要提供图片生成、视频制作、营销素材设计等功能。平台结合人工智能工具帮助用户快速创建广告图片、商品展示视频和社交媒体内容。",
+          "valid": true
+        },
+        {
+          "title": "火山方舟管理控制台",
+          "url": "https://console.volcengine.com/auth/login?redirectURI=%2Fhome",
+          "icon": "",
+          "hover": "火山方舟管理控制台是字节跳动火山引擎提供的 AI 服务管理平台，主要用于管理大模型应用、API 调用、模型服务和开发资源。用户可以在控制台创建项目、配置模型接口、查看调用情况，并进行人工智能应用部署管理。",
+          "valid": true
+        },
+        {
+          "title": "LMArena-全模型",
+          "url": "https://lmarena.ai/",
+          "icon": "",
+          "hover": "LMArena 是一个用于评测和比较大语言模型能力的平台，主要通过用户投票和匿名对比方式测试不同 AI 模型表现。网站提供模型竞技排名、对话体验和评测数据，帮助用户了解不同模型在实际任务中的能力差异。",
+          "valid": true
+        },
+        {
+          "title": "Nano Banana Free",
+          "url": "https://nanobananafree.ai/",
+          "icon": "",
+          "hover": "Nano Banana Free 是一个基于 AI 图像生成技术的在线工具，主要用于通过文字描述生成图片或进行图像编辑。用户可以输入提示词创建视觉内容，也可用于图片修改、创意设计和快速生成视觉素材。",
+          "valid": true
+        },
+        {
+          "title": "RunningHub",
+          "url": "https://www.runninghub.cn/quick-create",
+          "icon": "",
+          "hover": "RunningHub 是一个基于云端的 AI 工作流创作平台，主要提供 ComfyUI 工作流运行、模型调用和 AI 图片生成服务。用户无需本地部署环境即可运行复杂 AI 工作流，适用于图像生成、模型测试和创意内容制作。",
+          "valid": true
+        },
+        {
+          "title": "Vibe Banana",
+          "url": "https://intent.app/banana/",
+          "icon": "",
+          "hover": "Vibe Banana 是一个 AI 图像创作工具，主要用于生成和编辑图片内容。平台支持通过文字描述创建视觉效果，并提供人工智能辅助设计功能，适合用于创意图片制作、视觉实验和内容生成场景。",
+          "valid": true
+        },
+        {
+          "title": "iMini超级AI智能体",
+          "url": "https://imini.com/zh",
+          "icon": "",
+          "hover": "iMini 超级 AI 智能体是一个 AI 助手平台，主要提供智能对话、任务处理和自动化辅助功能。用户可以通过 AI Agent 完成信息整理、内容生成、问题分析等操作，用于提高工作效率和处理日常任务。",
+          "valid": true
+        },
+        {
+          "title": "Opal-VEO",
+          "url": "https://opal.withgoogle.com/?mode=canvas",
+          "icon": "",
+          "hover": "Opal-VEO 是 Google Opal 平台中的 AI 创作工具入口，主要用于通过可视化方式创建和实验人工智能应用。平台支持搭建 AI 工作流程、测试模型能力，并结合生成式 AI 技术完成内容生成和应用开发。",
+          "valid": true
+        },
+        {
+          "title": "ego",
+          "url": "https://lite.ego.app/",
+          "icon": "",
+          "hover": "ego 是一个 AI 应用和智能助手平台，主要提供 AI 对话、内容生成和智能服务功能。用户可以通过网页端访问 AI 工具，用于文本处理、创意辅助、信息查询以及其他人工智能相关任务。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "Blog",
+      "items": [
+        {
+          "title": "星辰视界-AstraView",
+          "url": "https://edunm.dpdns.org/",
+          "icon": "",
+          "hover": "星辰视界-AstraView 是一个个人网站或内容展示站点，主要用于发布文章、分享信息和展示个人项目内容。网站功能通常包括内容浏览、页面展示、资源整理等，作为个人知识库、博客主页或项目入口使用。",
+          "valid": true
+        },
+        {
+          "title": "BLOG - AstraView-星辰视界",
+          "url": "https://kxu.de5.net/",
+          "icon": "",
+          "hover": "BLOG - AstraView-星辰视界 是一个博客类网站，主要用于发布技术文章、经验分享和项目记录。网站通过文章分类和内容展示形式整理信息，方便用户阅读与管理个人创作内容，可作为个人知识管理和公开分享平台。",
+          "valid": true
+        },
+        {
+          "title": "blog",
+          "url": "https://kuanblog.dpdns.org/",
+          "icon": "",
+          "hover": "blog 是一个个人博客网站，主要用于记录文章、技术笔记、资源分享和个人观点。网站通过网页文章形式保存内容，方便长期积累知识资料，同时为访客提供浏览、阅读和信息查询入口。",
+          "valid": true
+        },
+        {
+          "title": "kuan-blog",
+          "url": "https://kuan7.wordpress.com/",
+          "icon": "",
+          "hover": "kuan-blog 是基于 WordPress 搭建的个人博客站点，主要提供文章发布、分类管理和内容展示功能。用户可以通过 WordPress 后台管理文章、页面和媒体资源，用于记录技术经验、生活内容或个人项目。",
+          "valid": true
+        },
+        {
+          "title": "re-域名",
+          "url": "https://www.netlib.re/",
+          "icon": "",
+          "hover": "Netlib.re 是一个提供域名相关服务的网站，主要涉及免费域名、DNS 管理或网络资源服务。用户可以通过平台申请和管理部分网络域名资源，用于个人网站搭建、测试项目部署和网络实验。",
+          "valid": true
+        },
+        {
+          "title": "x10hosting-域名",
+          "url": "https://x10hosting.com/",
+          "icon": "",
+          "hover": "x10hosting 是一个免费主机服务平台，主要提供网站托管、空间管理和基础建站环境。用户可以申请免费虚拟主机，用于部署个人网站、测试网页程序、学习 Web 开发以及运行小型项目。",
+          "valid": true
+        },
+        {
+          "title": "KG",
+          "url": "https://dash.domain.digitalplat.org/auth/login",
+          "icon": "",
+          "hover": "KG（Domain Digital Platform）是一个域名管理平台，主要用于域名注册、DNS 配置和域名资源管理。用户可以通过后台查看和管理已注册域名，进行解析设置、域名维护以及相关网络配置操作。",
+          "valid": true
+        },
+        {
+          "title": "DNSHE | 免费域名de5.net",
+          "url": "https://www.dnshe.com/promotion-cn.html",
+          "icon": "",
+          "hover": "DNSHE 是一个提供免费域名和 DNS 相关服务的平台，主要用于域名申请、解析管理和网络配置。网站提供免费域名推广活动以及 DNS 服务入口，适合个人用户搭建网站、测试项目和学习域名管理。",
+          "valid": true
+        },
+        {
+          "title": "免费DNS域名",
+          "url": "https://www.cloudns.net/",
+          "icon": "",
+          "hover": "ClouDNS 是一个 DNS 服务平台，主要提供域名解析、DNS 托管、动态 DNS 和网络管理功能。用户可以通过控制面板管理 DNS 记录，提高域名解析稳定性，并用于网站部署、服务器连接和网络服务配置。",
+          "valid": true
+        },
+        {
+          "title": "注册域名 - L53",
+          "url": "https://customer.l53.net/signup",
+          "icon": "",
+          "hover": "L53 是一个域名注册相关平台，主要用于用户注册和管理互联网域名资源。网站提供账户创建、域名申请、域名管理等功能，用户可以通过平台维护自己的域名资产和相关配置。",
+          "valid": true
+        },
+        {
+          "title": "eu.org-域名",
+          "url": "https://nic.eu.org/",
+          "icon": "",
+          "hover": "eu.org 是一个提供免费二级域名注册服务的平台，主要面向个人用户和非商业项目。用户可以申请 eu.org 子域名，并通过 DNS 配置绑定网站、博客或服务器，用于个人网站建设和网络实验。",
+          "valid": true
+        },
+        {
+          "title": "kdns.fr域名",
+          "url": "https://dashboard.katabump.com/domains/",
+          "icon": "",
+          "hover": "kdns.fr 是一个域名管理相关平台，主要用于管理域名、DNS 配置和网络服务设置。用户可以通过控制面板查看域名状态、调整解析记录以及维护相关域名资源。",
+          "valid": true
+        },
+        {
+          "title": "Hacker News-发帖",
+          "url": "https://news.ycombinator.com/submit",
+          "icon": "",
+          "hover": "Hacker News 发帖页面是技术社区 Hacker News 的内容提交入口，主要用于提交新闻、技术文章、开源项目和创业相关信息。用户可以发布链接内容，由社区用户讨论、投票和评价，适合技术交流和信息分享。",
+          "valid": true
+        },
+        {
+          "title": "首页 / X",
+          "url": "https://x.com/home",
+          "icon": "",
+          "hover": "X 是社交媒体平台的首页入口，主要提供信息发布、短消息交流、关注动态和内容浏览功能。用户可以发布文字、图片、视频等内容，与其他用户互动，并通过时间线获取实时信息。",
+          "valid": true
+        },
+        {
+          "title": "测速",
+          "url": "https://www.speedtest.net/",
+          "icon": "",
+          "hover": "Speedtest 是一个网络测速服务平台，主要用于检测互联网连接速度。网站可以测试下载速度、上传速度、网络延迟和连接质量，帮助用户了解当前网络性能以及排查网络问题。",
+          "valid": true
+        },
+        {
+          "title": "表答",
+          "url": "https://biaoda.me/create",
+          "icon": "",
+          "hover": "表答是一个在线 AI 或表情内容创作工具平台，主要用于生成和编辑表情、图片或相关视觉内容。用户可以通过网页输入需求创建素材，用于社交分享、内容制作和创意表达。",
+          "valid": true
+        },
+        {
+          "title": "Home – Figma",
+          "url": "https://www.figma.com/",
+          "icon": "",
+          "hover": "Figma 是一个在线协作设计工具平台，主要用于 UI 设计、原型制作、网页设计和团队协作。用户可以通过浏览器创建设计文件，进行多人实时编辑、组件管理和设计交付。",
+          "valid": true
+        },
+        {
+          "title": "ping-ip",
+          "url": "https://ping0.cc/",
+          "icon": "",
+          "hover": "IP风险度查询（ping0.cc）是一个用于检测 IP 地址风险状态的网络工具，主要分析 IP 是否存在代理、异常访问、风险标签等信息。用户可以通过查询结果判断 IP 的可信程度，用于网络测试和安全检查。",
+          "valid": true
+        },
+        {
+          "title": "自己的IP地址",
+          "url": "https://whoer.net/zh",
+          "icon": "",
+          "hover": "Whoer 是一个在线 IP 和网络隐私检测工具，主要用于查看用户当前 IP 地址、地理位置、代理状态、浏览器信息和隐私检测结果。用户可以通过网站了解自己的网络环境和匿名程度。",
+          "valid": true
+        },
+        {
+          "title": "IP地址查询",
+          "url": "https://ip.sb/",
+          "icon": "",
+          "hover": "IP.sb 是一个 IP 地址查询工具，主要用于查看当前公网 IP 地址、IPv4/IPv6 信息、地理位置、运营商等网络数据。网站适合进行网络环境检测、服务器配置验证和 IP 信息查询。",
+          "valid": true
+        },
+        {
+          "title": "IP风险度查询",
+          "url": "https://ping0.cc/",
+          "icon": "",
+          "hover": "IP风险度查询（ping0.cc）是一个用于检测 IP 地址风险状态的网络工具，主要分析 IP 是否存在代理、异常访问、风险标签等信息。用户可以通过查询结果判断 IP 的可信程度，用于网络测试和安全检查。",
+          "valid": true
+        },
+        {
+          "title": "Windsurf",
+          "url": "https://windsurf.com/account/register",
+          "icon": "",
+          "hover": "Windsurf 是一个 AI 编程开发工具平台，主要提供智能代码生成、代码补全、项目理解和开发辅助功能。用户可以通过 AI 助手提高软件开发效率，支持代码编写、调试和项目管理等开发流程。",
+          "valid": true
+        },
+        {
+          "title": "互联网速度测试 | Fast.com",
+          "url": "https://fast.com/zh/cn",
+          "icon": "",
+          "hover": "Fast.com 是 Netflix 提供的网络速度测试网站，主要用于检测互联网下载速度。网站操作简单，无需复杂设置即可测试当前网络连接速度，帮助用户快速了解宽带访问性能。",
+          "valid": true
+        },
+        {
+          "title": "果汁排行榜 - 各类榜单排名大全",
+          "url": "http://www.guozhivip.com/rank/",
+          "icon": "",
+          "hover": "果汁排行榜是一个综合榜单信息网站，主要整理不同领域的排行榜数据。网站提供分类排行、热门列表和数据展示功能，方便用户查看各种产品、网站或资源的排名信息。",
+          "valid": true
+        },
+        {
+          "title": "85LA_节点",
+          "url": "https://www.85la.com/",
+          "icon": "",
+          "hover": "85LA 是一个网络节点或订阅资源相关网站，主要用于提供节点信息、网络线路资源和相关服务入口。用户可以浏览节点列表、获取连接配置或管理相关网络访问资源。",
+          "valid": true
+        },
+        {
+          "title": "85LA-节点",
+          "url": "https://sub.85la.com/",
+          "icon": "",
+          "hover": "85LA-节点是 85LA 的节点管理或订阅入口页面，主要用于查看和管理网络节点资源。用户可以通过页面获取节点信息、配置连接参数，用于网络连接测试和节点管理。",
+          "valid": true
+        },
+        {
+          "title": "Dashboard - Tally",
+          "url": "https://tally.so/dashboard",
+          "icon": "",
+          "hover": "Tally Dashboard 是在线表单工具 Tally 的管理后台，主要用于创建、管理和查看在线表单数据。用户可以设计调查问卷、注册表单、反馈页面，并通过后台查看提交结果和数据统计。",
+          "valid": true
+        },
+        {
+          "title": "AI雇佣人类",
+          "url": "https://rentahuman.ai/dashboard",
+          "icon": "",
+          "hover": "AI雇佣人类（RentAHuman）是一个连接人工智能任务和人工服务的平台，主要用于发布或管理需要人工完成的任务。用户可以通过平台寻找人类协助处理 AI 难以完成的真实操作、审核或创意工作。",
+          "valid": true
+        },
+        {
+          "title": "My IP Address",
+          "url": "https://whatismyipaddress.com/",
+          "icon": "",
+          "hover": "WhatIsMyIPAddress 是一个 IP 地址查询网站，主要提供公网 IP 查看、地理位置查询、网络运营商信息和 IP 工具服务。用户可以通过网站快速了解自己的网络出口信息和相关 IP 数据。",
+          "valid": true
+        },
+        {
+          "title": "ManyChat",
+          "url": "https://manychat.com/",
+          "icon": "",
+          "hover": "ManyChat 是一个聊天机器人和自动化营销平台，主要用于创建 Messenger、Instagram、WhatsApp 等渠道的自动回复机器人。用户可以通过可视化流程设计自动消息、客户互动流程和业务自动化任务。",
+          "valid": true
+        },
+        {
+          "title": "Scamalytics-IP纯净度",
+          "url": "https://scamalytics.com/",
+          "icon": "",
+          "hover": "Scamalytics 是一个 IP 风险检测平台，主要用于分析 IP 地址的信誉和安全风险。网站可以检测代理、VPN、欺诈来源、异常访问等信息，为网站风控、账号安全和支付验证提供 IP 数据参考。",
+          "valid": true
+        }
+      ]
+    },
+    {
+      "title": "mail",
+      "items": [
+        {
+          "title": "TeraBox",
+          "url": "https://www.terabox.com/ai/index/chinese",
+          "icon": "",
+          "hover": "TeraBox 是一个云存储和文件管理平台，主要提供在线文件上传、保存、同步和分享功能。网站支持大容量云端存储，并结合 AI 相关功能用于文件管理和内容处理，用户可以通过网页或客户端访问个人文件资源。",
+          "valid": true
+        },
+        {
+          "title": "FEB",
+          "url": "https://www.febbox.com/",
+          "icon": "",
+          "hover": "FEB 是一个在线文件存储和分享平台，主要提供云端文件上传、保存、在线播放和资源管理功能。用户可以通过网站管理个人文件、分享链接以及访问存储内容，适用于备份资料、保存视频和跨设备文件访问。",
+          "valid": true
+        },
+        {
+          "title": "域名解析",
+          "url": "https://www.itdog.cn/ping/kjzxs.sld.tw",
+          "icon": "",
+          "hover": "域名解析（ITDOG Ping）是一个网络检测工具页面，主要用于测试域名解析结果和服务器网络连接情况。用户可以查看目标域名的访问延迟、DNS 解析状态、节点响应速度等信息，用于分析网站访问质量和网络问题。",
+          "valid": true
+        },
+        {
+          "title": "PAYJS",
+          "url": "https://payjs.cn/dashboard/auth/login",
+          "icon": "",
+          "hover": "PAYJS 是一个在线支付接口服务平台，主要面向开发者提供支付接入功能。用户可以通过后台管理商户信息、查看交易记录、配置支付参数，并将支付能力集成到网站、应用或小程序中。",
+          "valid": true
+        },
+        {
+          "title": "paypal",
+          "url": "https://www.paypal.com/us/home",
+          "icon": "",
+          "hover": "PayPal 是一个国际在线支付平台，主要提供电子支付、资金转账、账户管理和商户收款服务。用户可以绑定银行卡或账户进行付款，也可以通过 PayPal 接收国际交易资金，广泛用于跨境电商和在线服务。",
+          "valid": true
+        },
+        {
+          "title": "paypal后台",
+          "url": "https://developer.paypal.com/dashboard",
+          "icon": "",
+          "hover": "PayPal 开发者后台是 PayPal 提供给开发者的 API 管理平台，主要用于创建应用、获取 API 密钥、测试支付接口和查看开发文档。开发人员可以通过后台配置支付集成环境，实现网站或应用中的支付功能。",
+          "valid": true
+        },
+        {
+          "title": "测试邮箱域名",
+          "url": "https://mail.hostuno.com/",
+          "icon": "",
+          "hover": "测试邮箱域名页面主要用于邮箱服务测试和邮件系统验证，提供邮件收发检测、域名邮箱测试等功能。用户可以通过该类工具检查邮件服务器配置、SMTP 连接状态以及邮箱系统是否正常运行。",
+          "valid": true
+        },
+        {
+          "title": "jhb.edu.kg",
+          "url": "https://jhb.edu.kg/login",
+          "icon": "",
+          "hover": "jhb.edu.kg 是一个基于 edu.kg 域名体系的网站入口，主要用于账户登录和相关服务访问。该类教育域名通常用于学校、教育项目或学习平台，通过账号系统提供用户认证和资源管理功能。",
+          "valid": true
+        },
+        {
+          "title": "Resend · Email",
+          "url": "https://resend.com/",
+          "icon": "",
+          "hover": "Resend 是一个面向开发者的邮件发送 API 平台，主要用于应用程序发送事务邮件。用户可以通过 API 集成注册验证邮件、通知邮件、密码重置邮件等功能，并提供邮件日志、域名验证和发送管理。",
+          "valid": true
+        },
+        {
+          "title": "Seedance 2.0",
+          "url": "https://seadanceai.com/",
+          "icon": "",
+          "hover": "Seedance 2.0 是一个 AI 视频生成相关平台，主要用于通过人工智能创建视频内容。用户可以输入文字描述或使用相关素材生成视频效果，适用于短视频制作、创意设计、广告内容生成和视觉实验。",
+          "valid": true
+        },
+        {
+          "title": "IP检测",
+          "url": "https://scamalytics.com/",
+          "icon": "",
+          "hover": "Scamalytics 是一个 IP 风险检测平台，主要用于分析 IP 地址的信誉和安全风险。网站可以检测代理、VPN、欺诈来源、异常访问等信息，为网站风控、账号安全和支付验证提供 IP 数据参考。",
+          "valid": true
+        },
+        {
+          "title": "Supabase",
+          "url": "https://supabase.com/dashboard/sign-in?returnTo=%2Forg",
+          "icon": "",
+          "hover": "Supabase 是一个开源后端服务平台，主要提供数据库、身份认证、文件存储、实时数据和 API 接口功能。开发者可以通过控制台创建项目、管理 PostgreSQL 数据库，并快速搭建 Web 和移动应用后端。",
+          "valid": true
+        },
+        {
+          "title": "视频文案提取",
+          "url": "https://www.anytocopy.com/",
+          "icon": "",
+          "hover": "AnyToCopy 是一个内容提取工具网站，主要用于从视频、网页等来源提取文本内容。用户可以通过工具获取视频字幕、文案或文字信息，方便进行内容整理、学习分析和二次编辑。",
+          "valid": true
+        },
+        {
+          "title": "虚拟主机-Egg FreeHost",
+          "url": "https://cpanel.cn.220123.xyz/",
+          "icon": "",
+          "hover": "Egg FreeHost 是一个虚拟主机服务平台，主要提供网站空间、控制面板和基础建站环境。用户可以通过后台管理网站文件、数据库和域名配置，用于部署个人网站、测试项目或学习服务器管理。",
+          "valid": true
+        },
+        {
+          "title": "虚拟主机-Wispbyte",
+          "url": "https://wispbyte.com/",
+          "icon": "",
+          "hover": "Wispbyte 是一个云端主机托管平台，主要提供服务器运行环境和应用部署服务。用户可以创建并管理在线服务，用于运行网站、游戏服务器、机器人程序以及其他网络应用。",
+          "valid": true
+        },
+        {
+          "title": "虚拟主机-HubuHost.com",
+          "url": "https://hubuhost.com/",
+          "icon": "",
+          "hover": "HubuHost.com 是一个虚拟主机和服务器服务平台，主要提供网站托管、云服务器、域名相关服务。用户可以购买或管理主机资源，用于部署博客、网站、Web 应用以及个人项目。",
+          "valid": true
+        },
+        {
+          "title": "虚拟主机-Felicloud",
+          "url": "https://cloud.felicloud.com/login",
+          "icon": "",
+          "hover": "Felicloud 是一个云计算服务平台，主要提供云服务器、虚拟主机和相关基础设施服务。用户可以通过控制台管理云资源、创建实例、部署应用程序，并进行服务器配置和维护。",
+          "valid": true
+        },
+        {
+          "title": "Railway-主机",
+          "url": "https://railway.com/",
+          "icon": "",
+          "hover": "Railway 是一个面向开发者的云部署平台，主要用于快速部署 Web 应用、数据库和后端服务。用户可以连接代码仓库自动发布项目，并管理运行环境、变量配置和应用状态。",
+          "valid": true
+        },
+        {
+          "title": "网盘-Koofr",
+          "url": "https://app.koofr.net/login",
+          "icon": "",
+          "hover": "Koofr 是一个云存储服务平台，主要提供文件上传、同步、备份和分享功能。用户可以通过网页或客户端管理个人文件，并支持多设备访问，适用于资料保存和文件管理。",
+          "valid": true
+        },
+        {
+          "title": "@GMX.com",
+          "url": "https://www.gmx.com/",
+          "icon": "",
+          "hover": "GMX Mail 是一个免费电子邮箱服务平台，主要提供邮件收发、联系人管理、附件传输和邮箱存储功能。用户可以注册 GMX 邮箱用于个人通信、在线服务注册以及日常邮件管理。",
+          "valid": true
+        },
+        {
+          "title": "zoho",
+          "url": "https://www.zoho.com/mail/",
+          "icon": "",
+          "hover": "Zoho Mail 是 Zoho 提供的企业邮箱服务平台，主要用于企业域名邮箱创建、邮件管理和团队协作。平台支持自定义邮箱域名、邮件过滤、安全管理以及与 Zoho 办公套件集成。",
+          "valid": true
+        },
+        {
+          "title": "One.IDkey-ID验证",
+          "url": "https://one.idkey.cc/",
+          "icon": "",
+          "hover": "One.IDkey 是一个身份验证服务平台，主要用于账号认证和数字身份管理。网站提供身份验证、登录授权等功能，帮助应用和服务实现用户身份确认，提高账号访问安全性。",
+          "valid": true
+        },
+        {
+          "title": "CoPaw",
+          "url": "https://copaw.agentscope.io/",
+          "icon": "",
+          "hover": "CoPaw 是一个 AI 智能体平台，主要用于创建和运行人工智能 Agent。用户可以通过平台使用 AI 助手完成任务处理、信息分析、自动化操作等功能，适用于探索智能代理应用场景。",
+          "valid": true
+        },
+        {
+          "title": "MoeMail - 邮箱",
+          "url": "https://moemail.app/zh-CN",
+          "icon": "",
+          "hover": "MoeMail 是一个在线邮箱服务平台，主要提供邮件收发和邮箱管理功能。网站支持中文界面访问，用户可以创建邮箱账户，用于日常通信、账号注册以及在线服务验证。",
+          "valid": true
+        },
+        {
+          "title": "Outlook",
+          "url": "https://outlook.live.com/mail/",
+          "icon": "",
+          "hover": "Outlook 是微软提供的电子邮件和日程管理服务，主要用于邮件收发、联系人管理、日历安排和任务管理。用户可以通过网页版访问邮箱，并与 Microsoft 365 办公服务结合使用。",
+          "valid": true
+        },
+        {
+          "title": "临时邮箱",
+          "url": "https://linshiyouxiang.net/",
+          "icon": "",
+          "hover": "临时邮箱是一个提供一次性邮箱地址的在线服务，主要用于接收短期邮件和验证码。用户无需注册长期邮箱即可获取临时地址，常用于测试网站注册、避免垃圾邮件以及临时信息接收。",
+          "valid": true
+        },
+        {
+          "title": "临时Gmail",
+          "url": "https://emailtick.com/zh",
+          "icon": "",
+          "hover": "临时 Gmail 是一个提供临时邮箱相关服务的网站，主要用于生成短期邮箱地址并接收邮件。用户可以利用临时邮箱完成测试注册、验证码接收等操作，减少个人邮箱暴露风险。",
+          "valid": true
+        },
+        {
+          "title": "网易数帆-控制台",
+          "url": "https://console.163yun.com/",
+          "icon": "",
+          "hover": "网易数帆控制台是网易云提供的云服务管理入口，主要用于管理云计算资源、应用服务和开发工具。用户可以通过控制台查看项目状态、配置云资源，并管理相关技术服务。",
+          "valid": true
+        },
+        {
+          "title": "icon",
+          "url": "https://www.base64-image.de/?spm=a2ty_o01.29997173.0.0.c05455fbQOAHKD",
+          "icon": "",
+          "hover": "Base64 Image 是一个在线图片转换工具，主要用于将图片转换为 Base64 编码字符串，或将 Base64 数据还原为图片。该工具常用于网页开发、HTML 嵌入图片、接口数据处理和前端调试。",
+          "valid": true
+        },
+        {
+          "title": "icon-cn",
+          "url": "https://tool.chinaz.com/tools/imgtobase?spm=a2ty_o01.29997173.0.0.c05455fbQOAHKD",
+          "icon": "",
+          "hover": "站长工具图片转 Base64 是一个在线图片编码工具，主要用于将图片文件转换成 Base64 格式代码。用户可以将图片直接嵌入网页或代码中，减少图片文件请求，方便前端开发和网页优化。",
+          "valid": true
+        },
+        {
+          "title": "1.1.1.1 -WARP",
+          "url": "https://one.one.one.one/",
+          "icon": "",
+          "hover": "1.1.1.1 WARP 是 Cloudflare 提供的网络连接服务，主要通过 DNS 优化和 VPN 类技术改善网络访问体验。用户可以使用客户端启用加密连接，提高 DNS 查询速度，并增强网络连接隐私保护。",
+          "valid": true
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<script>
+    const data = JSON.parse(document.getElementById('data').textContent);
+    const main = document.getElementById('main');
+    const nav = document.getElementById('nav');
+    const search = document.getElementById('search');
+    const tooltip = document.getElementById('tooltip');
+    const soundToggle = document.getElementById('sound-toggle');
+
+    if (localStorage.getItem('soundEnabled') === 'false') soundToggle.checked = false;
+    soundToggle.addEventListener('change', () => localStorage.setItem('soundEnabled', soundToggle.checked));
+
+                        let audioCtx = null;
+    function playDing() {
+        if (!soundToggle.checked) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const c = audioCtx;
+            const t = c.currentTime;
+            [[457.38,0.25,0.88],[914.76,0.12,0.45],[1829.52,0.06,0.18]].forEach(([f,v,d]) => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.type = 'sine'; o.frequency.value = f;
+                g.gain.setValueAtTime(v, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + d);
+                o.start(t); o.stop(t + d);
+            });
+        } catch(e) {}
+    }
+
+
+
+
+
+
+    // 打平所有书签，附带板块名
+    const allItems = [];
+    data.categories.forEach(cat => cat.items.forEach(item => allItems.push({...item, catTitle: cat.title})));
+
+    let currentCategory = null;
+    let searchTimer = null;
+
+    // 初始化板块导航
+    data.categories.forEach((cat, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = cat.title;
+        btn.onclick = () => { search.value = ''; switchCategory(cat.title, btn); };
+        if (index === 0) { btn.classList.add('active'); currentCategory = cat.title; }
+        nav.appendChild(btn);
+    });
+
+    function switchCategory(title, btn) {
+        document.querySelectorAll('.navbar button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCategory = title;
+        renderCategory();
+    }
+
+    function escHtml(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    function highlight(text, words) {
+        if (!text || !words.length) return escHtml(text || '');
+        let result = escHtml(text);
+        words.forEach(w => {
+            const re = new RegExp(escRe(escHtml(w)), 'gi');
+            result = result.replace(re, m =>
+                '<mark style="background:#0ea5e9;color:#0f172a;border-radius:2px;padding:0 2px">' + m + '</mark>'
+            );
+        });
+        return result;
+    }
+
+    function scoreItem(item, words) {
+        const t = (item.title || '').toLowerCase();
+        const u = (item.url || '').toLowerCase();
+        const h = (item.hover || '').toLowerCase();
+        for (const w of words) {
+            if (!t.includes(w) && !u.includes(w) && !h.includes(w)) return -1;
+        }
+        let score = 0;
+        for (const w of words) {
+            if (t === w)              score += 100;
+            else if (t.startsWith(w)) score += 60;
+            else if (t.includes(w))   score += 40;
+            if (u.includes(w)) score += 10;
+            if (h.includes(w)) score += 5;
+        }
+        return score;
+    }
+
+    function makeCard(item, words, showCat) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => window.open(item.url, '_blank');
+        const hostname = (() => { try { return new URL(item.url).hostname; } catch(e) { return ''; } })();
+        const icons = window.__NAV_ICONS__ || {};
+        const iconUrl = icons[item.url] || item.icon || (hostname ? 'https://www.google.com/s2/favicons?domain=' + hostname + '&sz=64' : '');
+        const imgTag = iconUrl
+            ? '<img src="' + iconUrl + '" onerror="this.style.visibility=\'hidden\'" alt="">'
+            : '<div style="width:64px;height:64px;margin-bottom:1rem;border-radius:0.5rem;background:#334155;display:flex;align-items:center;justify-content:center;font-size:1.5rem">&#128279;</div>';
+        const catBadge = showCat && item.catTitle
+            ? '<div style="font-size:0.7rem;color:var(--accent-color);margin-bottom:0.35rem;opacity:0.85">' + escHtml(item.catTitle) + '</div>'
+            : '';
+        card.innerHTML = imgTag + catBadge + '<div class="title">' + highlight(item.title, words) + '</div>';
+        card.addEventListener('mouseenter', (e) => {
+            playDing();
+            tooltip.innerHTML = '<div style="color:var(--accent-color);font-size:0.8rem;margin-bottom:4px;word-break:break-all">'
+                + escHtml(item.url) + '</div>' + (item.hover ? '<div>' + escHtml(item.hover) + '</div>' : '');
+            tooltip.style.display = 'block';
+            updateTooltipPos(e);
+        });
+        card.addEventListener('mousemove', updateTooltipPos);
+        card.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        return card;
+    }
+
+    function renderCategory() {
+        nav.style.opacity = '1';
+        nav.style.pointerEvents = '';
+        main.innerHTML = '';
+        const cat = data.categories.find(c => c.title === currentCategory);
+        if (!cat) return;
+        cat.items.forEach(item => main.appendChild(makeCard(item, [], false)));
+    }
+
+    function renderSearch(query) {
+        nav.style.opacity = '0.35';
+        nav.style.pointerEvents = 'none';
+        main.innerHTML = '';
+        const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (!words.length) { renderCategory(); return; }
+        const scored = allItems
+            .map(item => ({ item, score: scoreItem(item, words) }))
+            .filter(r => r.score >= 0)
+            .sort((a, b) => b.score - a.score);
+        if (!scored.length) {
+            main.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:4rem 0">未找到匹配书签</div>';
+            return;
+        }
+        const info = document.createElement('div');
+        info.style.cssText = 'grid-column:1/-1;color:var(--text-secondary);font-size:0.85rem;padding-bottom:0.25rem';
+        info.textContent = '找到 ' + scored.length + ' 条';
+        main.appendChild(info);
+        scored.forEach(({ item }) => main.appendChild(makeCard(item, words, true)));
+    }
+
+    function updateTooltipPos(e) {
+        const x = e.clientX + 15, y = e.clientY + 15;
+        tooltip.style.left = (x + tooltip.offsetWidth > window.innerWidth ? e.clientX - tooltip.offsetWidth - 15 : x) + 'px';
+        tooltip.style.top  = (y + tooltip.offsetHeight > window.innerHeight ? e.clientY - tooltip.offsetHeight - 15 : y) + 'px';
+    }
+
+    // 搜索监听，200ms 防抖
+    search.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        const q = e.target.value;
+        if (!q.trim()) { nav.style.opacity='1'; nav.style.pointerEvents=''; renderCategory(); return; }
+        searchTimer = setTimeout(() => renderSearch(q), 200);
+    });
+
+    renderCategory();
+</script>
+
+</body>
+</html>

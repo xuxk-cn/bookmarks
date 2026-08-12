@@ -557,5 +557,22 @@ select('resource');
     emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
   });
 })();
-</script></body>
+</script>
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'styles4.html';
+  localStorage.setItem('styleChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
 </html>

@@ -4,9 +4,6 @@ vec2 iTRANSLATOR_RT_Mouse;
 //@width: 540
 //@height: 960
 
-
-
-
 //region options
 
 //Camera options

@@ -195,8 +195,8 @@
     <!-- 画布组件 -->
     <canvas id="glcanvas"></canvas>
 
-    <!-- 可拖动与折叠的中文控制台 UI -->
-    <div id="ui-panel">
+    <!-- 【修改点】：加上 class="hidden" 实现默认隐藏，Alt+H 呼出 -->
+    <div id="ui-panel" class="hidden">
         <div id="ui-header">
             <span>运动模糊 (Elevated Terrain) 控制台</span>
             <button id="toggle-btn" title="折叠/展开">_</button>
@@ -436,23 +436,40 @@
                     // 多层岩层与雪山质感
                     float altitude = hitPos.y;
                     float slope = N.y;
-                    
-                    // 暗色深层岩石与深山植被纹理
+
+                    // 【重写】超大尺度区域色彩分区：让每座山拥有不同的基调
+                    float regionA = noised(hitPos.xz * 0.004).x;        // 超大尺度（山脉级）
+                    float regionB = noised(hitPos.xz * 0.02 + 77.0).x;  // 中尺度（单山级）
+
+                    vec3 rockWarm  = vec3(0.20, 0.15, 0.11); // 暖棕岩
+                    vec3 rockCool  = vec3(0.13, 0.15, 0.19); // 冷灰蓝岩
+                    vec3 rockRed   = vec3(0.22, 0.13, 0.10); // 红褐岩
+                    vec3 rockGreen = vec3(0.10, 0.15, 0.10); // 苔绿岩
+
+                    vec3 rockBase = mix(rockWarm, rockCool, smoothstep(0.30, 0.70, regionA));
+                    rockBase = mix(rockBase, rockRed,   smoothstep(0.55, 0.90, regionB) * 0.65);
+                    rockBase = mix(rockBase, rockGreen, (1.0 - smoothstep(0.20, 0.55, regionB)) * 0.55);
+
+                    // 中尺度岩石纹理 + 明暗起伏
                     float rockNoise = noised(hitPos.xz * 0.05).x * 0.15 + noised(hitPos.xz * 0.3).x * 0.08;
-                    vec3 rockCol = mix(vec3(0.11, 0.09, 0.08), vec3(0.25, 0.22, 0.19), rockNoise + 0.5);
-                    
-                    // 山体侵蚀沉淀与谷地干草/暗亚植被
+                    vec3 rockCol = rockBase * (0.7 + rockNoise * 2.6) + vec3(0.05) * rockNoise;
+
+                    // 沉积岩地层：随海拔变化的条纹，增强“不一样”的层次感
+                    float strata = sin(altitude * 0.12 + regionA * 8.0) * 0.5 + 0.5;
+                    rockCol = mix(rockCol, rockCol * vec3(1.30, 1.15, 0.95), strata * 0.35);
+
+                    // 山体侵蚀沉淀与谷地植被（颜色也随区域变化）
                     float valleyFactor = smoothstep(0.7, 0.95, slope) * (1.0 - smoothstep(-30.0, 50.0, altitude));
-                    vec3 valleyCol = vec3(0.08, 0.11, 0.07);
+                    vec3 valleyCol = mix(vec3(0.08, 0.11, 0.07), vec3(0.13, 0.14, 0.06), regionB);
 
                     // 积雪遮罩：陡峭岩壁甩落积雪 + 雪晶微闪
                     float snowNoise = noised(hitPos.xz * 0.015).x * 35.0 + noised(hitPos.xz * 0.12).x * 8.0;
                     float snowFactor = smoothstep(12.0 + snowNoise, 75.0 + snowNoise, altitude);
                     snowFactor *= smoothstep(0.28, 0.58, slope); // 坡度限制，陡崖无雪
-                    
-                    // 细微雪面微晶高光
+
+                    // 雪色随区域在冷白/暖白之间微变 + 细微雪面微晶高光
                     float snowGlitter = pow(clamp(noised(hitPos.xz * 8.0).x, 0.0, 1.0), 6.0) * snowFactor * detailFade * 0.4;
-                    vec3 snowCol = vec3(0.94, 0.97, 1.0) + snowGlitter;
+                    vec3 snowCol = mix(vec3(0.92, 0.96, 1.0), vec3(1.0, 0.98, 0.93), regionA) + snowGlitter;
 
                     vec3 matCol = mix(mix(rockCol, valleyCol, valleyFactor), snowCol, snowFactor);
 
@@ -473,22 +490,22 @@
                     hitPos = ro + rd * 2800.0;
                 }
 
-                // 大气与太阳散射 (受 u_lightIntensity 动态控制)
+                // 【重写】大气与太阳散射：纯净蓝色天空（天顶深蓝 -> 地平线淡蓝白）
                 float sunFactor = max(dot(rd, sunDir), 0.0);
-                vec3 skyBg = mix(vec3(0.35, 0.52, 0.78), vec3(0.85, 0.68, 0.52), pow(1.0 - max(rd.y, 0.0), 2.5));
-                skyBg += vec3(1.0, 0.65, 0.35) * pow(sunFactor, 5.0) * 0.5 * u_lightIntensity;
-                skyBg += vec3(1.0, 0.92, 0.75) * pow(sunFactor, 180.0) * 1.8 * u_lightIntensity;
+                vec3 skyBg = mix(vec3(0.10, 0.32, 0.72), vec3(0.55, 0.74, 0.94), pow(1.0 - max(rd.y, 0.0), 1.8));
+                skyBg += vec3(0.90, 0.95, 1.00) * pow(sunFactor, 6.0) * 0.25 * u_lightIntensity;  // 淡蓝白日晕
+                skyBg += vec3(1.00, 0.98, 0.90) * pow(sunFactor, 220.0) * 2.0 * u_lightIntensity; // 太阳核心
 
                 if (!hitTerrain) {
                     col = skyBg;
                 } else {
-                    // 低空山谷薄雾 (Valley Mist) + 大气透视雾效
+                    // 低空山谷薄雾 (Valley Mist) + 大气透视雾效（雾色匹配蓝色天空）
                     float valleyMist = exp(-max(hitPos.y - 15.0, 0.0) * 0.012) * (1.0 - exp(-hitT * 0.001));
                     float fogDensity = 1.0 - exp(-hitT * 0.00045);
-                    vec3 fogCol = mix(vec3(0.48, 0.60, 0.76), vec3(0.85, 0.72, 0.58), pow(sunFactor, 3.5));
+                    vec3 fogCol = mix(vec3(0.52, 0.66, 0.85), vec3(0.80, 0.87, 0.96), pow(sunFactor, 3.5));
                     
                     col = mix(col, fogCol, fogDensity);
-                    col = mix(col, vec3(0.75, 0.82, 0.90), valleyMist * 0.4);
+                    col = mix(col, vec3(0.72, 0.80, 0.92), valleyMist * 0.4);
                 }
 
                 // --- 摄像机运动矢量计算 ---
@@ -821,5 +838,22 @@
             requestAnimationFrame(render);
         };
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a19.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

@@ -194,18 +194,13 @@
 <body>
 <canvas id="glcanvas"></canvas>
 
-<div id="console">
+<!-- 【修改点】：加上 class="hidden" 实现默认隐藏，并保留丝滑侧滑淡入动画 -->
+<div id="console" class="hidden">
   <div id="console-header">
     <span id="console-title">⚡ 流体艺术控制台</span>
     <span id="console-toggle" title="折叠 / 展开">▼</span>
   </div>
   <div id="console-body"></div>
-</div>
-
-<div id="hint">
-  <kbd>Alt</kbd> + <kbd>H</kbd> 切换控制台 ·
-  <kbd>空格</kbd> 暂停 / 继续 ·
-  <kbd>R</kbd> 重置参数
 </div>
 
 <script>
@@ -779,5 +774,22 @@ canvas.addEventListener('mouseleave', () => {
   hintTimer = setTimeout(() => hintEl.classList.add('fade'), 3000);
 });
 </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a27.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>极光 Shader 交互控制台</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body, html {
@@ -22,45 +21,69 @@
             width: 100vw;
             height: 100vh;
         }
-        /* Custom scrollbar for control panel */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.7); }
+        
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #controlPanel {
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 4px;
+        #controlPanel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px) scale(0.98);
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(56, 189, 248, 0.4);
-            border-radius: 4px;
+
+        /* 🌟 极光定制发光渐变滑杆 (青-蓝-紫) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);
+            border-radius: 9999px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(56, 189, 248, 0.7);
+        input[type=range]:hover { opacity: 1; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
         }
-        /* Color input styling */
-        input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(139, 92, 246, 1), 0 0 6px rgba(255, 255, 255, 1);
         }
-        input[type="color"]::-webkit-color-swatch {
-            border: none;
-            border-radius: 6px;
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.9);
         }
     </style>
 </head>
 <body class="relative w-screen h-screen overflow-hidden bg-black">
 
-    <!-- Canvas for WebGL Shader -->
     <canvas id="shaderCanvas"></canvas>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-slate-900/90 text-cyan-400 border border-cyan-500/30 backdrop-blur-md shadow-lg text-sm font-medium transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4">
-        按 Alt+H 可切换控制台显示/隐藏
-    </div>
-
-    <!-- Floating Draggable Control Panel -->
-    <div id="controlPanel" class="fixed top-6 right-6 z-40 w-80 sm:w-96 rounded-2xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/60 shadow-2xl text-slate-100 transition-opacity duration-200 flex flex-col max-h-[90vh]">
+        <!-- 【修改点1】：加上 panel-hidden 类名实现默认隐藏，移除原有的 transition-opacity 防止冲突 -->
+    <div id="controlPanel" class="fixed top-6 right-6 z-40 w-80 sm:w-96 rounded-2xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/60 shadow-2xl text-slate-100 flex flex-col max-h-[90vh] panel-hidden">
         
-        <!-- Panel Header (Drag Handle) -->
         <div id="panelHeader" class="flex items-center justify-between px-5 py-3.5 border-b border-slate-700/50 cursor-move select-none bg-slate-800/40 rounded-t-2xl">
             <div class="flex items-center gap-2.5">
                 <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,13 +99,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
+                <!-- 【新增】隐藏面板按钮 -->
+                <button id="btnHide" class="p-1 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-red-400 transition-colors" title="隐藏 (Alt+H)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
         </div>
 
-        <!-- Panel Body -->
         <div id="panelBody" class="p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1 transition-all duration-300">
             
-            <!-- Quick Presets -->
             <div class="space-y-2">
                 <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">预设主题</label>
                 <div class="grid grid-cols-2 gap-2">
@@ -93,82 +118,72 @@
                 </div>
             </div>
 
-            <!-- Dynamic Evolution Controls -->
             <div class="space-y-3 pt-2 border-t border-slate-800">
                 <div class="flex justify-between items-center">
                     <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">演化与流速</label>
                 </div>
 
-                <!-- Hue Shift -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">色调偏移 (Hue)</span>
                         <span id="valHue" class="font-mono text-cyan-400">0.00</span>
                     </div>
-                    <input type="range" id="inputHue" min="0.0" max="1.0" step="0.01" value="0.0" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputHue" min="0.0" max="1.0" step="0.01" value="0.0" class="w-full">
                 </div>
 
-                <!-- Evolution Speed -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">演化速度 (Evolution Speed)</span>
                         <span id="valEvolutionSpeed" class="font-mono text-cyan-400">0.050</span>
                     </div>
-                    <input type="range" id="inputEvolutionSpeed" min="0.0" max="0.2" step="0.005" value="0.050" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputEvolutionSpeed" min="0.0" max="0.2" step="0.005" value="0.050" class="w-full">
                 </div>
 
-                <!-- Evolution Amount -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">演化强度 (Evolution Amount)</span>
                         <span id="valEvolutionAmount" class="font-mono text-cyan-400">0.65</span>
                     </div>
-                    <input type="range" id="inputEvolutionAmount" min="0.0" max="1.5" step="0.05" value="0.65" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputEvolutionAmount" min="0.0" max="1.5" step="0.05" value="0.65" class="w-full">
                 </div>
 
-                <!-- Ray Flow Speed -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">光束流速 (Ray Flow Speed)</span>
                         <span id="valRayFlowSpeed" class="font-mono text-cyan-400">2.55</span>
                     </div>
-                    <input type="range" id="inputRayFlowSpeed" min="0.0" max="8.0" step="0.1" value="2.55" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputRayFlowSpeed" min="0.0" max="8.0" step="0.1" value="2.55" class="w-full">
                 </div>
             </div>
 
-            <!-- Light & Environment Controls -->
             <div class="space-y-3 pt-2 border-t border-slate-800">
                 <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">画面与光效</label>
 
-                <!-- Brightness -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">曝光亮度 (Brightness)</span>
                         <span id="valBrightness" class="font-mono text-cyan-400">1.00</span>
                     </div>
-                    <input type="range" id="inputBrightness" min="0.2" max="2.5" step="0.05" value="1.00" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputBrightness" min="0.2" max="2.5" step="0.05" value="1.00" class="w-full">
                 </div>
 
-                <!-- Glow Intensity -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">辉光强度 (Glow Intensity)</span>
                         <span id="valGlow" class="font-mono text-cyan-400">1.00</span>
                     </div>
-                    <input type="range" id="inputGlow" min="0.0" max="2.5" step="0.05" value="1.00" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputGlow" min="0.0" max="2.5" step="0.05" value="1.00" class="w-full">
                 </div>
 
-                <!-- Star Density -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-300">星空亮度 (Star Density)</span>
                         <span id="valStars" class="font-mono text-cyan-400">1.00</span>
                     </div>
-                    <input type="range" id="inputStars" min="0.0" max="3.0" step="0.1" value="1.00" class="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                    <input type="range" id="inputStars" min="0.0" max="3.0" step="0.1" value="1.00" class="w-full">
                 </div>
             </div>
 
-            <!-- Color Palette Controls -->
             <div class="space-y-3 pt-2 border-t border-slate-800">
                 <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">极光色彩自定义</label>
                 <div class="grid grid-cols-3 gap-3">
@@ -187,7 +202,6 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
             <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
                 <button id="btnPause" class="px-3 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
                     <svg id="pauseIcon" class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,14 +231,12 @@
             </div>
         </div>
 
-        <!-- Panel Footer -->
         <div class="px-5 py-2.5 bg-slate-900/90 rounded-b-2xl border-t border-slate-800/80 text-[11px] text-slate-500 flex justify-between items-center">
             <span>快捷键: <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Alt + H</kbd> 隐藏/显示</span>
         </div>
     </div>
 
     <script>
-        // Fragment Shader Code
         const fragmentShaderSource = `#version 300 es
         precision highp float;
 
@@ -234,7 +246,6 @@
         uniform float iTime;
         uniform vec4 iMouse;
 
-        // Dynamic Uniforms
         uniform float uHue;
         uniform float uEvolutionSpeed;
         uniform float uEvolutionAmount;
@@ -488,7 +499,6 @@
         }
         `;
 
-        // Vertex Shader
         const vertexShaderSource = `#version 300 es
         in vec2 aPosition;
         void main() {
@@ -503,7 +513,6 @@
             document.body.innerHTML = '<div class="p-8 text-white text-center">您的浏览器不支持 WebGL 2</div>';
         }
 
-        // Helper: Create Shader
         function createShader(gl, type, source) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
@@ -530,23 +539,17 @@
 
         gl.useProgram(program);
 
-        // Quad geometry
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            -1, -1,
-             1, -1,
-            -1,  1,
-            -1,  1,
-             1, -1,
-             1,  1
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1
         ]), gl.STATIC_DRAW);
 
         const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
         gl.enableVertexAttribArray(aPositionLoc);
         gl.vertexAttribPointer(aPositionLoc, 2, gl.FLOAT, false, 0, 0);
 
-        // Uniform Locations
         const uLocs = {
             iResolution: gl.getUniformLocation(program, 'iResolution'),
             iTime: gl.getUniformLocation(program, 'iTime'),
@@ -563,7 +566,6 @@
             uColor3: gl.getUniformLocation(program, 'uColor3')
         };
 
-        // Default Config State
         const config = {
             hue: 0.0,
             evolutionSpeed: 0.050,
@@ -589,7 +591,6 @@
             ];
         }
 
-        // Resize Canvas
         function resizeCanvas() {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             canvas.width = window.innerWidth * dpr;
@@ -599,14 +600,12 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Mouse interaction
         let mouseX = 0, mouseY = 0;
         window.addEventListener('mousemove', (e) => {
             mouseX = e.clientX;
             mouseY = window.innerHeight - e.clientY;
         });
 
-        // UI Inputs Elements
         const inputs = {
             hue: document.getElementById('inputHue'),
             evolutionSpeed: document.getElementById('inputEvolutionSpeed'),
@@ -630,7 +629,6 @@
             stars: document.getElementById('valStars')
         };
 
-        // Sync UI -> Config
         function syncUI() {
             config.hue = parseFloat(inputs.hue.value);
             config.evolutionSpeed = parseFloat(inputs.evolutionSpeed.value);
@@ -654,7 +652,6 @@
 
         Object.values(inputs).forEach(input => input.addEventListener('input', syncUI));
 
-        // Sync Config -> UI
         function updateUIFromConfig() {
             inputs.hue.value = config.hue;
             inputs.evolutionSpeed.value = config.evolutionSpeed;
@@ -669,7 +666,6 @@
             syncUI();
         }
 
-        // Presets Definition
         window.applyPreset = function(type) {
             switch(type) {
                 case 'emerald':
@@ -698,7 +694,6 @@
             showToast('已加载预设主题');
         };
 
-        // Pause / Resume
         const btnPause = document.getElementById('btnPause');
         const pauseText = document.getElementById('pauseText');
         btnPause.addEventListener('click', () => {
@@ -707,14 +702,12 @@
             showToast(config.isPaused ? '已暂停极光演化' : '已恢复极光演化');
         });
 
-        // Reset
         document.getElementById('btnReset').addEventListener('click', () => {
             Object.assign(config, defaultConfig);
             updateUIFromConfig();
             showToast('已重置所有参数');
         });
 
-        // Screenshot
         document.getElementById('btnScreenshot').addEventListener('click', () => {
             const link = document.createElement('a');
             link.download = `aurora-shader-${Date.now()}.png`;
@@ -723,7 +716,6 @@
             showToast('已导出画面截图');
         });
 
-        // Fullscreen Toggle
         document.getElementById('btnFullscreen').addEventListener('click', () => {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
@@ -732,39 +724,38 @@
             }
         });
 
-        // Draggable Control Panel Logic
         const panel = document.getElementById('controlPanel');
         const header = document.getElementById('panelHeader');
         let isDragging = false;
         let dragOffsetX = 0, dragOffsetY = 0;
 
         header.addEventListener('mousedown', (e) => {
-            if (e.target.closest('button')) return; // Ignore click on header buttons
+            if (e.target.closest('button')) return; 
             isDragging = true;
             dragOffsetX = e.clientX - panel.offsetLeft;
             dragOffsetY = e.clientY - panel.offsetTop;
-            panel.style.transition = 'none';
+            panel.style.transition = 'none'; 
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
             let left = e.clientX - dragOffsetX;
             let top = e.clientY - dragOffsetY;
-            
-            // Constrain inside viewport
             left = Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, left));
             top = Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, top));
-
             panel.style.left = `${left}px`;
             panel.style.top = `${top}px`;
-            panel.style.right = 'auto'; // Disable right anchoring
+            panel.style.right = 'auto'; 
         });
 
+        // 【修改点2】：鼠标松开时恢复过渡动画，确保隐藏动画能正常触发
         window.addEventListener('mouseup', () => {
-            isDragging = false;
+            if (isDragging) {
+                isDragging = false;
+                panel.style.transition = ''; 
+            }
         });
 
-        // Collapsible Panel Logic
         const panelBody = document.getElementById('panelBody');
         const collapseIcon = document.getElementById('collapseIcon');
         let isCollapsed = false;
@@ -780,8 +771,8 @@
             }
         });
 
-        // Shortcut Alt + H Toggle
-        let isPanelVisible = true;
+        // 【修改点3】：初始状态改为 false，配合 HTML 的 panel-hidden 类
+        let isPanelVisible = false; 
         const toast = document.getElementById('toast');
         let toastTimeout = null;
 
@@ -794,24 +785,29 @@
             }, 2500);
         }
 
+        // 【修改点4】：使用自定义的 panel-hidden 类，配合 CSS 实现丝滑显隐动画
+        function togglePanelVisibility() {
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                panel.classList.remove('panel-hidden');
+                showToast('已显示控制台 (Alt+H)');
+            } else {
+                panel.classList.add('panel-hidden');
+                showToast('控制台已隐藏 (Alt+H 再次显示)');
+            }
+        }
+
+        document.getElementById('btnHide').addEventListener('click', togglePanelVisibility);
+
         window.addEventListener('keydown', (e) => {
             if (e.altKey && (e.key === 'h' || e.key === 'H')) {
                 e.preventDefault();
-                isPanelVisible = !isPanelVisible;
-                if (isPanelVisible) {
-                    panel.classList.remove('opacity-0', 'pointer-events-none');
-                    showToast('已显示控制台 (Alt+H)');
-                } else {
-                    panel.classList.add('opacity-0', 'pointer-events-none');
-                    showToast('控制台已隐藏 (Alt+H 再次显示)');
-                }
+                togglePanelVisibility();
             }
         });
 
-        // Prompt initial shortcut hint
-        setTimeout(() => showToast('快捷键提示: 按 Alt+H 隐藏/显示控制面板'), 1000);
+        setTimeout(() => showToast('提示: 按 Alt+H 呼出控制台'), 1000);
 
-        // FPS Meter & Render Loop
         let lastTime = 0;
         let simulatedTime = 0;
         let frameCount = 0;
@@ -819,7 +815,7 @@
         const fpsBadge = document.getElementById('fpsBadge');
 
         function render(currentTime) {
-            currentTime *= 0.001; // Seconds
+            currentTime *= 0.001; 
             const deltaTime = currentTime - lastTime;
             lastTime = currentTime;
 
@@ -827,7 +823,6 @@
                 simulatedTime += deltaTime;
             }
 
-            // FPS Calculation
             frameCount++;
             if (currentTime - lastFpsUpdate >= 0.5) {
                 const fps = Math.round((frameCount / (currentTime - lastFpsUpdate)));
@@ -836,7 +831,6 @@
                 lastFpsUpdate = currentTime;
             }
 
-            // Set WebGL Uniforms
             gl.uniform3f(uLocs.iResolution, canvas.width, canvas.height, 1.0);
             gl.uniform1f(uLocs.iTime, simulatedTime);
             gl.uniform4f(uLocs.iMouse, mouseX, mouseY, 0.0, 0.0);
@@ -856,17 +850,30 @@
             gl.uniform3f(uLocs.uColor2, c2[0], c2[1], c2[2]);
             gl.uniform3f(uLocs.uColor3, c3[0], c3[1], c3[2]);
 
-            // Draw
             gl.drawArrays(gl.TRIANGLES, 0, 6);
 
             requestAnimationFrame(render);
         }
 
-        // Initialize UI values
         updateUIFromConfig();
-
-        // Start loop
         requestAnimationFrame(render);
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a45.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

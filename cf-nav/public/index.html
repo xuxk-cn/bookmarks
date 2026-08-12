@@ -7,6 +7,37 @@
 <meta name="description" content="{{SITE_DESC}}">
 <link rel="icon" href="/favicon.svg">
 <link rel="stylesheet" href="/css/main.css">
+<link id="style-css" rel="stylesheet" href="">
+<script>
+(function() {
+  function applyStyleCSS(cssFile) {
+    var link = document.getElementById('style-css');
+    if (cssFile) {
+      link.href = '/css/' + cssFile;
+    } else {
+      link.href = '';
+    }
+  }
+  // 页面加载时读取已保存的风格
+  applyStyleCSS(localStorage.getItem('styleCSS') || '');
+  // 监听其他标签页的 localStorage 变化（style-preview 应用后触发）
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'styleCSS') applyStyleCSS(e.newValue || '');
+  });
+  // 监听 postMessage（style-preview / bg-preview 通过 window.opener.postMessage 通知）
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'applyStyle' && e.data.cssFile) {
+      localStorage.setItem('styleCSS', e.data.cssFile);
+      applyStyleCSS(e.data.cssFile);
+    }
+    if (e.data.type === 'applyBg' && e.data.bgFile !== undefined) {
+      localStorage.setItem('bgChoice', e.data.bgFile);
+      if (window.__setBg) window.__setBg(e.data.bgFile);
+    }
+  });
+})();
+</script>
 </head>
 <body>
 
@@ -96,6 +127,7 @@
           <select id="settings-bg-select" class="settings-select">
             <option value="none">无背景</option>
           </select>
+          <button class="settings-console-btn" onclick="window.open('http://localhost:8788/bg-preview.html','_blank')">预览</button>
         </div>
         <div class="settings-row" style="margin-top:0.25rem">
           <span class="settings-label" style="font-size:0.78rem;color:var(--muted)">背景控制台</span>
@@ -111,6 +143,7 @@
           <select id="style-select" class="settings-select">
             <!-- 后续完善 -->
           </select>
+          <button class="settings-console-btn" onclick="window.open('http://localhost:8788/style-preview.html','_blank')">预览</button>
         </div>
       </div>
     </div>
@@ -188,6 +221,35 @@
         localStorage.setItem('bgChoice', this.value);
       });
     } catch(e) { console.warn('背景列表加载失败', e); }
+  })();
+
+  // 风格列表加载
+  (async function loadStyleOptions() {
+    try {
+      var res = await fetch('/api/backgrounds');
+      var data = await res.json();
+      var sel = document.getElementById('style-select');
+      // 先加一个"默认"选项
+      var defOpt = document.createElement('option');
+      defOpt.value = '';
+      defOpt.textContent = '默认';
+      sel.appendChild(defOpt);
+      (data.styles || []).forEach(function(item) {
+        var opt = document.createElement('option');
+        var n = (item.file.match(/styles(\d+)\.html/) || [])[1];
+        opt.value = n ? 'styles' + (parseInt(n) < 10 ? '0' + n : n) + '.css' : '';
+        opt.textContent = item.name || item.file;
+        sel.appendChild(opt);
+      });
+      var saved = localStorage.getItem('styleCSS') || '';
+      sel.value = saved;
+      sel.addEventListener('change', function() {
+        var cssFile = this.value;
+        localStorage.setItem('styleCSS', cssFile);
+        var link = document.getElementById('style-css');
+        if (link) link.href = cssFile ? '/css/' + cssFile : '';
+      });
+    } catch(e) { console.warn('风格列表加载失败', e); }
   })();
 
   // ── 背景控制台模式 ────────────────────────────────

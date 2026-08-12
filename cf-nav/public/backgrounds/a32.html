@@ -60,15 +60,21 @@
             background: #7dd3fc;
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #control-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-15px) scale(0.98);
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
+
+        #show-panel-btn.btn-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px) scale(0.95);
         }
     </style>
 </head>
@@ -76,14 +82,12 @@
 
     <!-- WebGL 画布 -->
     <canvas id="webgl-canvas"></canvas>
-
-    <!-- 可拖动 & 可折叠 控制台面板 -->
-    <div id="control-panel" class="glass-panel absolute top-6 left-6 w-80 md:w-96 rounded-2xl text-white z-50 transition-opacity duration-300 shadow-2xl">
+ <div id="control-panel" class="glass-panel absolute top-6 left-6 w-80 md:w-96 rounded-2xl text-white z-50 transition-all duration-300 shadow-2xl panel-hidden">
         <!-- 面板头部 (拖拽区域) -->
         <div id="panel-header" class="flex items-center justify-between p-4 border-b border-white/10 cursor-move rounded-t-2xl bg-white/5 hover:bg-white/10 transition-colors">
             <div class="flex items-center gap-2.5">
                 <i class="fa-solid fa-sliders text-sky-400 text-lg"></i>
-                <span class="font-bold text-sm tracking-wide text-slate-100">控制台</span>
+                
                 <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">Alt + H 隐/显</span>
             </div>
             <div class="flex items-center gap-2">
@@ -181,11 +185,10 @@
         </div>
     </div>
 
-    <!-- 隐藏时的浮动召唤提示按钮 -->
-    <button id="show-panel-btn" class="hidden fixed top-6 left-6 z-40 px-3 py-2 rounded-xl glass-panel text-xs text-sky-300 hover:text-white flex items-center gap-2 shadow-lg border border-white/10 transition hover:scale-105">
+    <!-- 【修改点2】：移除原本的 hidden 类，让它默认显示，并加上 transition-all 支持丝滑动画 -->
+    <button id="show-panel-btn" class="fixed top-6 left-6 z-40 px-3 py-2 rounded-xl glass-panel text-xs text-sky-300 hover:text-white flex items-center gap-2 shadow-lg border border-white/10 transition-all duration-300 hover:scale-105">
         <i class="fa-solid fa-sliders"></i>
-        <span>显示控制台 (Alt + H)</span>
-    </button>
+            </button>
 
     <!-- 交互提示 Toast -->
     <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full glass-panel text-xs text-slate-200 pointer-events-none transition-opacity duration-500 opacity-0 flex items-center gap-2">
@@ -202,14 +205,12 @@
             alert('您的浏览器不支持 WebGL2，请更换现代浏览器体验！');
         }
 
-        // 顶点着色器源码
         const vsSource = `#version 300 es
         in vec2 position;
         void main() {
             gl_Position = vec4(position, 0.0, 1.0);
         }`;
 
-        // 片元着色器源码 (包含用户自定义的动态水波算法)
         const fsSource = `#version 300 es
         precision highp float;
 
@@ -217,7 +218,6 @@
         uniform vec3 iResolution;
         uniform float iTime;
         
-        // 可调参数 Uniforms
         uniform float uBps;
         uniform float uRippleIntensity;
         uniform float uRefraction;
@@ -226,14 +226,12 @@
         uniform float uGridScale;
         uniform int uColorTheme;
 
-        // 随机哈希算法
         vec2 hash12(float t) {
             float x = fract(sin(t * 12.9898) * 43758.5453);
             float y = fract(sin(t * 78.233) * 43758.5453);
             return vec2(x, y) * 2.0 - 1.0;
         }
 
-        // 解析与 Sound 中完全一致的主旋律逻辑
         float getMelody(int s) {
             int m = (s / 8) % 4;
             int step = s % 8;
@@ -244,14 +242,12 @@
             return 0.0;
         }
 
-        // 高级音频视觉回溯算法：渲染属于音乐节拍的水波
         float getWaterHeight(vec2 p, float time) {
             float height = 0.0;
             float bps = uBps;
             float stepF = time * bps;
             int currentStep = int(floor(stepF));
 
-            // 回溯过去 12 个音符，让画面上的水波能存活 3-4 秒
             for(int i = 0; i < 12; i++) {
                 int s = currentStep - i;
                 if(s < 0) continue;
@@ -259,32 +255,26 @@
                 float age = float(i) / bps + fract(stepF) / bps;
                 int beat = s % 8;
 
-                // 根据音符类型判定水花的大小和强度
                 float intensity = 0.0;
                 float baseRadius = 0.0;
                 
                 float isMelody = getMelody(s);
                 if (isMelody > 0.5) {
-                    // 主旋律重音：极强、极大的连绵波纹
                     intensity = 1.2;
                     baseRadius = age * 0.5;
                 } else if (beat == 3 || beat == 6) {
-                    // 水滴配角：清脆的中型波纹
                     intensity = 0.6;
                     baseRadius = age * 0.4;
                 } else {
-                    // 背景竖琴：泛起微弱密集的细小波光
                     intensity = 0.15;
                     baseRadius = age * 0.3;
                 }
 
                 intensity *= uRippleIntensity;
 
-                // 根据节拍 ID 获取涟漪的屏幕随机位置
                 vec2 pos = hash12(float(s));
                 pos.x *= iResolution.x / iResolution.y;
 
-                // 水波物理扩散计算 (Sine Wave + Envelope)
                 float dist = length(p - pos);
                 float wave = sin((dist - baseRadius) * (40.0 + intensity * 10.0));
                 float envelope = smoothstep(0.1, 0.0, abs(dist - baseRadius)) * exp(-age * (2.0 - intensity*0.5));
@@ -292,7 +282,6 @@
                 height += wave * envelope * intensity;
             }
 
-            // 全局极其轻柔的水面起伏
             height += sin(p.x * 2.0 + time * 0.5) * cos(p.y * 2.0 + time * 0.3) * 0.005 * uRippleIntensity;
             return height;
         }
@@ -304,43 +293,38 @@
             p.x *= iResolution.x / iResolution.y;
             float time = iTime;
 
-            // 1. 提取法线 (计算折射)
             vec2 eps = vec2(0.015, 0.0);
             float h0 = getWaterHeight(p, time);
             float hX = getWaterHeight(p + eps.xy, time);
             float hY = getWaterHeight(p + eps.yx, time);
             vec3 normal = normalize(vec3(h0 - hX, h0 - hY, 0.06));
 
-            // 2. 模拟水的光学折射
             vec2 refUv = uv + normal.xy * uRefraction;
 
-            // 3. 动态呼吸的水池颜色 (随着 4 个和弦推进，池水变换不同情感的色彩)
             float bps = uBps;
             int currentStep = int(floor(time * bps));
             int m = (currentStep / 8) % 4;
             
             vec3 colA, colB;
             if(uColorTheme == 0) {
-                if(m == 0)      { colA = vec3(0.0, 0.4, 0.55); colB = vec3(0.3, 0.8, 0.9); } // Fmaj7 (晴空青蓝)
-                else if(m == 1) { colA = vec3(0.05, 0.45, 0.5); colB = vec3(0.4, 0.9, 0.8); } // G6 (温润湖绿)
-                else if(m == 2) { colA = vec3(0.0, 0.3, 0.6);  colB = vec3(0.2, 0.7, 0.95); } // Em7 (悲伤深蓝)
-                else            { colA = vec3(0.1, 0.25, 0.6); colB = vec3(0.4, 0.6, 0.95); } // Am9 (空灵紫蓝)
+                if(m == 0)      { colA = vec3(0.0, 0.4, 0.55); colB = vec3(0.3, 0.8, 0.9); } 
+                else if(m == 1) { colA = vec3(0.05, 0.45, 0.5); colB = vec3(0.4, 0.9, 0.8); } 
+                else if(m == 2) { colA = vec3(0.0, 0.3, 0.6);  colB = vec3(0.2, 0.7, 0.95); } 
+                else            { colA = vec3(0.1, 0.25, 0.6); colB = vec3(0.4, 0.6, 0.95); } 
             } else if(uColorTheme == 1) {
-                colA = vec3(0.01, 0.08, 0.22); colB = vec3(0.05, 0.35, 0.65); // 极深深海
+                colA = vec3(0.01, 0.08, 0.22); colB = vec3(0.05, 0.35, 0.65); 
             } else if(uColorTheme == 2) {
-                colA = vec3(0.02, 0.35, 0.25); colB = vec3(0.2, 0.85, 0.6); // 翡翠湖绿
+                colA = vec3(0.02, 0.35, 0.25); colB = vec3(0.2, 0.85, 0.6); 
             } else if(uColorTheme == 3) {
-                colA = vec3(0.3, 0.1, 0.4); colB = vec3(0.9, 0.4, 0.6); // 梦幻晚霞
+                colA = vec3(0.3, 0.1, 0.4); colB = vec3(0.9, 0.4, 0.6); 
             }
             
             vec3 bgCol = mix(colA, colB, refUv.y);
             
-            // 水底清澈见底的瓷砖网格
             vec2 grid = fract(refUv * uGridScale);
             float lines = smoothstep(0.95, 1.0, grid.x) + smoothstep(0.95, 1.0, grid.y);
             bgCol = mix(bgCol, vec3(0.8, 1.0, 1.0), lines * 0.15);
 
-            // 4. 水底焦散 (Caustics 光影)
             vec2 cp = refUv * 6.0;
             float c = 0.0;
             for(int i = 0; i < 3; i++) {
@@ -350,7 +334,6 @@
             }
             bgCol += vec3(0.3, 0.8, 0.9) * smoothstep(0.0, 1.5, c) * uCaustics;
 
-            // 5. 波光粼粼的镜面高光 (Specular)
             vec3 lightDir = normalize(vec3(1.0, 2.0, 1.5));
             vec3 viewDir = vec3(0.0, 0.0, 1.0);
             vec3 halfVec = normalize(lightDir + viewDir);
@@ -358,15 +341,13 @@
             float spec = pow(max(dot(normal, halfVec), 0.0), 300.0);
             float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
 
-            // 合成并加暗角、Gamma增强通透感
             vec3 finalCol = mix(bgCol, vec3(0.9, 0.95, 1.0), fresnel * 0.6) + spec * uSpecular;
-            finalCol *= 1.0 - 0.25 * length(p); // 电影感暗角
-            finalCol = pow(finalCol, vec3(0.85)); // 提亮水质
+            finalCol *= 1.0 - 0.25 * length(p); 
+            finalCol = pow(finalCol, vec3(0.85)); 
 
             fragColor = vec4(finalCol, 1.0);
         }`;
 
-        // 编译 Shader
         function createShader(gl, type, source) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
@@ -386,23 +367,17 @@
         gl.attachShader(program, fragmentShader);
         gl.linkProgram(program);
 
-        // 设置全屏 Quad
         const positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-            -1, -1,
-             1, -1,
-            -1,  1,
-            -1,  1,
-             1, -1,
-             1,  1,
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1,
         ]), gl.STATIC_DRAW);
 
         const positionLocation = gl.getAttribLocation(program, 'position');
         gl.enableVertexAttribArray(positionLocation);
         gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-        // 获取 Uniform 位置
         const uniforms = {
             iResolution: gl.getUniformLocation(program, 'iResolution'),
             iTime: gl.getUniformLocation(program, 'iTime'),
@@ -415,98 +390,62 @@
             uColorTheme: gl.getUniformLocation(program, 'uColorTheme'),
         };
 
-        // 默认动态控制参数
         const params = {
-            bps: 3.5,
-            ripple: 1.0,
-            refract: 0.15,
-            caustics: 0.60,
-            specular: 2.50,
-            grid: 8.0,
-            colorTheme: 0
+            bps: 3.5, ripple: 1.0, refract: 0.15, caustics: 0.60,
+            specular: 2.50, grid: 8.0, colorTheme: 0
         };
 
-        // 基于 Web Audio API 的即时音效合成器（匹配逻辑）
         class SoundSynth {
             constructor() {
                 this.ctx = null;
                 this.isPlaying = false;
                 this.lastStep = -1;
-                // 和弦音阶 (Hz)
                 this.chords = [
-                    [174.61, 220.00, 261.63, 329.63], // Fmaj7
-                    [196.00, 246.94, 293.66, 329.63], // G6
-                    [164.81, 196.00, 246.94, 293.66], // Em7
-                    [220.00, 261.63, 329.63, 392.00]  // Am9
+                    [174.61, 220.00, 261.63, 329.63], 
+                    [196.00, 246.94, 293.66, 329.63], 
+                    [164.81, 196.00, 246.94, 293.66], 
+                    [220.00, 261.63, 329.63, 392.00]  
                 ];
             }
-
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
             toggle() {
                 this.init();
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume();
-                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
                 this.isPlaying = !this.isPlaying;
                 return this.isPlaying;
             }
-
             playTone(freq, type = 'sine', duration = 0.5, gainVal = 0.1) {
                 if (!this.isPlaying || !this.ctx) return;
-
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-
                 osc.type = type;
                 osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-
                 gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-
-                osc.start();
-                osc.stop(this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
             }
-
             update(time, bps) {
                 if (!this.isPlaying) return;
-
                 const stepF = time * bps;
                 const currentStep = Math.floor(stepF);
-
                 if (currentStep !== this.lastStep) {
                     this.lastStep = currentStep;
                     const m = Math.floor(currentStep / 8) % 4;
                     const step = currentStep % 8;
-
-                    // 判断是否主旋律音符
                     const isMelody = ((m===0 && step===0) || (m===0 && step===6) || 
                                       (m===1 && step===0) || (m===1 && step===5) || 
                                       (m===2 && step===0) || 
                                       (m===3 && step===0) || (m===3 && step===4));
-
                     if (isMelody) {
-                        // 主旋律重音 - 清脆圆润的木琴/水滴琴音
                         const chord = this.chords[m];
-                        const note = chord[step % chord.length] * 2.0; // 高八度
-                        this.playTone(note, 'sine', 1.2, 0.25);
+                        this.playTone(chord[step % chord.length] * 2.0, 'sine', 1.2, 0.25);
                     } else if (step === 3 || step === 6) {
-                        // 次要节奏水滴
                         const chord = this.chords[m];
-                        const note = chord[(step + 1) % chord.length] * 1.5;
-                        this.playTone(note, 'triangle', 0.6, 0.12);
+                        this.playTone(chord[(step + 1) % chord.length] * 1.5, 'triangle', 0.6, 0.12);
                     } else {
-                        // 背景静谧声
                         const chord = this.chords[m];
-                        const note = chord[step % chord.length];
-                        this.playTone(note, 'sine', 0.4, 0.04);
+                        this.playTone(chord[step % chord.length], 'sine', 0.4, 0.04);
                     }
                 }
             }
@@ -514,7 +453,6 @@
 
         const audioSynth = new SoundSynth();
 
-        // 渲染与 Resize 处理
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -527,13 +465,8 @@
 
         function render() {
             const currentTime = (performance.now() - startTime) * 0.001;
-
-            // 更新音频节拍
             audioSynth.update(currentTime, params.bps);
-
             gl.useProgram(program);
-
-            // 传入 Uniforms
             gl.uniform3f(uniforms.iResolution, canvas.width, canvas.height, 1.0);
             gl.uniform1f(uniforms.iTime, currentTime);
             gl.uniform1f(uniforms.uBps, params.bps);
@@ -543,13 +476,11 @@
             gl.uniform1f(uniforms.uSpecular, params.specular);
             gl.uniform1f(uniforms.uGridScale, params.grid);
             gl.uniform1i(uniforms.uColorTheme, params.colorTheme);
-
             gl.drawArrays(gl.TRIANGLES, 0, 6);
             requestAnimationFrame(render);
         }
         requestAnimationFrame(render);
 
-        // UI 逻辑 binding
         const panel = document.getElementById('control-panel');
         const panelHeader = document.getElementById('panel-header');
         const panelBody = document.getElementById('panel-body');
@@ -562,7 +493,6 @@
         const toast = document.getElementById('toast');
         const toastMsg = document.getElementById('toast-msg');
 
-        // Toast 消息提示
         function showToast(msg) {
             toastMsg.textContent = msg;
             toast.classList.remove('opacity-0');
@@ -573,7 +503,6 @@
             }, 2500);
         }
 
-        // 滑杆绑定
         function bindSlider(id, paramKey, valId, formatFn = (v) => v) {
             const slider = document.getElementById(id);
             const valSpan = document.getElementById(valId);
@@ -591,7 +520,6 @@
         bindSlider('param-specular', 'specular', 'val-specular', v => v.toFixed(2));
         bindSlider('param-grid', 'grid', 'val-grid', v => v.toFixed(1));
 
-        // 色彩主题选择按钮
         const themeBtns = document.querySelectorAll('.color-theme-btn');
         themeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -605,39 +533,19 @@
             });
         });
 
-        // 重置按钮
         resetBtn.addEventListener('click', () => {
-            params.bps = 3.5;
-            params.ripple = 1.0;
-            params.refract = 0.15;
-            params.caustics = 0.60;
-            params.specular = 2.50;
-            params.grid = 8.0;
-            params.colorTheme = 0;
-
-            document.getElementById('param-bps').value = 3.5;
-            document.getElementById('val-bps').textContent = '3.5';
-
-            document.getElementById('param-ripple').value = 1.0;
-            document.getElementById('val-ripple').textContent = '1.0';
-
-            document.getElementById('param-refract').value = 0.15;
-            document.getElementById('val-refract').textContent = '0.15';
-
-            document.getElementById('param-caustics').value = 0.60;
-            document.getElementById('val-caustics').textContent = '0.60';
-
-            document.getElementById('param-specular').value = 2.50;
-            document.getElementById('val-specular').textContent = '2.50';
-
-            document.getElementById('param-grid').value = 8.0;
-            document.getElementById('val-grid').textContent = '8.0';
-
+            params.bps = 3.5; params.ripple = 1.0; params.refract = 0.15;
+            params.caustics = 0.60; params.specular = 2.50; params.grid = 8.0; params.colorTheme = 0;
+            document.getElementById('param-bps').value = 3.5; document.getElementById('val-bps').textContent = '3.5';
+            document.getElementById('param-ripple').value = 1.0; document.getElementById('val-ripple').textContent = '1.0';
+            document.getElementById('param-refract').value = 0.15; document.getElementById('val-refract').textContent = '0.15';
+            document.getElementById('param-caustics').value = 0.60; document.getElementById('val-caustics').textContent = '0.60';
+            document.getElementById('param-specular').value = 2.50; document.getElementById('val-specular').textContent = '2.50';
+            document.getElementById('param-grid').value = 8.0; document.getElementById('val-grid').textContent = '8.0';
             themeBtns[0].click();
             showToast('参数已恢复为默认状态');
         });
 
-        // 折叠 / 展开面板
         let isCollapsed = false;
         collapseBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -653,7 +561,6 @@
             }
         });
 
-        // 音频播放控制
         toggleAudioBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const playing = audioSynth.toggle();
@@ -668,15 +575,15 @@
             }
         });
 
-        // 隐藏/显示面板 (支持 Alt + H 快捷键)
+        // 【修改点3】：使用自定义的 panel-hidden 和 btn-hidden 类，配合 CSS 实现丝滑显隐动画
         function togglePanelVisibility() {
-            if (panel.classList.contains('hidden')) {
-                panel.classList.remove('hidden');
-                showPanelBtn.classList.add('hidden');
+            if (panel.classList.contains('panel-hidden')) {
+                panel.classList.remove('panel-hidden');
+                showPanelBtn.classList.add('btn-hidden');
                 showToast('已显示控制面板');
             } else {
-                panel.classList.add('hidden');
-                showPanelBtn.classList.remove('hidden');
+                panel.classList.add('panel-hidden');
+                showPanelBtn.classList.remove('btn-hidden');
                 showToast('已隐藏控制面板 (按下 Alt+H 恢复)');
             }
         }
@@ -690,7 +597,6 @@
 
         showPanelBtn.addEventListener('click', togglePanelVisibility);
 
-        // 可拖动控制台实现 (Mouse & Touch)
         let isDragging = false;
         let dragOffsetX = 0;
         let dragOffsetY = 0;
@@ -700,12 +606,9 @@
             isDragging = true;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
             const rect = panel.getBoundingClientRect();
             dragOffsetX = clientX - rect.left;
             dragOffsetY = clientY - rect.top;
-
-            // 移除原本的 absolute 定位属性，以 top/left 自由移动
             panel.style.bottom = 'auto';
             panel.style.right = 'auto';
         }
@@ -714,39 +617,45 @@
             if (!isDragging) return;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
             let left = clientX - dragOffsetX;
             let top = clientY - dragOffsetY;
-
-            // 限制拖拽不出屏
             const maxLeft = window.innerWidth - panel.offsetWidth;
             const maxTop = window.innerHeight - panel.offsetHeight;
-
             left = Math.max(10, Math.min(left, maxLeft - 10));
             top = Math.max(10, Math.min(top, maxTop - 10));
-
             panel.style.left = `${left}px`;
             panel.style.top = `${top}px`;
         }
 
-        function stopDrag() {
-            isDragging = false;
-        }
+        function stopDrag() { isDragging = false; }
 
         panelHeader.addEventListener('mousedown', startDrag);
         window.addEventListener('mousemove', onDrag);
         window.addEventListener('mouseup', stopDrag);
-
         panelHeader.addEventListener('touchstart', startDrag, { passive: true });
         window.addEventListener('touchmove', onDrag, { passive: true });
         window.addEventListener('touchend', stopDrag);
 
-        // 首次点击屏幕唤醒 AudioContext (浏览器限制)
         window.addEventListener('click', () => {
-            if (audioSynth.ctx && audioSynth.ctx.state === 'suspended') {
-                audioSynth.ctx.resume();
-            }
+            if (audioSynth.ctx && audioSynth.ctx.state === 'suspended') audioSynth.ctx.resume();
         }, { once: true });
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a32.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

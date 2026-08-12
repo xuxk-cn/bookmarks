@@ -136,3 +136,4 @@ export function setImageBackground(url) {
   bgImage.style.backgroundImage = `url(${url})`;
   bgImage.classList.add('active');
 }
+window.__setBg = setBackground;

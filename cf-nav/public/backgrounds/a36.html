@@ -9,40 +9,217 @@
             margin: 0;
             overflow: hidden;
             background-color: #000;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #e2e8f0;
         }
         canvas {
             display: block;
             width: 100vw;
             height: 100vh;
-        }
-        #gui-container {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
+            top: 0;
+            left: 0;
         }
-        /* Optional: small hint for the shortcut */
-        #hint {
+        
+        #info {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            color: rgba(255, 255, 255, 0.5);
-            font-family: sans-serif;
+            bottom: 24px;
+            left: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(15, 18, 25, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
             font-size: 12px;
             pointer-events: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05);
             user-select: none;
-            z-index: 10;
+            z-index: 50;
+        }
+        #info kbd {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        /* 高级毛玻璃面板 */
+        .glass-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 300px;
+            background: rgba(15, 18, 25, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(139, 92, 246, 0.05);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .panel-header {
+            padding: 14px 18px;
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px 16px 0 0;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header:active { cursor: grabbing; }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .collapse-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+        .panel-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 600px;
+            overflow-y: auto;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+        }
+        
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .group-title {
+            font-size: 11px;
+            color: #8b5cf6;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .group-title::before {
+            content: "";
+            width: 3px;
+            height: 12px;
+            background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+            border-radius: 2px;
+        }
+
+        .slider-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+
+        .slider-row { display: flex; flex-direction: column; gap: 6px; }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+        .slider-val {
+            font-family: 'Fira Code', monospace;
+            color: #a78bfa;
+            font-weight: 600;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* 🌟 全新定制发光渐变滑杆 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #d946ef);
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        input[type=range]:hover { opacity: 1; }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
+        }
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(217, 70, 239, 1), 0 0 6px rgba(255, 255, 255, 1);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.9);
         }
     </style>
     <!-- 引入 Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- 引入 lil-gui (dat.gui 的现代替代品) -->
-    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.18"></script>
 </head>
 <body>
-
-<div id="gui-container"></div>
-<div id="hint">按 Alt+H 隐藏/显示控制台 | 拖动鼠标旋转视角</div>
+<!-- 自定义高级控制台 (默认隐藏) -->
+<div id="control-panel" class="glass-panel" style="opacity: 0; pointer-events: none; transform: translateX(20px);">
+    <div class="panel-header" id="panel-header">
+        <div class="panel-title">
+            <span>✨</span>
+            <span>星场参数控制台</span>
+        </div>
+        <button class="collapse-btn" id="collapse-btn" title="折叠/展开">−</button>
+    </div>
+    
+    <div class="panel-body" id="panel-body">
+        <div>
+            <div class="group-title">空间与形态</div>
+            <div class="slider-group" id="group-shape"></div>
+        </div>
+        <div>
+            <div class="group-title">视觉与光影</div>
+            <div class="slider-group" id="group-visual"></div>
+        </div>
+        <div>
+            <div class="group-title">动态控制</div>
+            <div class="slider-group" id="group-dynamic"></div>
+        </div>
+    </div>
+</div>
 
 <script>
     // --- Shader 代码 ---
@@ -59,7 +236,6 @@
         uniform float iTime;
         uniform vec2 iMouse;
 
-        // 通过 uniform 传入的参数
         uniform int iterations;
         uniform float formuparam;
         uniform int volsteps;
@@ -76,14 +252,11 @@
 
         void mainImage( out vec4 fragColor, in vec2 fragCoord )
         {
-            // get coords and direction
             vec2 uv = fragCoord.xy / iResolution.xy - .5;
             uv.y *= iResolution.y / iResolution.x;
             vec3 dir = vec3(uv * zoom, 1.);
             float time = iTime * speed + .25;
 
-            // mouse rotation
-            // Convert normalized mouse coordinates (0 to 1) to the original expected logic
             float a1 = .5 + (iMouse.x / iResolution.x) * 2.0;
             float a2 = .8 + (iMouse.y / iResolution.y) * 2.0;
             mat2 rot1 = mat2(cos(a1), sin(a1), -sin(a1), cos(a1));
@@ -95,28 +268,26 @@
             from.xz *= rot1;
             from.xy *= rot2;
             
-            // volumetric rendering
             float s = 0.1, fade = 1.;
             vec3 v = vec3(0.);
             for (int r = 0; r < volsteps; r++) {
                 vec3 p = from + s * dir * .5;
-                p = abs(vec3(tile) - mod(p, vec3(tile * 2.))); // tiling fold
+                p = abs(vec3(tile) - mod(p, vec3(tile * 2.))); 
                 float pa, a = pa = 0.;
                 for (int i = 0; i < iterations; i++) { 
-                    p = abs(p) / dot(p, p) - formuparam; // the magic formula
-                    a += abs(length(p) - pa); // absolute sum of average change
+                    p = abs(p) / dot(p, p) - formuparam; 
+                    a += abs(length(p) - pa); 
                     pa = length(p);
                 }
-                float dm = max(0., darkmatter - a * a * .001); // dark matter
-                a *= a * a; // add contrast
-                if (r > 6) fade *= 1. - dm; // dark matter, don't render near
-                //v+=vec3(dm,dm*.5,0.);
+                float dm = max(0., darkmatter - a * a * .001); 
+                a *= a * a; 
+                if (r > 6) fade *= 1. - dm; 
                 v += fade;
-                v += vec3(s, s * s, s * s * s * s) * a * brightness * fade; // coloring based on distance
-                fade *= distfading; // distance fading
+                v += vec3(s, s * s, s * s * s * s) * a * brightness * fade; 
+                fade *= distfading; 
                 s += stepsize;
             }
-            v = mix(vec3(length(v)), v, saturation); // color adjust
+            v = mix(vec3(length(v)), v, saturation); 
             fragColor = vec4(v * .01, 1.);	
         }
 
@@ -129,22 +300,20 @@
     let camera, scene, renderer;
     let uniforms;
     let material, mesh;
-    let mouse = new THREE.Vector2(0.5, 0.5); // Default mouse position
     let isMouseDown = false;
 
-    // 参数配置对象 (初始值)
     const config = {
-        iterations: 17,
-        formuparam: 0.53,
-        volsteps: 20,
-        stepsize: 0.1,
-        zoom: 0.800,
-        tile: 0.850,
-        speed: 0.010,
-        brightness: 0.0015,
-        darkmatter: 0.300,
-        distfading: 0.730,
-        saturation: 0.850
+        iterations: { val: 17, min: 1, max: 50, step: 1, fixed: 0, name: '迭代次数' },
+        formuparam: { val: 0.53, min: 0.1, max: 1.0, step: 0.01, fixed: 2, name: '形状参数' },
+        volsteps: { val: 20, min: 1, max: 50, step: 1, fixed: 0, name: '体积步数' },
+        stepsize: { val: 0.1, min: 0.01, max: 0.5, step: 0.01, fixed: 2, name: '步长' },
+        zoom: { val: 0.8, min: 0.1, max: 3.0, step: 0.01, fixed: 2, name: '缩放' },
+        tile: { val: 0.85, min: 0.1, max: 2.0, step: 0.01, fixed: 2, name: '平铺' },
+        speed: { val: 0.01, min: 0.0, max: 0.1, step: 0.001, fixed: 3, name: '速度' },
+        brightness: { val: 0.0015, min: 0.0, max: 0.01, step: 0.0001, fixed: 4, name: '亮度' },
+        darkmatter: { val: 0.3, min: 0.0, max: 1.0, step: 0.01, fixed: 2, name: '暗物质' },
+        distfading: { val: 0.73, min: 0.1, max: 1.0, step: 0.01, fixed: 2, name: '距离衰减' },
+        saturation: { val: 0.85, min: 0.0, max: 1.0, step: 0.01, fixed: 2, name: '饱和度' }
     };
 
     function init() {
@@ -160,19 +329,17 @@
             iTime: { value: 1.0 },
             iResolution: { value: new THREE.Vector2() },
             iMouse: { value: new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5) },
-            
-            // 绑定 config 参数到 uniform
-            iterations: { value: config.iterations },
-            formuparam: { value: config.formuparam },
-            volsteps: { value: config.volsteps },
-            stepsize: { value: config.stepsize },
-            zoom: { value: config.zoom },
-            tile: { value: config.tile },
-            speed: { value: config.speed },
-            brightness: { value: config.brightness },
-            darkmatter: { value: config.darkmatter },
-            distfading: { value: config.distfading },
-            saturation: { value: config.saturation }
+            iterations: { value: config.iterations.val },
+            formuparam: { value: config.formuparam.val },
+            volsteps: { value: config.volsteps.val },
+            stepsize: { value: config.stepsize.val },
+            zoom: { value: config.zoom.val },
+            tile: { value: config.tile.val },
+            speed: { value: config.speed.val },
+            brightness: { value: config.brightness.val },
+            darkmatter: { value: config.darkmatter.val },
+            distfading: { value: config.distfading.val },
+            saturation: { value: config.saturation.val }
         };
 
         material = new THREE.ShaderMaterial( {
@@ -191,10 +358,8 @@
         onWindowResize();
         window.addEventListener( 'resize', onWindowResize, false );
 
-        // 鼠标事件
         renderer.domElement.addEventListener('mousemove', (e) => {
             if(isMouseDown) {
-                // Invert Y for correct ShaderToy behavior
                 uniforms.iMouse.value.x = e.clientX;
                 uniforms.iMouse.value.y = window.innerHeight - e.clientY; 
             }
@@ -204,11 +369,8 @@
             uniforms.iMouse.value.x = e.clientX;
             uniforms.iMouse.value.y = window.innerHeight - e.clientY;
         });
-        renderer.domElement.addEventListener('mouseup', () => {
-            isMouseDown = false;
-        });
+        renderer.domElement.addEventListener('mouseup', () => { isMouseDown = false; });
         
-        // 触摸事件 (移动端支持)
         renderer.domElement.addEventListener('touchmove', (e) => {
             if(e.touches.length > 0) {
                  uniforms.iMouse.value.x = e.touches[0].clientX;
@@ -216,7 +378,7 @@
             }
         }, {passive: false});
 
-        initGUI();
+        setupUI();
     }
 
     function onWindowResize() {
@@ -225,56 +387,103 @@
         uniforms.iResolution.value.y = renderer.domElement.height;
     }
 
-    // --- lil-gui 控制台设置 ---
-    let gui;
-    function initGUI() {
-        gui = new lil.GUI({ container: document.getElementById('gui-container'), title: '参数控制台' });
-        
-        // 将 GUI 设置为可折叠，默认展开
-        gui.open();
+    function setupUI() {
+        const panel = document.getElementById('control-panel');
+        const header = document.getElementById('panel-header');
+        const body = document.getElementById('panel-body');
+        const colBtn = document.getElementById('collapse-btn');
 
-        // 监听值变化，更新 uniform
-        const updateUniform = (name) => {
-            return (value) => {
-                uniforms[name].value = value;
-            };
+        const groups = {
+            'group-shape': ['iterations', 'formuparam', 'volsteps', 'stepsize', 'tile'],
+            'group-visual': ['zoom', 'brightness', 'darkmatter', 'distfading', 'saturation'],
+            'group-dynamic': ['speed']
         };
 
-        const folder = gui.addFolder('Shader 参数');
-        
-        folder.add(config, 'iterations', 1, 50, 1).name('迭代次数 (iterations)').onChange(updateUniform('iterations'));
-        folder.add(config, 'formuparam', 0.1, 1.0).name('形状参数 (formuparam)').onChange(updateUniform('formuparam'));
-        folder.add(config, 'volsteps', 1, 50, 1).name('体积步数 (volsteps)').onChange(updateUniform('volsteps'));
-        folder.add(config, 'stepsize', 0.01, 0.5).name('步长 (stepsize)').onChange(updateUniform('stepsize'));
-        folder.add(config, 'zoom', 0.1, 3.0).name('缩放 (zoom)').onChange(updateUniform('zoom'));
-        folder.add(config, 'tile', 0.1, 2.0).name('平铺 (tile)').onChange(updateUniform('tile'));
-        folder.add(config, 'speed', 0.0, 0.1).name('速度 (speed)').onChange(updateUniform('speed'));
-        folder.add(config, 'brightness', 0.0, 0.01).name('亮度 (brightness)').onChange(updateUniform('brightness'));
-        folder.add(config, 'darkmatter', 0.0, 1.0).name('暗物质 (darkmatter)').onChange(updateUniform('darkmatter'));
-        folder.add(config, 'distfading', 0.1, 1.0).name('距离衰减 (distfading)').onChange(updateUniform('distfading'));
-        folder.add(config, 'saturation', 0.0, 1.0).name('饱和度 (saturation)').onChange(updateUniform('saturation'));
+        for (const [groupId, keys] of Object.entries(groups)) {
+            const container = document.getElementById(groupId);
+            keys.forEach(key => {
+                const c = config[key];
+                const row = document.createElement('div');
+                row.className = 'slider-row';
+                row.innerHTML = `
+                    <div class="slider-label"><span>${c.name}</span><span class="slider-val" id="val-${key}">${c.val.toFixed(c.fixed)}</span></div>
+                    <input type="range" id="sl-${key}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.val}">
+                `;
+                container.appendChild(row);
 
-        folder.open();
+                const slider = row.querySelector('input');
+                const valEl = row.querySelector('.slider-val');
+                slider.addEventListener('input', (e) => {
+                    const v = parseFloat(e.target.value);
+                    uniforms[key].value = (c.step === 1) ? parseInt(v) : v;
+                    valEl.textContent = v.toFixed(c.fixed);
+                });
+            });
+        }
+
+        let isCollapsed = false;
+        colBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                body.style.maxHeight = '0px';
+                body.style.paddingTop = '0';
+                body.style.paddingBottom = '0';
+                body.style.opacity = '0';
+                colBtn.textContent = '+';
+            } else {
+                body.style.maxHeight = '600px';
+                body.style.paddingTop = '18px';
+                body.style.paddingBottom = '18px';
+                body.style.opacity = '1';
+                colBtn.textContent = '−';
+            }
+        });
+
+        let isDragging = false, startX, startY, initLeft, initTop;
+        header.addEventListener('mousedown', (e) => {
+            if (e.target === colBtn) return;
+            isDragging = true;
+            startX = e.clientX; startY = e.clientY;
+            const rect = panel.getBoundingClientRect();
+            initLeft = rect.left; initTop = rect.top;
+            panel.style.right = 'auto';
+            panel.style.transition = 'none';
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let nx = initLeft + e.clientX - startX;
+            let ny = initTop + e.clientY - startY;
+            nx = Math.max(0, Math.min(nx, window.innerWidth - panel.offsetWidth));
+            ny = Math.max(0, Math.min(ny, window.innerHeight - 50));
+            panel.style.left = nx + 'px';
+            panel.style.top = ny + 'px';
+        });
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            panel.style.transition = '';
+        });
+
+        let isVisible = false; // 默认隐藏
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'h') {
+                e.preventDefault();
+                isVisible = !isVisible;
+                if (isVisible) {
+                    panel.style.opacity = '1';
+                    panel.style.pointerEvents = 'auto';
+                    panel.style.transform = 'translateX(0)';
+                } else {
+                    panel.style.opacity = '0';
+                    panel.style.pointerEvents = 'none';
+                    panel.style.transform = 'translateX(20px)';
+                }
+            }
+        });
     }
 
-    // --- Alt+H 快捷键控制显示/隐藏 ---
-    document.addEventListener('keydown', (event) => {
-        // 检查是否按下 Alt 键 且按下了 'h' 或 'H'
-        if (event.altKey && event.key.toLowerCase() === 'h') {
-            event.preventDefault(); // 阻止默认行为（比如浏览器菜单）
-            const guiContainer = document.getElementById('gui-container');
-            if (guiContainer.style.display === 'none') {
-                guiContainer.style.display = 'block';
-            } else {
-                guiContainer.style.display = 'none';
-            }
-        }
-    });
-
-    // --- 动画循环 ---
     function animate(time) {
         requestAnimationFrame( animate );
-        // 将时间转换为秒
         uniforms.iTime.value = time * 0.001;
         renderer.render( scene, camera );
     }
@@ -283,7 +492,23 @@
         init();
         requestAnimationFrame(animate);
     };
-
 </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a36.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

@@ -1,1216 +1,613 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>Ocean Terrain GLSL 控制台</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贝塞尔曲面 WebGL 着色器</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-<style>
-html,body{
-    margin:0;
-    padding:0;
-    overflow:hidden;
-    background:#000;
-}
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
 
-canvas{
-    width:100vw;
-    height:100vh;
-    display:block;
-}
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(30, 35, 45, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 100;
+        }
 
+        #ui-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
 
-/* 控制台 */
-#panel{
-    position:absolute;
-    top:30px;
-    left:30px;
-    width:300px;
-    background:rgba(15,20,30,.92);
-    color:#fff;
-    border:1px solid #4da3ff;
-    border-radius:12px;
-    font-family:"Microsoft YaHei",sans-serif;
-    user-select:none;
-    backdrop-filter:blur(10px);
-    box-shadow:0 0 20px #000;
-}
+        #ui-header {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px 12px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
 
+        #ui-header:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
 
-/* 标题栏 */
-#title{
-    height:40px;
-    line-height:40px;
-    padding-left:15px;
-    background:#12345a;
-    cursor:move;
-    border-radius:12px 12px 0 0;
-}
+        #toggle-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+        #toggle-btn:hover { color: #fff; }
 
+        #ui-content {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
 
-#buttons{
-    float:right;
-    margin-right:10px;
-}
+        #ui-panel.collapsed #ui-content {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+        }
+        
+        #ui-panel.collapsed #ui-header {
+            border-bottom: none;
+            border-radius: 12px;
+        }
 
-button{
-    background:none;
-    color:white;
-    border:0;
-    cursor:pointer;
-    font-size:18px;
-}
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
 
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #ccc;
+        }
 
-#body{
-    padding:15px;
-}
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #4a5568;
+            border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #63b3ed;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        input[type=color] {
+            -webkit-appearance: none;
+            border: none;
+            width: 100%;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 0;
+            background: none;
+        }
+        input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type=color]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; }
 
-
-.item{
-    margin-bottom:12px;
-}
-
-
-label{
-    display:block;
-    font-size:14px;
-    margin-bottom:5px;
-}
-
-
-input[type=range]{
-    width:100%;
-}
-
-
-.value{
-    float:right;
-    color:#6cf;
-}
-
-
-
-.hide{
-    display:none;
-}
-
-
-</style>
-
+        .shortcut-hint {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 5px;
+        }
+    </style>
 </head>
-
-
 <body>
 
+    <canvas id="glcanvas"></canvas>
 
-<canvas id="glcanvas"></canvas>
+    <!-- 这里加上了 class="hidden" 实现默认隐藏 -->
+    <div id="ui-panel" class="hidden">
+        <div id="ui-header">
+            <span>曲面控制台</span>
+            <button id="toggle-btn" title="折叠/展开">_</button>
+        </div>
+        <div id="ui-content">
+            <div class="control-group">
+                <div class="control-header">
+                    <span>波浪速度</span>
+                    <span id="val-speed">1.0</span>
+                </div>
+                <input type="range" id="u_speed" min="0" max="3" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-header">
+                    <span>垂直振幅</span>
+                    <span id="val-amplitude">0.6</span>
+                </div>
+                <input type="range" id="u_amplitude" min="0" max="2" step="0.05" value="0.6">
+            </div>
 
+            <div class="control-group">
+                <div class="control-header">
+                    <span>X轴频率</span>
+                    <span id="val-freqX">2.5</span>
+                </div>
+                <input type="range" id="u_freqX" min="0.5" max="10" step="0.1" value="2.5">
+            </div>
 
-<div id="panel">
+            <div class="control-group">
+                <div class="control-header">
+                    <span>Y轴频率</span>
+                    <span id="val-freqY">2.5</span>
+                </div>
+                <input type="range" id="u_freqY" min="0.5" max="10" step="0.1" value="2.5">
+            </div>
 
+            <div class="control-group">
+                <div class="control-header">
+                    <span>等参线粗细</span>
+                    <span id="val-grid">0.006</span>
+                </div>
+                <input type="range" id="u_grid" min="0" max="0.03" step="0.001" value="0.006">
+            </div>
+            
+            <div class="control-group">
+                <div class="control-header">
+                    <span>表面颜色</span>
+                </div>
+                <input type="color" id="u_color" value="#59a6f2">
+            </div>
+            
+            <div class="shortcut-hint">按 Alt + H 隐藏/显示</div>
+        </div>
+    </div>
 
-<div id="title">
-🌊 Ocean Terrain 控制台
+    <script>
+        const vertexShaderSource = `#version 300 es
+            in vec4 a_position;
+            void main() {
+                gl_Position = a_position;
+            }
+        `;
 
-<span id="buttons">
-<button id="fold">−</button>
-</span>
+        const fragmentShaderSource = `#version 300 es
+            precision highp float;
 
+            out vec4 outColor;
+            uniform vec3 iResolution;
+            uniform float iTime;
+
+            // 自定义参数
+            uniform float u_speed;
+            uniform float u_amplitude;
+            uniform float u_freqX;
+            uniform float u_freqY;
+            uniform float u_gridWidth;
+            uniform vec3 u_surfaceColor;
+
+            #define MAX_STEPS 128
+            #define SURF_EPS  0.001
+            #define STEP_FACTOR 0.5
+
+            vec3 P[36];
+
+            // ---------- 更新控制点 (6x6 网格) ----------
+            void updateControlPoints(float time) {
+                float t = time * u_speed;
+                for (int j = 0; j < 6; j++) {
+                    for (int i = 0; i < 6; i++) {
+                        float x = mix(-1.5, 1.5, float(i) / 5.0);
+                        float y = mix(-1.5, 1.5, float(j) / 5.0);
+                        // 应用外部控制的振幅、频率和速度
+                        float z = u_amplitude * sin(x * u_freqX + t) * cos(y * u_freqY + t * 0.7);
+                        P[j * 6 + i] = vec3(x, y, z);
+                    }
+                }
+            }
+
+            // ---------- 五次贝塞尔求值 (德卡斯特里奥) ----------
+            vec3 bezier5(vec3 p[6], float t) {
+                vec3 q[6];
+                for (int i = 0; i < 6; i++) q[i] = p[i];
+                for (int level = 1; level <= 5; level++) {
+                    for (int i = 0; i < 6 - level; i++) {
+                        q[i] = mix(q[i], q[i+1], t);
+                    }
+                }
+                return q[0];
+            }
+
+            // ---------- 贝塞尔曲面求值 ----------
+            vec3 bezierSurface(float u, float v) {
+                vec3 col[6];
+                for (int j = 0; j < 6; j++) {
+                    vec3 row[6];
+                    for (int i = 0; i < 6; i++) {
+                        row[i] = P[j * 6 + i];
+                    }
+                    col[j] = bezier5(row, v);
+                }
+                return bezier5(col, u);
+            }
+
+            // ---------- SDF ----------
+            float sdSurface(vec3 pos) {
+                float u = (pos.x + 1.5) / 3.0;
+                float v = (pos.y + 1.5) / 3.0;
+                if (u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0) return 1.0;
+                float h = bezierSurface(u, v).z;
+                return pos.z - h;
+            }
+
+            // ---------- 光线步进 ----------
+            bool marchSurface(vec3 ro, vec3 rd, out float t, out float u, out float v) {
+                t = 0.0;
+                for (int i = 0; i < MAX_STEPS; i++) {
+                    vec3 pos = ro + rd * t;
+                    float d = sdSurface(pos);
+                    if (abs(d) < SURF_EPS) {
+                        u = (pos.x + 1.5) / 3.0;
+                        v = (pos.y + 1.5) / 3.0;
+                        return true;
+                    }
+                    t += max(abs(d) * STEP_FACTOR, 0.002);
+                    if (t > 20.0) break;
+                }
+                return false;
+            }
+
+            // ---------- 曲面法线 ----------
+            vec3 surfaceNormal(vec3 pos) {
+                float eps = 0.01;
+                float d = sdSurface(pos);
+                return normalize(vec3(
+                    sdSurface(pos + vec3(eps, 0.0, 0.0)) - d,
+                    sdSurface(pos + vec3(0.0, eps, 0.0)) - d,
+                    sdSurface(pos + vec3(0.0, 0.0, eps)) - d
+                ));
+            }
+
+            // ---------- 主函数 ----------
+            void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+                float time = iTime;
+                updateControlPoints(time);
+
+                // 固定俯视相机
+                vec3 ro = vec3(0.0, 0.0, 3.5);
+                vec3 lookAt = vec3(0.0, 0.0, 0.0);
+                vec3 forward = normalize(lookAt - ro);
+                vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
+                vec3 up = cross(right, forward);
+
+                vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+                vec3 rd = normalize(forward + uv.x * right + uv.y * up);
+
+                float tMin = 1e10;
+                float uHit = 0.0, vHit = 0.0;
+                bool hitSurface = false;
+
+                // 仅曲面步进
+                float tTest, uTest, vTest;
+                if (marchSurface(ro, rd, tTest, uTest, vTest)) {
+                    tMin = tTest;
+                    uHit = uTest;
+                    vHit = vTest;
+                    hitSurface = true;
+                }
+
+                vec3 col;
+                vec3 bgColor = vec3(0.25, 0.3, 0.4);
+                vec3 L = normalize(vec3(0.8, 1.0, 1.2));
+
+                if (!hitSurface) {
+                    col = bgColor;
+                } else {
+                    vec3 pos = ro + rd * tMin;
+                    vec3 N = surfaceNormal(pos);
+                    if (dot(N, -rd) < 0.0) N = -N;
+
+                    float diff = max(dot(N, L), 0.0);
+                    float amb = 0.4;
+                    // 使用外部传入的颜色
+                    vec3 baseColor = u_surfaceColor;
+                    col = baseColor * (amb + diff * 0.8);
+
+                    vec3 V = normalize(ro - pos);
+                    vec3 H = normalize(L + V);
+                    float spec = pow(max(dot(N, H), 0.0), 80.0);
+                    col += vec3(0.6) * spec;
+
+                    // 等参线 (每 0.2 一条)
+                    float lw = u_gridWidth;
+                    float uDist = 1.0;
+                    for (float f = 0.0; f <= 1.001; f += 0.2) {
+                        uDist = min(uDist, abs(uHit - f));
+                    }
+                    float vDist = 1.0;
+                    for (float f = 0.0; f <= 1.001; f += 0.2) {
+                        vDist = min(vDist, abs(vHit - f));
+                    }
+                    if (min(uDist, vDist) < lw) {
+                        col = mix(col, vec3(0.0), 0.7);
+                    }
+                }
+
+                col = mix(col, bgColor, 1.0 - exp(-0.25 * tMin));
+                col = pow(col, vec3(1.0 / 2.2));
+                fragColor = vec4(col, 1.0);
+            }
+
+            void main() {
+                mainImage(outColor, gl_FragCoord.xy);
+            }
+        `;
+
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl2');
+        if (!gl) {
+            document.body.innerHTML = '<h2 style="color:white; text-align:center; margin-top:20%">您的浏览器不支持 WebGL2，无法渲染此着色器。</h2>';
+            throw new Error('WebGL2 not supported');
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+        }
+
+        const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [ -1, -1,  1, -1,  -1, 1,  -1, 1,  1, -1,  1, 1 ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        const vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+        gl.enableVertexAttribArray(positionAttributeLocation);
+        gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+        // 获取 Uniform 变量地址
+        const u_iResolution = gl.getUniformLocation(program, "iResolution");
+        const u_iTime = gl.getUniformLocation(program, "iTime");
+        const loc_speed = gl.getUniformLocation(program, "u_speed");
+        const loc_amplitude = gl.getUniformLocation(program, "u_amplitude");
+        const loc_freqX = gl.getUniformLocation(program, "u_freqX");
+        const loc_freqY = gl.getUniformLocation(program, "u_freqY");
+        const loc_grid = gl.getUniformLocation(program, "u_gridWidth");
+        const loc_color = gl.getUniformLocation(program, "u_surfaceColor");
+
+        const params = {
+            speed: 1.0,
+            amplitude: 0.6,
+            freqX: 2.5,
+            freqY: 2.5,
+            grid: 0.006,
+            color: [0.35, 0.65, 0.95] // 默认颜色 #59a6f2 转 RGB
+        };
+
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            return [r, g, b];
+        }
+
+        // 绑定输入事件
+        const bindInput = (id, paramKey) => {
+            const input = document.getElementById(id);
+            const valDisplay = document.getElementById(`val-${paramKey}`);
+            input.addEventListener('input', (e) => {
+                params[paramKey] = parseFloat(e.target.value);
+                if(valDisplay) valDisplay.textContent = params[paramKey].toFixed(id==='u_grid'?3:1);
+            });
+        };
+
+        bindInput('u_speed', 'speed');
+        bindInput('u_amplitude', 'amplitude');
+        bindInput('u_freqX', 'freqX');
+        bindInput('u_freqY', 'freqY');
+        bindInput('u_grid', 'grid');
+
+        document.getElementById('u_color').addEventListener('input', (e) => {
+            params.color = hexToRgb(e.target.value);
+        });
+
+        const panel = document.getElementById('ui-panel');
+        const header = document.getElementById('ui-header');
+        const toggleBtn = document.getElementById('toggle-btn');
+        
+        // 拖动逻辑
+        let isDragging = false, startX, startY, initialX, initialY;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target === toggleBtn) return; // 忽略折叠按钮的点击
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            initialX = panel.offsetLeft;
+            initialY = panel.offsetTop;
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+        });
+
+        function drag(e) {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            
+            // 限制在窗口范围内
+            let newX = initialX + dx;
+            let newY = initialY + dy;
+            const maxX = window.innerWidth - panel.offsetWidth;
+            const maxY = window.innerHeight - header.offsetHeight;
+            
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+            
+            panel.style.left = `${newX}px`;
+            panel.style.top = `${newY}px`;
+            panel.style.right = 'auto'; // 清除初始的 right 属性
+        }
+
+        function stopDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        // 折叠逻辑
+        toggleBtn.addEventListener('click', () => {
+            panel.classList.toggle('collapsed');
+            toggleBtn.textContent = panel.classList.contains('collapsed') ? '+' : '_';
+        });
+
+        // 隐藏/显示快捷键 (Alt+H)
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'h') {
+                e.preventDefault();
+                panel.classList.toggle('hidden');
+            }
+        });
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function render(time) {
+            time *= 0.001; // 转换为秒
+
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.useProgram(program);
+            gl.bindVertexArray(vao);
+
+            // 传递 Uniform 变量
+            gl.uniform3f(u_iResolution, gl.canvas.width, gl.canvas.height, 1.0);
+            gl.uniform1f(u_iTime, time);
+            
+            gl.uniform1f(loc_speed, params.speed);
+            gl.uniform1f(loc_amplitude, params.amplitude);
+            gl.uniform1f(loc_freqX, params.freqX);
+            gl.uniform1f(loc_freqY, params.freqY);
+            gl.uniform1f(loc_grid, params.grid);
+            gl.uniform3f(loc_color, params.color[0], params.color[1], params.color[2]);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+<div id="__apply-btn-wrap__" style="
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  z-index:99999; display:flex; gap:0.75rem; align-items:center;
+  background:rgba(13,17,23,0.92); border:1px solid #334155;
+  border-radius:2rem; padding:0.5rem 1.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+">
+  <span style="font-size:0.82rem; color:#94a3b8;">a6.html</span>
+  <button id="__apply-btn__" onclick="__applyToNav__()" style="
+    background:#238636; color:#fff; border:none; border-radius:1.5rem;
+    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+  " onmouseover="this.style.background='#2ea043'"
+    onmouseout="this.style.background='#238636'">
+    ✓ 应用到导航页
+  </button>
+  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
+    background:none; border:none; color:#64748b; cursor:pointer;
+    font-size:1rem; padding:0 0.25rem;
+  " title="隐藏">✕</button>
 </div>
-
-
-
-<div id="body">
-
-
-<div class="item">
-<label>
-海水颜色
-<span class="value" id="waterColorV">0.55</span>
-</label>
-<input id="waterColor"
-type="range"
-min="0"
-max="1"
-step="0.01"
-value="0.55">
-</div>
-
-
-
-<div class="item">
-<label>
-海浪强度
-<span class="value" id="waveV">0.50</span>
-</label>
-<input id="wave"
-type="range"
-min="0"
-max="2"
-step="0.01"
-value="0.5">
-</div>
-
-
-
-<div class="item">
-<label>
-海浪速度
-<span class="value" id="speedV">1.0</span>
-</label>
-<input id="speed"
-type="range"
-min="0"
-max="5"
-step="0.1"
-value="1">
-</div>
-
-
-
-<div class="item">
-<label>
-水面高度
-<span class="value" id="heightV">0.0</span>
-</label>
-<input id="height"
-type="range"
-min="-1"
-max="1"
-step="0.01"
-value="0">
-</div>
-
-
-
-<div class="item">
-<label>
-太阳强度
-<span class="value" id="sunV">1.0</span>
-</label>
-<input id="sun"
-type="range"
-min="0"
-max="5"
-step="0.1"
-value="1">
-</div>
-
-
-
-<div class="item">
-<label>
-雾强度
-<span class="value" id="fogV">0.3</span>
-</label>
-<input id="fog"
-type="range"
-min="0"
-max="2"
-step="0.01"
-value="0.3">
-</div>
-
-
-
-<div class="item">
-<label>
-反射强度
-<span class="value" id="reflectV">0.8</span>
-</label>
-<input id="reflect"
-type="range"
-min="0"
-max="2"
-step="0.01"
-value="0.8">
-</div>
-
-
-
-<div class="item">
-<label>
-Ray March质量
-<span class="value" id="qualityV">64</span>
-</label>
-<input id="quality"
-type="range"
-min="16"
-max="128"
-step="1"
-value="64">
-</div>
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-
 <script>
-
-
-const canvas=document.getElementById("glcanvas");
-
-const gl=canvas.getContext("webgl2");
-
-
-if(!gl)
-{
-alert("浏览器不支持 WebGL2");
+function __applyToNav__() {
+  var file = 'a6.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
 }
-
-
-
-
-function resize()
-{
-canvas.width=innerWidth;
-canvas.height=innerHeight;
-gl.viewport(
-0,
-0,
-canvas.width,
-canvas.height
-);
-}
-
-resize();
-
-window.onresize=resize;
-
-
-
-/***************
- 参数系统
-****************/
-
-
-let params={
-
-waterColor:.55,
-wave:.5,
-speed:1,
-height:0,
-sun:1,
-fog:.3,
-reflect:.8,
-quality:64
-
-};
-
-
-
-function bind(id,key)
-{
-
-let e=document.getElementById(id);
-let v=document.getElementById(id+"V");
-
-
-e.oninput=()=>{
-
-params[key]=parseFloat(e.value);
-
-v.innerHTML=e.value;
-
-};
-
-}
-
-
-bind("waterColor","waterColor");
-bind("wave","wave");
-bind("speed","speed");
-bind("height","height");
-bind("sun","sun");
-bind("fog","fog");
-bind("reflect","reflect");
-bind("quality","quality");
-
-
-
-
-
-/***************
- Alt+H隐藏控制台
-****************/
-
-window.addEventListener(
-"keydown",
-e=>{
-
-if(e.altKey && e.key.toLowerCase()=="h")
-{
-document.getElementById("panel")
-.classList.toggle("hide");
-}
-
-});
-
-
-
-
-
-/***************
- 折叠
-****************/
-
-
-fold.onclick=()=>{
-
-body.style.display=
-body.style.display=="none"
-?"block"
-:"none";
-
-fold.innerHTML=
-body.style.display=="none"
-?"+":"−";
-
-};
-
-
-
-
-
-/***************
- 拖动面板
-****************/
-
-
-let panel=document.getElementById("panel");
-let title=document.getElementById("title");
-
-let dragging=false;
-let ox,oy;
-
-
-title.onmousedown=e=>{
-
-dragging=true;
-
-ox=e.clientX-panel.offsetLeft;
-oy=e.clientY-panel.offsetTop;
-
-};
-
-
-document.onmousemove=e=>{
-
-if(dragging)
-{
-
-panel.style.left=
-(e.clientX-ox)+"px";
-
-panel.style.top=
-(e.clientY-oy)+"px";
-
-}
-
-};
-
-
-document.onmouseup=()=>dragging=false;
-
-
-
-
-
-/***************
- Shader工具
-****************/
-
-
-function createShader(type,src)
-{
-
-let s=gl.createShader(type);
-
-gl.shaderSource(s,src);
-
-gl.compileShader(s);
-
-
-if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))
-{
-
-console.error(
-gl.getShaderInfoLog(s)
-);
-
-}
-
-
-return s;
-
-}
-
-
-
-function createProgram(vs,fs)
-{
-
-let p=gl.createProgram();
-
-gl.attachShader(
-p,
-createShader(
-gl.VERTEX_SHADER,
-vs
-));
-
-gl.attachShader(
-p,
-createShader(
-gl.FRAGMENT_SHADER,
-fs
-));
-
-
-gl.linkProgram(p);
-
-
-if(!gl.getProgramParameter(p,gl.LINK_STATUS))
-{
-    console.error(
-        gl.getProgramInfoLog(p)
-    );
-}
-
-
-return p;
-
-}
-
-
-
-
-const vertexShader=`
-
-#version 300 es
-
-in vec2 position;
-
-out vec2 uv;
-
-void main()
-{
-uv=position*0.5+0.5;
-
-gl_Position=
-vec4(position,0,1);
-}
-
-`;
-
-
-
-/*
-
-下一部分：
-完整 Fragment Shader
-
-*/
-const fragmentShader=`
-
-#version 300 es
-precision highp float;
-
-
-out vec4 fragColor;
-
-in vec2 uv;
-
-
-uniform float iTime;
-uniform vec2 iResolution;
-uniform sampler2D iChannel0;
-
-uniform float uDark;
-
-
-/* 控制参数 */
-
-uniform float waterColor;
-uniform float wave;
-uniform float speed;
-uniform float height;
-uniform float sun;
-uniform float fog;
-uniform float reflect;
-
-
-/********************************
- 基础函数
-********************************/
-
-
-float hash(vec2 p)
-{
-    return fract(
-        sin(dot(p,vec2(127.1,311.7)))
-        *43758.5453
-    );
-}
-
-
-
-float noise(vec2 p)
-{
-    vec2 i=floor(p);
-    vec2 f=fract(p);
-
-    f=f*f*(3.0-2.0*f);
-
-
-    return mix(
-        mix(
-            hash(i),
-            hash(i+vec2(1,0)),
-            f.x),
-        mix(
-            hash(i+vec2(0,1)),
-            hash(i+vec2(1,1)),
-            f.x),
-        f.y);
-}
-
-
-
-float fbm(vec2 p)
-{
-
-float v=0.0;
-
-float a=.5;
-
-
-for(int i=0;i<5;i++)
-{
-
-v+=noise(p)*a;
-
-p*=2.0;
-
-a*=0.5;
-
-}
-
-
-return v;
-
-}
-
-
-
-
-/********************************
- 海面高度
-********************************/
-
-
-float sea(vec2 p)
-{
-
-float t=iTime*speed;
-
-
-float h=0.0;
-
-
-h+=sin(
-p.x*2.0+t
-)*0.08;
-
-
-h+=sin(
-p.y*3.0-t*1.3
-)*0.05;
-
-
-
-h+=fbm(
-p*1.8+t*.1
-)
-*wave
-*.15;
-
-
-
-return h+height;
-
-}
-
-
-
-
-/********************************
- 地形
-********************************/
-
-
-float terrain(vec2 p)
-{
-
-float h=
-fbm(p*1.2);
-
-return h*.3-0.25;
-
-}
-
-
-
-
-/********************************
- 法线
-********************************/
-
-
-vec3 normalSea(vec2 p)
-{
-
-float e=.002;
-
-
-float h=sea(p);
-
-vec3 n=vec3(
-
-sea(p+vec2(e,0))-h,
-
-e,
-
-sea(p+vec2(0,e))-h
-
-);
-
-
-return normalize(n);
-
-}
-
-
-
-/********************************
- 相机
-********************************/
-
-
-mat3 camera(
-vec3 ro,
-vec3 ta
-)
-{
-
-vec3 z=
-normalize(ta-ro);
-
-vec3 x=
-normalize(
-cross(vec3(0,1,0),z)
-);
-
-vec3 y=
-cross(z,x);
-
-
-return mat3(x,y,z);
-
-}
-
-
-
-
-/********************************
- Ray March
-********************************/
-
-
-float march(
-vec3 ro,
-vec3 rd,
-out vec3 hit
-)
-{
-
-float t=0.0;
-
-
-for(int i=0;i<80;i++)
-{
-
-vec3 p=
-ro+rd*t;
-
-
-float h=
-p.y-sea(p.xz);
-
-
-
-if(h<0.0)
-{
-hit=p;
-return t;
-}
-
-
-t+=max(
-0.02,
-h*.5
-);
-
-
-if(t>50.0)
-break;
-
-
-}
-
-
-
-return -1.0;
-
-}
-
-
-
-
-
-/********************************
- 天空
-********************************/
-
-
-vec3 sky(vec3 rd)
-{
-
-float s=
-pow(
-max(rd.y,0.0),
-0.5
-);
-
-
-return mix(
-
-vec3(.02,.05,.12),
-
-vec3(.3,.55,1.0),
-
-s
-
-);
-
-}
-
-
-
-
-/********************************
- 主渲染
-********************************/
-
-
-void main()
-{
-
-vec2 p=
-(uv*2.0-1.0);
-
-
-p.x*=iResolution.x/iResolution.y;
-
-
-
-vec3 ro=
-vec3(
-0.0,
-0.8,
-3.5
-);
-
-
-
-vec3 ta=
-vec3(
-0,
-0,
-0
-);
-
-
-
-mat3 cam=
-camera(ro,ta);
-
-
-
-vec3 rd=
-normalize(
-cam*
-vec3(
-p,
--1.5
-)
-);
-
-
-
-vec3 color;
-
-
-
-vec3 hit;
-
-
-
-float t=
-march(
-ro,
-rd,
-hit
-);
-
-
-
-if(t>0.0)
-{
-
-vec3 n=
-normalSea(
-hit.xz
-);
-
-
-
-float light=
-dot(
-n,
-normalize(
-vec3(-.5,1,.3)
-)
-);
-
-
-
-light=
-max(
-light,
-0.0
-);
-
-
-
-vec3 water=
-mix(
-
-vec3(
-0.01,
-0.12,
-0.18
-),
-
-vec3(
-0.05,
-0.6,
-0.8
-),
-
-waterColor
-
-);
-
-
-
-color=
-water
-*
-(
-0.3+
-light*sun
-);
-
-
-
-vec3 r=
-reflect(
-rd,
-n
-);
-
-
-
-color+=
-sky(r)
-*
-reflect;
-
-
-}
-
-
-
-else
-{
-
-color=
-sky(rd);
-
-
-}
-
-
-
-
-/***************
- 雾
-****************/
-
-
-if(t>0.0)
-{
-    color=
-    mix(
-        color,
-        sky(rd),
-        1.0-exp(-t*fog*.03)
-    );
-
-
-
-/***************
- 色调
-****************/
-
-
-color=
-pow(
-color,
-vec3(
-0.4545
-)
-);
-
-
-
-fragColor=
-vec4(
-color,
-1
-);
-
-
-
-}
-
-`;
-
-
-
-
-
-/********************************
- 创建程序
-********************************/
-
-
-const program=createProgram(
-vertexShader,
-fragmentShader
-);
-
-
-gl.useProgram(program);
-
-
-
-/********************************
- 顶点
-********************************/
-
-
-const buffer=
-gl.createBuffer();
-
-
-gl.bindBuffer(
-gl.ARRAY_BUFFER,
-buffer
-);
-
-
-gl.bufferData(
-gl.ARRAY_BUFFER,
-new Float32Array([
-
--1,-1,
-1,-1,
--1,1,
-
--1,1,
-1,-1,
-1,1
-
-]),
-gl.STATIC_DRAW
-);
-
-
-
-const loc=
-gl.getAttribLocation(
-program,
-"position"
-);
-
-
-gl.enableVertexAttribArray(loc);
-
-
-gl.vertexAttribPointer(
-loc,
-2,
-gl.FLOAT,
-false,
-0,
-0
-);
-
-
-
-
-
-/********************************
- Uniform
-********************************/
-
-
-const uniforms={};
-
-
-[
-"iTime",
-"iResolution",
-"waterColor",
-"wave",
-"speed",
-"height",
-"sun",
-"fog",
-"reflect"
-
-].forEach(n=>{
-
-uniforms[n]=
-gl.getUniformLocation(
-program,
-n
-);
-
-});
-
-
-
-
-
-
-/********************************
- 动画
-********************************/
-
-
-function render(t)
-{
-
-gl.useProgram(program);
-
-
-gl.uniform1f(
-uniforms.iTime,
-t*0.001
-);
-
-
-
-gl.uniform2f(
-uniforms.iResolution,
-canvas.width,
-canvas.height
-);
-
-
-
-gl.uniform1f(
-uniforms.waterColor,
-params.waterColor
-);
-
-
-gl.uniform1f(
-uniforms.wave,
-params.wave
-);
-
-
-gl.uniform1f(
-uniforms.speed,
-params.speed
-);
-
-
-gl.uniform1f(
-uniforms.height,
-params.height
-);
-
-
-gl.uniform1f(
-uniforms.sun,
-params.sun
-);
-
-
-gl.uniform1f(
-uniforms.fog,
-params.fog
-);
-
-
-gl.uniform1f(
-uniforms.reflect,
-params.reflect
-);
-
-
-
-gl.drawArrays(
-gl.TRIANGLES,
-0,
-6
-);
-
-
-requestAnimationFrame(render);
-
-}
-
-
-
-requestAnimationFrame(render);
-
-
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){var p=document.getElementById('panel');if(p)p.style.display='none';});</script>
-
 
 </body>
 </html>

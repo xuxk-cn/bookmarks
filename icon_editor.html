@@ -365,7 +365,6 @@ function exportFile() {
   if (!navData || !rawHtml) { alert('请先加载文件'); return; }
   if (Object.keys(changes).length === 0) { setStatus('没有任何修改，无需导出'); return; }
 
-  // 深拷贝数据，应用修改
   const exportData = JSON.parse(JSON.stringify(navData));
   Object.entries(changes).forEach(([key, changeObj]) => {
     const [ci, ii] = key.split('_').map(Number);
@@ -376,20 +375,40 @@ function exportFile() {
     if (changeObj.hover !== undefined) item.hover = changeObj.hover;
   });
 
-  const jsonStr = JSON.stringify(exportData, null, 2);
-  // 替换原始 HTML 里的数据块
+  // 提取所有 base64 图标到 icons.js，HTML 里 icon 置空
+  const icons = {};
+  const cleanData = JSON.parse(JSON.stringify(exportData));
+  cleanData.categories.forEach(cat => {
+    cat.items.forEach(item => {
+      if (item.icon && item.icon.startsWith('data:')) {
+        icons[item.url] = item.icon;
+        item.icon = '';
+      }
+    });
+  });
+
+  // 下载 my_nav.html
+  const jsonStr = JSON.stringify(cleanData, null, 2);
   const newHtml = rawHtml.replace(
     /(<script[^>]+id="data"[^>]*>)([\s\S]*?)(<\/script>)/,
     (_, open, _old, close) => `${open}\n${jsonStr}\n${close}`
   );
+  const htmlBlob = new Blob([newHtml], { type: 'text/html;charset=utf-8' });
+  const a1 = document.createElement('a');
+  a1.href = URL.createObjectURL(htmlBlob);
+  a1.download = 'my_nav.html';
+  a1.click();
+  URL.revokeObjectURL(a1.href);
 
-  const blob = new Blob([newHtml], { type: 'text/html;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'my_nav.html';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  setStatus(`✓ 已导出，共修改 ${Object.keys(changes).length} 个书签`);
+  // 下载 icons.js
+  const iconsJs = 'window.__NAV_ICONS__ = ' + JSON.stringify(icons) + ';';
+  const jsBlob = new Blob([iconsJs], { type: 'application/javascript;charset=utf-8' });
+  const a2 = document.createElement('a');
+  a2.href = URL.createObjectURL(jsBlob);
+  a2.download = 'icons.js';
+  setTimeout(() => { a2.click(); URL.revokeObjectURL(a2.href); }, 300);
+
+  setStatus(`✓ 已导出 my_nav.html + icons.js，共 ${Object.keys(icons).length} 个图标，两个文件需放在同一目录`);
 }
 
 function setStatus(msg) {

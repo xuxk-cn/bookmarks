@@ -9,174 +9,244 @@
             margin: 0;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #e2e8f0;
         }
 
         #glcanvas {
             display: block;
             width: 100vw;
             height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
-        /* 控制台主容器样式 */
-        #controlPanel {
+        #info {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            bottom: 24px;
+            left: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(15, 18, 25, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05);
+            user-select: none;
+            z-index: 50;
+        }
+        #info kbd {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .glass-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
             width: 320px;
-            background: rgba(30, 30, 30, 0.85);
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            color: #fff;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.05);
+            z-index: 100;
             display: flex;
             flex-direction: column;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
-        }
-
-        /* 控制台头部，支持拖拽 */
-        #panelHeader {
-            padding: 12px 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-            cursor: move;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
         }
 
-        #panelHeader:active {
-            background: rgba(255, 255, 255, 0.15);
+        .glass-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px) scale(0.98);
         }
 
-        /* 折叠按钮 */
-        #toggleBtn {
-            cursor: pointer;
-            font-family: monospace;
-            font-size: 16px;
-            padding: 0 5px;
-        }
-
-        /* 参数内容区 */
-        #panelContent {
-            padding: 15px;
-            display: block;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        .control-group:last-child {
-            margin-bottom: 0;
-        }
-
-        .control-group label {
+        .panel-header {
+            padding: 14px 18px;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px 16px 0 0;
+            cursor: grab;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
-            color: #ccc;
+            align-items: center;
+        }
+        .panel-header:active { cursor: grabbing; }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        /* 滑动条样式重置与美化 */
+        .header-btns { display: flex; gap: 6px; }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .collapse-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+        .panel-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 70vh;
+            overflow-y: auto;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+        }
+        
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .panel-body.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .slider-group { display: flex; flex-direction: column; gap: 14px; }
+        .slider-row { display: flex; flex-direction: column; gap: 6px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; }
+        .slider-val {
+            font-family: 'Fira Code', monospace;
+            color: #93c5fd;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* 🌟 全新定制发光渐变滑杆 */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
-            background: transparent;
+            height: 6px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #d946ef);
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
         }
+        input[type=range]:hover { opacity: 1; }
+        
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 16px;
             width: 16px;
+            height: 16px;
+            background: #ffffff;
             border-radius: 50%;
-            background: #4facfe;
             cursor: pointer;
-            margin-top: -6px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
         }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(139, 92, 246, 1), 0 0 6px rgba(255, 255, 255, 1);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
             cursor: pointer;
-            background: #555;
-            border-radius: 2px;
-        }
-        input[type=range]:focus {
-            outline: none;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.9);
         }
     </style>
-    <!-- 引入 Three.js 用于渲染 WebGL Shader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-    <!-- 渲染画布 -->
     <canvas id="glcanvas"></canvas>
-
-    <!-- 可拖拽控制台 -->
-    <div id="controlPanel">
-        <div id="panelHeader">
-            <span>控制台 (Alt+H)</span>
-            <span id="toggleBtn" title="折叠/展开">[-]</span>
+        <!-- 自定义高级控制台 (默认隐藏) -->
+    <div id="controlPanel" class="glass-panel panel-hidden">
+        <div id="panelHeader" class="panel-header">
+            <div class="panel-title">
+                <span>🌊</span>
+                <span>Shader 参数控制台</span>
+            </div>
+            <div class="header-btns">
+                <button id="toggleBtn" class="collapse-btn" title="折叠/展开">
+                    <svg id="icon-collapse" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <button id="hideBtn" class="collapse-btn" title="隐藏 (Alt+H)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
         </div>
-        <div id="panelContent">
-            
-            <div class="control-group">
-                <label>水流速度 (Water Speed): <span id="val_waterSpeed">0.90</span></label>
-                <input type="range" id="u_waterSpeed" min="0.0" max="3.0" step="0.05" value="0.9">
-            </div>
+        
+        <div id="panelContent" class="panel-body">
+            <div class="slider-group">
+                <div class="slider-row">
+                    <div class="slider-label"><span>水流速度 (Water Speed)</span><span class="slider-val" id="val_waterSpeed">0.90</span></div>
+                    <input type="range" id="u_waterSpeed" min="0.0" max="3.0" step="0.05" value="0.9">
+                </div>
 
-            <div class="control-group">
-                <label>镜头晃动 (Camera Shake): <span id="val_cameraShake">1.00</span></label>
-                <input type="range" id="u_cameraShake" min="0.0" max="5.0" step="0.1" value="1.0">
-            </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>镜头晃动 (Camera Shake)</span><span class="slider-val" id="val_cameraShake">1.00</span></div>
+                    <input type="range" id="u_cameraShake" min="0.0" max="5.0" step="0.1" value="1.0">
+                </div>
 
-            <div class="control-group">
-                <label>水平面位置 (Horizon Level): <span id="val_horizonY">0.00</span></label>
-                <input type="range" id="u_horizonY" min="-1.0" max="1.0" step="0.05" value="0.0">
-            </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>水平面位置 (Horizon Level)</span><span class="slider-val" id="val_horizonY">0.00</span></div>
+                    <input type="range" id="u_horizonY" min="-1.0" max="1.0" step="0.05" value="0.0">
+                </div>
 
-            <div class="control-group">
-                <label>月亮水平位置 (Moon X): <span id="val_moonPosX">0.60</span></label>
-                <input type="range" id="u_moonPosX" min="-2.0" max="2.0" step="0.05" value="0.6">
-            </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>月亮水平位置 (Moon X)</span><span class="slider-val" id="val_moonPosX">0.60</span></div>
+                    <input type="range" id="u_moonPosX" min="-2.0" max="2.0" step="0.05" value="0.6">
+                </div>
 
-            <div class="control-group">
-                <label>月亮垂直位置 (Moon Y): <span id="val_moonPosY">0.50</span></label>
-                <input type="range" id="u_moonPosY" min="-1.0" max="2.0" step="0.05" value="0.5">
-            </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>月亮垂直位置 (Moon Y)</span><span class="slider-val" id="val_moonPosY">0.50</span></div>
+                    <input type="range" id="u_moonPosY" min="-1.0" max="2.0" step="0.05" value="0.5">
+                </div>
 
-            <div class="control-group">
-                <label>月亮尺寸 (Moon Size): <span id="val_moonSize">0.20</span></label>
-                <input type="range" id="u_moonSize" min="0.05" max="0.6" step="0.01" value="0.2">
+                <div class="slider-row">
+                    <div class="slider-label"><span>月亮尺寸 (Moon Size)</span><span class="slider-val" id="val_moonSize">0.20</span></div>
+                    <input type="range" id="u_moonSize" min="0.05" max="0.6" step="0.01" value="0.2">
+                </div>
             </div>
-
         </div>
     </div>
 
     <script>
-        // -----------------------------------------------------------
-        // 1. 初始化 Three.js 场景与渲染器
-        // -----------------------------------------------------------
         const canvas = document.getElementById('glcanvas');
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         const scene = new THREE.Scene();
-        // 使用正交相机，恰好覆盖整个屏幕
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
         
-        // -----------------------------------------------------------
-        // 2. 生成程序化噪声纹理以模拟 iChannel0 和 iChannel1
-        // -----------------------------------------------------------
         function createRGBNoiseTexture(size) {
             const canvas = document.createElement('canvas');
             canvas.width = size;
@@ -185,10 +255,10 @@
             const imgData = ctx.createImageData(size, size);
             
             for(let i = 0; i < imgData.data.length; i += 4) {
-                imgData.data[i] = Math.random() * 255;     // R
-                imgData.data[i+1] = Math.random() * 255;   // G
-                imgData.data[i+2] = Math.random() * 255;   // B
-                imgData.data[i+3] = 255;                   // A
+                imgData.data[i] = Math.random() * 255;     
+                imgData.data[i+1] = Math.random() * 255;   
+                imgData.data[i+2] = Math.random() * 255;   
+                imgData.data[i+3] = 255;                   
             }
             
             ctx.putImageData(imgData, 0, 0);
@@ -203,10 +273,6 @@
         const iChannel0 = createRGBNoiseTexture(512);
         const iChannel1 = createRGBNoiseTexture(512);
 
-        // -----------------------------------------------------------
-        // 3. 构建 Shader
-        // -----------------------------------------------------------
-        // 顶点着色器 (基础全屏四边形)
         const vertexShader = `#version 300 es
         in vec3 position;
         in vec2 uv;
@@ -216,7 +282,6 @@
             gl_Position = vec4(position, 1.0);
         }`;
 
-        // 片段着色器 (整合了用户的 Shader 及动态参数)
         const fragmentShader = `#version 300 es
         precision highp float;
 
@@ -225,7 +290,6 @@
         uniform sampler2D iChannel0;
         uniform sampler2D iChannel1;
         
-        // 控制面板动态传入的参数
         uniform float u_waterSpeed;
         uniform float u_cameraShake;
         uniform float u_horizonY;
@@ -245,30 +309,29 @@
 
         void mainImage( out vec4 fragColor, in vec2 fragCoord )
         {
-            // 动画无限循环，不随时间淡出消失
             float time = mod( iTime, 1000.0 );
             vec2 p = (2.0*fragCoord-iResolution.xy) / iResolution.y;
             vec2 i = p;
 
-            // camera (注入 u_cameraShake 乘数控制镜头晃动幅度)
+            // camera shake
             p += vec2(1.0,3.0)*0.001*2.0*cos( iTime*5.0 + vec2(0.0,1.5) ) * u_cameraShake;    
             p += vec2(1.0,3.0)*0.001*1.0*cos( iTime*9.0 + vec2(1.0,4.5) ) * u_cameraShake;    
             
-            float an = 0.3*sin( 0.1*time );
-            float co = cos(an);
-            float si = sin(an);
-            p = mat2( co, -si, si, co )*p*0.85;
+            // 【修改1】移除了原有的 mat2 旋转代码，确保水平面绝对水平，不再倾斜
             
-            // water (注入 u_waterSpeed 控制水流速度)
+            // water
             vec2 q = vec2(p.x,1.0)/p.y;
             q.y -= u_waterSpeed * time;    
             
             vec2 off = texture( iChannel0, 0.1*q*vec2(1.0,2.0) - vec2(0.0,0.007*iTime) ).xy;
             q += 0.4*(-1.0 + 2.0*off);
             vec3 col = 0.2*sqrt(texture( iChannel0, 0.05*q *vec2(1.0,4.0) + vec2(0.0,0.01*iTime) ).zyx);
-            float re = 1.0-smoothstep( 0.0, 0.7, abs(p.x-0.6) - abs(p.y)*0.5+0.2 );
+            
+            // 【修改2】水面反射光绑定 u_moonPos.x，倒影完美跟随月亮移动
+            float moonX = u_moonPos.x;
+            float re = 1.0-smoothstep( 0.0, 0.7, abs(p.x - moonX) - abs(p.y)*0.5+0.2 );
             col += 1.0*vec3(1.0,0.9,0.73)*re*0.2*(0.1+0.9*off.y)*5.0*(1.0-col.x);
-            float re2 = 1.0-smoothstep( 0.0, 2.0, abs(p.x-0.6) - abs(p.y)*0.85 );
+            float re2 = 1.0-smoothstep( 0.0, 2.0, abs(p.x - moonX) - abs(p.y)*0.85 );
             col += 0.7*re2*smoothstep(0.35,1.0,texture( iChannel1, 0.075*q *vec2(1.0,4.0) ).x);
             
             // sky
@@ -291,7 +354,7 @@
             // horizon
             col += 0.1*pow(clamp(1.0-abs(p.y - u_horizonY),0.0,1.0),9.0);
 
-            // moon (注入 u_moonPos 控制月亮位置，u_moonSize 控制月球大小)
+            // moon
             float d = length(p - u_moonPos);
             vec3 moon = vec3(0.98,0.97,0.95)*(1.0-0.1*smoothstep(0.2,0.5,f));
             col += 0.8*moon*exp(-4.0*d)*vec3(1.1,1.0,0.8);
@@ -304,7 +367,6 @@
             col = pow( 1.4*col, vec3(1.5,1.2,1.0) );    
             col *= clamp(1.0-0.3*length(i), 0.0, 1.0 );
 
-            // 移除原本的淡出函数（fade），使动画永久循环播放
             fragColor = vec4( col, 1.0 );
         }
 
@@ -313,14 +375,11 @@
             mainImage(fragColor, fragCoord);
         }`;
 
-        // Uniforms 的初始配置
         const uniforms = {
             iResolution: { value: new THREE.Vector3(window.innerWidth, window.innerHeight, 1) },
             iTime: { value: 0.0 },
             iChannel0: { value: iChannel0 },
             iChannel1: { value: iChannel1 },
-            
-            // 自定义受控参数
             u_waterSpeed: { value: 0.9 },
             u_cameraShake: { value: 1.0 },
             u_horizonY: { value: 0.0 },
@@ -340,13 +399,11 @@
         const mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
 
-        // 窗口自适应大小调整
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
             uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
         });
 
-        // 动画主循环
         function animate() {
             requestAnimationFrame(animate);
             uniforms.iTime.value = performance.now() / 1000.0;
@@ -355,76 +412,78 @@
         animate();
 
         // -----------------------------------------------------------
-        // 4. UI 控制面板交互逻辑
+        // UI 控制面板交互逻辑
         // -----------------------------------------------------------
-        
         const controlPanel = document.getElementById('controlPanel');
         const panelHeader = document.getElementById('panelHeader');
         const panelContent = document.getElementById('panelContent');
         const toggleBtn = document.getElementById('toggleBtn');
+        const hideBtn = document.getElementById('hideBtn');
+        const iconCollapse = document.getElementById('icon-collapse');
         
-        // 4.1 拖拽功能实现
         let isDragging = false;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
+        let dragOffsetX = 0, dragOffsetY = 0;
 
         panelHeader.addEventListener('mousedown', (e) => {
-            if (e.target === toggleBtn) return; // 点击折叠按钮时不触发拖拽
+            if (e.target.closest('button')) return; 
             isDragging = true;
-            // 获取鼠标距离面板左上角的偏移量
             const rect = controlPanel.getBoundingClientRect();
             dragOffsetX = e.clientX - rect.left;
             dragOffsetY = e.clientY - rect.top;
+            controlPanel.style.transition = 'none';
+            controlPanel.style.right = 'auto';
         });
 
         window.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            // 计算新的位置并限制在窗口范围内（防止拖出屏幕外）
-            let newX = e.clientX - dragOffsetX;
-            let newY = e.clientY - dragOffsetY;
-            
-            // 基础边界检查
-            newX = Math.max(0, Math.min(newX, window.innerWidth - controlPanel.offsetWidth));
-            newY = Math.max(0, Math.min(newY, window.innerHeight - controlPanel.offsetHeight));
-            
+            let newX = Math.max(0, Math.min(e.clientX - dragOffsetX, window.innerWidth - controlPanel.offsetWidth));
+            let newY = Math.max(0, Math.min(e.clientY - dragOffsetY, window.innerHeight - controlPanel.offsetHeight));
             controlPanel.style.left = newX + 'px';
             controlPanel.style.top = newY + 'px';
-            controlPanel.style.right = 'auto'; // 覆盖原有的 right 定位
         });
 
         window.addEventListener('mouseup', () => {
-            isDragging = false;
+            if (isDragging) {
+                isDragging = false;
+                controlPanel.style.transition = ''; 
+            }
         });
 
-        // 4.2 折叠/展开功能
         let isCollapsed = false;
-        toggleBtn.addEventListener('click', () => {
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             isCollapsed = !isCollapsed;
             if (isCollapsed) {
-                panelContent.style.display = 'none';
-                toggleBtn.innerText = '[+]';
+                panelContent.classList.add('collapsed');
+                iconCollapse.style.transform = 'rotate(-90deg)';
             } else {
-                panelContent.style.display = 'block';
-                toggleBtn.innerText = '[-]';
+                panelContent.classList.remove('collapsed');
+                iconCollapse.style.transform = 'rotate(0deg)';
             }
         });
 
-        // 4.3 隐藏/显示面板 (Alt+H 快捷键)
-        let isPanelVisible = true;
+        let isPanelVisible = false; // 默认隐藏
+        function togglePanelVisibility() {
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                controlPanel.classList.remove('panel-hidden');
+            } else {
+                controlPanel.classList.add('panel-hidden');
+            }
+        }
+
+        hideBtn.addEventListener('click', togglePanelVisibility);
+
         window.addEventListener('keydown', (e) => {
             if (e.altKey && e.key.toLowerCase() === 'h') {
-                isPanelVisible = !isPanelVisible;
-                controlPanel.style.opacity = isPanelVisible ? '1' : '0';
-                controlPanel.style.pointerEvents = isPanelVisible ? 'auto' : 'none';
-                e.preventDefault(); // 阻止浏览器默认行为
+                e.preventDefault();
+                togglePanelVisibility();
             }
         });
 
-        // 4.4 滑动条数据双向绑定与更新机制
         function bindSlider(sliderId, labelId, updateCallback) {
             const slider = document.getElementById(sliderId);
             const label = document.getElementById(labelId);
-            
             slider.addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
                 label.innerText = val.toFixed(2);
@@ -432,31 +491,30 @@
             });
         }
 
-        // 绑定各个参数的滑块
-        bindSlider('u_waterSpeed', 'val_waterSpeed', (val) => {
-            uniforms.u_waterSpeed.value = val;
-        });
-        
-        bindSlider('u_cameraShake', 'val_cameraShake', (val) => {
-            uniforms.u_cameraShake.value = val;
-        });
-
-        bindSlider('u_horizonY', 'val_horizonY', (val) => {
-            uniforms.u_horizonY.value = val;
-        });
-        
-        bindSlider('u_moonPosX', 'val_moonPosX', (val) => {
-            uniforms.u_moonPos.value.x = val;
-        });
-        
-        bindSlider('u_moonPosY', 'val_moonPosY', (val) => {
-            uniforms.u_moonPos.value.y = val;
-        });
-        
-        bindSlider('u_moonSize', 'val_moonSize', (val) => {
-            uniforms.u_moonSize.value = val;
-        });
+        bindSlider('u_waterSpeed', 'val_waterSpeed', (val) => { uniforms.u_waterSpeed.value = val; });
+        bindSlider('u_cameraShake', 'val_cameraShake', (val) => { uniforms.u_cameraShake.value = val; });
+        bindSlider('u_horizonY', 'val_horizonY', (val) => { uniforms.u_horizonY.value = val; });
+        bindSlider('u_moonPosX', 'val_moonPosX', (val) => { uniforms.u_moonPos.value.x = val; });
+        bindSlider('u_moonPosY', 'val_moonPosY', (val) => { uniforms.u_moonPos.value.y = val; });
+        bindSlider('u_moonSize', 'val_moonSize', (val) => { uniforms.u_moonSize.value = val; });
 
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a40.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

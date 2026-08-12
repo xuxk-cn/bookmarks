@@ -168,12 +168,20 @@
             }
         }
     </style>
+<script src="icons.js"></script>
 </head>
 <body>
 
 <header>
     <h1>我的导航</h1>
     <nav class="navbar" id="nav"></nav>
+    <div style="margin-top:1rem;">
+        <label style="display:inline-flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--text-secondary);">
+            <input type="checkbox" id="sound-toggle" checked
+                style="width:16px;height:16px;accent-color:var(--accent-color);cursor:pointer;">
+            悬停音效
+        </label>
+    </div>
 </header>
 
 <div class="search-box">
@@ -194,98 +202,165 @@ INSERT_DATA_HERE
     const nav = document.getElementById('nav');
     const search = document.getElementById('search');
     const tooltip = document.getElementById('tooltip');
+    const soundToggle = document.getElementById('sound-toggle');
+
+    if (localStorage.getItem('soundEnabled') === 'false') soundToggle.checked = false;
+    soundToggle.addEventListener('change', () => localStorage.setItem('soundEnabled', soundToggle.checked));
+
+                            let audioCtx = null;
+    function playDing() {
+        if (!soundToggle.checked) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const c = audioCtx;
+            const t = c.currentTime;
+            [[457.38,0.25,0.88],[914.76,0.12,0.45],[1829.52,0.06,0.18]].forEach(([f,v,d]) => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.type = 'sine'; o.frequency.value = f;
+                g.gain.setValueAtTime(v, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + d);
+                o.start(t); o.stop(t + d);
+            });
+        } catch(e) {}
+    }
+
+
+
+
+
+
+
+
+    // 打平所有书签，附带板块名
+    const allItems = [];
+    data.categories.forEach(cat => cat.items.forEach(item => allItems.push({...item, catTitle: cat.title})));
 
     let currentCategory = null;
+    let searchTimer = null;
 
-    // 初始化分类导航
-    if (data.categories && data.categories.length > 0) {
-        data.categories.forEach((cat, index) => {
-            const btn = document.createElement('button');
-            btn.textContent = cat.title;
-            btn.onclick = () => switchCategory(cat.title, btn);
-            if (index === 0) {
-                btn.classList.add('active');
-                currentCategory = cat.title;
-            }
-            nav.appendChild(btn);
-        });
-    }
+    // 初始化板块导航
+    data.categories.forEach((cat, index) => {
+        const btn = document.createElement('button');
+        btn.textContent = cat.title;
+        btn.onclick = () => { search.value = ''; switchCategory(cat.title, btn); };
+        if (index === 0) { btn.classList.add('active'); currentCategory = cat.title; }
+        nav.appendChild(btn);
+    });
 
     function switchCategory(title, btn) {
         document.querySelectorAll('.navbar button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentCategory = title;
-        render();
+        renderCategory();
     }
 
-    function render(filter = '') {
+    function escHtml(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    function highlight(text, words) {
+        if (!text || !words.length) return escHtml(text || '');
+        let result = escHtml(text);
+        words.forEach(w => {
+            const re = new RegExp(escRe(escHtml(w)), 'gi');
+            result = result.replace(re, m =>
+                '<mark style="background:#0ea5e9;color:#0f172a;border-radius:2px;padding:0 2px">' + m + '</mark>'
+            );
+        });
+        return result;
+    }
+
+    function scoreItem(item, words) {
+        const t = (item.title || '').toLowerCase();
+        const u = (item.url || '').toLowerCase();
+        const h = (item.hover || '').toLowerCase();
+        for (const w of words) {
+            if (!t.includes(w) && !u.includes(w) && !h.includes(w)) return -1;
+        }
+        let score = 0;
+        for (const w of words) {
+            if (t === w)              score += 100;
+            else if (t.startsWith(w)) score += 60;
+            else if (t.includes(w))   score += 40;
+            if (u.includes(w)) score += 10;
+            if (h.includes(w)) score += 5;
+        }
+        return score;
+    }
+
+    function makeCard(item, words, showCat) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => window.open(item.url, '_blank');
+        const hostname = (() => { try { return new URL(item.url).hostname; } catch(e) { return ''; } })();
+        const icons = window.__NAV_ICONS__ || {};
+        const iconUrl = icons[item.url] || item.icon || (hostname ? 'https://www.google.com/s2/favicons?domain=' + hostname + '&sz=64' : '');
+        const imgTag = iconUrl
+            ? '<img src="' + iconUrl + '" onerror="this.style.visibility=\'hidden\'" alt="">'
+            : '<div style="width:64px;height:64px;margin-bottom:1rem;border-radius:0.5rem;background:#334155;display:flex;align-items:center;justify-content:center;font-size:1.5rem">&#128279;</div>';
+        const catBadge = showCat && item.catTitle
+            ? '<div style="font-size:0.7rem;color:var(--accent-color);margin-bottom:0.35rem;opacity:0.85">' + escHtml(item.catTitle) + '</div>'
+            : '';
+        card.innerHTML = imgTag + catBadge + '<div class="title">' + highlight(item.title, words) + '</div>';
+        card.addEventListener('mouseenter', (e) => {
+            playDing();
+            tooltip.innerHTML = '<div style="color:var(--accent-color);font-size:0.8rem;margin-bottom:4px;word-break:break-all">'
+                + escHtml(item.url) + '</div>' + (item.hover ? '<div>' + escHtml(item.hover) + '</div>' : '');
+            tooltip.style.display = 'block';
+            updateTooltipPos(e);
+        });
+        card.addEventListener('mousemove', updateTooltipPos);
+        card.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        return card;
+    }
+
+    function renderCategory() {
+        nav.style.opacity = '1';
+        nav.style.pointerEvents = '';
         main.innerHTML = '';
         const cat = data.categories.find(c => c.title === currentCategory);
         if (!cat) return;
+        cat.items.forEach(item => main.appendChild(makeCard(item, [], false)));
+    }
 
-        const itemsToRender = filter 
-            ? cat.items.filter(it => it.title.toLowerCase().includes(filter.toLowerCase()))
-            : cat.items;
-
-        itemsToRender.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.onclick = () => window.open(item.url, '_blank');
-            
-            const hostname = (() => { try { return new URL(item.url).hostname; } catch(e) { return ''; } })();
-            const iconUrl = item.icon || (hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=64` : '');
-            const imgTag = iconUrl
-                ? `<img src="${iconUrl}" onerror="this.style.visibility='hidden'" alt="">`
-                : `<div style="width:64px;height:64px;margin-bottom:1rem;border-radius:0.5rem;background:#334155;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">🔗</div>`;
-            
-            card.innerHTML = `
-                ${imgTag}
-                <div class="title">${item.title}</div>
-            `;
-
-            card.addEventListener('mouseenter', (e) => {
-                const desc = item.hover || '';
-                const urlLine = item.url;
-                tooltip.innerHTML = `<div style="color:var(--accent-color);font-size:0.8rem;margin-bottom:4px;word-break:break-all;">${urlLine}</div>${desc ? `<div>${desc}</div>` : ''}`;
-                tooltip.style.display = 'block';
-                updateTooltipPos(e);
-            });
-
-            card.addEventListener('mousemove', updateTooltipPos);
-
-            card.addEventListener('mouseleave', () => {
-                tooltip.style.display = 'none';
-            });
-
-            main.appendChild(card);
-        });
+    function renderSearch(query) {
+        nav.style.opacity = '0.35';
+        nav.style.pointerEvents = 'none';
+        main.innerHTML = '';
+        const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (!words.length) { renderCategory(); return; }
+        const scored = allItems
+            .map(item => ({ item, score: scoreItem(item, words) }))
+            .filter(r => r.score >= 0)
+            .sort((a, b) => b.score - a.score);
+        if (!scored.length) {
+            main.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:4rem 0">未找到匹配书签</div>';
+            return;
+        }
+        const info = document.createElement('div');
+        info.style.cssText = 'grid-column:1/-1;color:var(--text-secondary);font-size:0.85rem;padding-bottom:0.25rem';
+        info.textContent = '找到 ' + scored.length + ' 条';
+        main.appendChild(info);
+        scored.forEach(({ item }) => main.appendChild(makeCard(item, words, true)));
     }
 
     function updateTooltipPos(e) {
-        const x = e.clientX + 15;
-        const y = e.clientY + 15;
-        
-        // 防止超出右侧边界
-        if (x + tooltip.offsetWidth > window.innerWidth) {
-            tooltip.style.left = (e.clientX - tooltip.offsetWidth - 15) + 'px';
-        } else {
-            tooltip.style.left = x + 'px';
-        }
-        
-        // 防止超出底部边界
-        if (y + tooltip.offsetHeight > window.innerHeight) {
-            tooltip.style.top = (e.clientY - tooltip.offsetHeight - 15) + 'px';
-        } else {
-            tooltip.style.top = y + 'px';
-        }
+        const x = e.clientX + 15, y = e.clientY + 15;
+        tooltip.style.left = (x + tooltip.offsetWidth > window.innerWidth ? e.clientX - tooltip.offsetWidth - 15 : x) + 'px';
+        tooltip.style.top  = (y + tooltip.offsetHeight > window.innerHeight ? e.clientY - tooltip.offsetHeight - 15 : y) + 'px';
     }
 
+    // 搜索监听，200ms 防抖
     search.addEventListener('input', (e) => {
-        render(e.target.value);
+        clearTimeout(searchTimer);
+        const q = e.target.value;
+        if (!q.trim()) { nav.style.opacity='1'; nav.style.pointerEvents=''; renderCategory(); return; }
+        searchTimer = setTimeout(() => renderSearch(q), 200);
     });
 
-    // 初始渲染
-    render();
+    renderCategory();
 </script>
 
 </body>

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full w-full overflow-hidden">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水下焦散 Shader 实时渲染与控制台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义滚动条与控件样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.3);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.6);
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            height: 6px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease, background-color 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #7dd3fc;
+        }
+    </style>
+</head>
+<body class="h-full w-full bg-black text-slate-100 select-none overflow-hidden font-sans">
+
+    <!-- Fullscreen WebGL Canvas -->
+    <canvas id="webgl-canvas" class="block w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+
+    <!-- Bottom Left Shortcut Toast Notice -->
+    <div id="toast-hint" class="fixed bottom-4 left-4 z-40 bg-slate-900/80 backdrop-blur-md border border-slate-700/60 text-slate-300 text-xs px-3 py-2 rounded-xl shadow-lg transition-all duration-300 pointer-events-none flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </div>
+
+    <!-- Dynamic Notification Banner -->
+    <div id="status-toast" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-sky-500/90 text-white text-sm font-medium px-4 py-2 rounded-full shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-all duration-300 transform -translate-y-2">
+        控制台已隐藏
+    </div>
+
+    <!-- 【修改点1】：加上 opacity-0 pointer-events-none 实现默认隐藏，并保留丝滑淡入动画 -->
+    <div id="control-panel" class="fixed top-6 right-6 w-80 max-w-[calc(100vw-2rem)] bg-slate-900/85 backdrop-blur-xl border border-slate-700/70 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden transition-opacity duration-200 opacity-0 pointer-events-none">
+        
+        <!-- Panel Header (Drag Handle) -->
+        <div id="panel-header" class="px-4 py-3 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between cursor-move hover:bg-slate-800 transition-colors">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+                <span class="font-semibold text-sm text-slate-100 tracking-wide">焦散着色器控制台</span>
+                <span id="fps-counter" class="text-[10px] bg-slate-700/60 text-sky-300 px-1.5 py-0.5 rounded-full font-mono ml-1">60 FPS</span>
+            </div>
+            
+            <div class="flex items-center gap-1.5">
+                <!-- Minimize / Collapse Button -->
+                <button id="btn-collapse" title="折叠/展开" class="p-1 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-white transition-colors">
+                    <svg id="icon-collapse" class="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <!-- Close / Hide Button -->
+                <button id="btn-close" title="隐藏控制台 (Alt+H)" class="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel Scrollable Body -->
+        <div id="panel-body" class="p-4 space-y-4 max-h-[80vh] overflow-y-auto text-xs transition-all duration-300">
+            
+            <!-- Quick Style Presets -->
+            <div class="space-y-1.5">
+                <label class="block font-medium text-slate-300">色彩风格预设</label>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button class="preset-btn px-2.5 py-1.5 bg-slate-800 hover:bg-sky-600/30 border border-slate-700 hover:border-sky-500/50 rounded-lg text-slate-200 text-left transition-all" data-preset="deepsea">🌊 深海蓝色</button>
+                    <button class="preset-btn px-2.5 py-1.5 bg-slate-800 hover:bg-emerald-600/30 border border-slate-700 hover:border-emerald-500/50 rounded-lg text-slate-200 text-left transition-all" data-preset="emerald">🍃 翡翠绿光</button>
+                    <button class="preset-btn px-2.5 py-1.5 bg-slate-800 hover:bg-amber-600/30 border border-slate-700 hover:border-amber-500/50 rounded-lg text-slate-200 text-left transition-all" data-preset="sunset">🌅 夕阳金光</button>
+                    <button class="preset-btn px-2.5 py-1.5 bg-slate-800 hover:bg-purple-600/30 border border-slate-700 hover:border-purple-500/50 rounded-lg text-slate-200 text-left transition-all" data-preset="cyber">🟣 霓虹幻境</button>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Shader Main Controls -->
+            <div class="space-y-3">
+                <!-- MAX_ITER -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">迭代计算次数 (MAX_ITER)</span>
+                        <span id="val-max-iter" class="font-mono text-sky-400">5</span>
+                    </div>
+                    <input id="slider-max-iter" type="range" min="1" max="15" step="1" value="5" class="w-full">
+                </div>
+
+                <!-- Speed -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">演化速度 (Speed)</span>
+                        <span id="val-speed" class="font-mono text-sky-400">0.50</span>
+                    </div>
+                    <input id="slider-speed" type="range" min="0" max="2" step="0.01" value="0.5" class="w-full">
+                </div>
+
+                <!-- Intensity (inten) -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">光斑细节强度 (Intensity)</span>
+                        <span id="val-inten" class="font-mono text-sky-400">0.0050</span>
+                    </div>
+                    <input id="slider-inten" type="range" min="0.0005" max="0.02" step="0.0005" value="0.005" class="w-full">
+                </div>
+
+                <!-- Scale / Zoom -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">纹理缩放倍率 (Scale)</span>
+                        <span id="val-scale" class="font-mono text-sky-400">1.00</span>
+                    </div>
+                    <input id="slider-scale" type="range" min="0.2" max="4.0" step="0.05" value="1.0" class="w-full">
+                </div>
+
+                <!-- Contrast Power -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">对比度幂次 (Power)</span>
+                        <span id="val-power" class="font-mono text-sky-400">8.0</span>
+                    </div>
+                    <input id="slider-power" type="range" min="1.0" max="16.0" step="0.5" value="8.0" class="w-full">
+                </div>
+
+                <!-- Brightness Base -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span class="text-slate-300">基础亮度基准 (Brightness)</span>
+                        <span id="val-brightness" class="font-mono text-sky-400">1.17</span>
+                    </div>
+                    <input id="slider-brightness" type="range" min="0.5" max="2.0" step="0.01" value="1.17" class="w-full">
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- RGB Tint Sliders -->
+            <div class="space-y-2.5">
+                <span class="block font-medium text-slate-300">RGB 色彩偏移</span>
+                
+                <div class="flex items-center gap-2">
+                    <span class="w-4 text-red-400 font-bold">R</span>
+                    <input id="slider-red" type="range" min="0" max="1" step="0.01" value="0.00" class="w-full">
+                    <span id="val-red" class="w-8 font-mono text-right text-slate-400">0.00</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <span class="w-4 text-emerald-400 font-bold">G</span>
+                    <input id="slider-green" type="range" min="0" max="1" step="0.01" value="0.35" class="w-full">
+                    <span id="val-green" class="w-8 font-mono text-right text-slate-400">0.35</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <span class="w-4 text-sky-400 font-bold">B</span>
+                    <input id="slider-blue" type="range" min="0" max="1" step="0.01" value="0.50" class="w-full">
+                    <span id="val-blue" class="w-8 font-mono text-right text-slate-400">0.50</span>
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Tiling & Controls -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-300">显示无缝平铺网格 (Tiling)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="toggle-tiling" type="checkbox" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                    </label>
+                </div>
+
+                <!-- Action Buttons Grid -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="btn-pause" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                        <span id="pause-icon">⏸️</span>
+                        <span id="pause-text">暂停动画</span>
+                    </button>
+
+                    <button id="btn-reset" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                        🔄 重置参数
+                    </button>
+                    
+                    <button id="btn-fullscreen" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                        ⛶ 全屏切换
+                    </button>
+
+                    <button id="btn-screenshot" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                        📸 导出截屏
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- WebGL 着色器源码 ---
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+            }
+        `;
+
+        const fragmentShaderSource = `
+            precision highp float;
+
+            uniform vec2 u_resolution;
+            uniform float u_time;
+            uniform float u_speed;
+            uniform int u_max_iter;
+            uniform float u_inten;
+            uniform float u_scale;
+            uniform float u_power;
+            uniform float u_brightness;
+            uniform vec3 u_color_tint;
+            uniform bool u_show_tiling;
+
+            #define TAU 6.28318530718
+
+            void main() {
+                vec2 fragCoord = gl_FragCoord.xy;
+                float time = u_time * u_speed + 23.0;
+                vec2 uv = fragCoord.xy / u_resolution.xy;
+                
+                vec2 p;
+                if (u_show_tiling) {
+                    p = mod(uv * TAU * 2.0 * u_scale, TAU) - 250.0;
+                } else {
+                    p = mod(uv * TAU * u_scale, TAU) - 250.0;
+                }
+
+                vec2 i = vec2(p);
+                float c = 1.0;
+
+                // 动态循环支持 (限制最大20次)
+                for (int n = 0; n < 20; n++) {
+                    if (n >= u_max_iter) break;
+                    float fn = float(n + 1);
+                    float t = time * (1.0 - (3.5 / fn));
+                    i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+                    c += 1.0 / length(vec2(p.x / (sin(i.x + t) / u_inten), p.y / (cos(i.y + t) / u_inten)));
+                }
+                
+                c /= float(u_max_iter);
+                c = u_brightness - pow(clamp(c, 0.0, 10.0), 1.4);
+                vec3 colour = vec3(pow(abs(c), u_power));
+                colour = clamp(colour + u_color_tint, 0.0, 1.0);
+
+                if (u_show_tiling) {
+                    vec2 pixel = 2.0 / u_resolution.xy;
+                    vec2 uv_tile = uv * 2.0;
+                    float f = floor(mod(u_time * 0.5, 2.0));
+                    vec2 first = step(pixel, uv_tile) * f;
+                    uv_tile = step(fract(uv_tile), pixel);
+                    colour = mix(colour, vec3(1.0, 1.0, 0.0), (uv_tile.x + uv_tile.y) * first.x * first.y);
+                }
+                
+                gl_FragColor = vec4(colour, 1.0);
+            }
+        `;
+
+        // --- 全局状态与默认参数 ---
+        const defaults = {
+            maxIter: 5,
+            speed: 0.5,
+            inten: 0.005,
+            scale: 1.0,
+            power: 8.0,
+            brightness: 1.17,
+            tintR: 0.0,
+            tintG: 0.35,
+            tintB: 0.50,
+            showTiling: false
+        };
+
+        const state = { ...defaults, isPaused: false };
+
+        // DOM 元素获取
+        const canvas = document.getElementById('webgl-canvas');
+        const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true }) || canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            alert('您的浏览器不支持 WebGL！');
+        }
+
+        // 创建着色器工具函数
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('着色器编译失败:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('程序链接失败:', gl.getProgramInfoLog(program));
+        }
+
+        // 全屏全矩形顶点缓冲
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+            -1,  1,
+             1, -1,
+             1,  1,
+        ]), gl.STATIC_DRAW);
+
+        const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+
+        // Uniform 变量位置缓存
+        const uniforms = {
+            resolution: gl.getUniformLocation(program, "u_resolution"),
+            time: gl.getUniformLocation(program, "u_time"),
+            speed: gl.getUniformLocation(program, "u_speed"),
+            maxIter: gl.getUniformLocation(program, "u_max_iter"),
+            inten: gl.getUniformLocation(program, "u_inten"),
+            scale: gl.getUniformLocation(program, "u_scale"),
+            power: gl.getUniformLocation(program, "u_power"),
+            brightness: gl.getUniformLocation(program, "u_brightness"),
+            colorTint: gl.getUniformLocation(program, "u_color_tint"),
+            showTiling: gl.getUniformLocation(program, "u_show_tiling")
+        };
+
+        // 控件 DOM 绑定
+        const ui = {
+            maxIter: document.getElementById('slider-max-iter'),
+            valMaxIter: document.getElementById('val-max-iter'),
+            speed: document.getElementById('slider-speed'),
+            valSpeed: document.getElementById('val-speed'),
+            inten: document.getElementById('slider-inten'),
+            valInten: document.getElementById('val-inten'),
+            scale: document.getElementById('slider-scale'),
+            valScale: document.getElementById('val-scale'),
+            power: document.getElementById('slider-power'),
+            valPower: document.getElementById('val-power'),
+            brightness: document.getElementById('slider-brightness'),
+            valBrightness: document.getElementById('val-brightness'),
+            tintR: document.getElementById('slider-red'),
+            valTintR: document.getElementById('val-red'),
+            tintG: document.getElementById('slider-green'),
+            valTintG: document.getElementById('val-green'),
+            tintB: document.getElementById('slider-blue'),
+            valTintB: document.getElementById('val-blue'),
+            showTiling: document.getElementById('toggle-tiling'),
+            fps: document.getElementById('fps-counter'),
+            panel: document.getElementById('control-panel'),
+            panelHeader: document.getElementById('panel-header'),
+            panelBody: document.getElementById('panel-body'),
+            btnCollapse: document.getElementById('btn-collapse'),
+            iconCollapse: document.getElementById('icon-collapse'),
+            btnClose: document.getElementById('btn-close'),
+            btnPause: document.getElementById('btn-pause'),
+            pauseText: document.getElementById('pause-text'),
+            pauseIcon: document.getElementById('pause-icon'),
+            btnReset: document.getElementById('btn-reset'),
+            btnFullscreen: document.getElementById('btn-fullscreen'),
+            btnScreenshot: document.getElementById('btn-screenshot'),
+            toast: document.getElementById('status-toast')
+        };
+
+        // 界面与状态同步更新
+        function syncUI() {
+            ui.maxIter.value = state.maxIter;
+            ui.valMaxIter.textContent = state.maxIter;
+
+            ui.speed.value = state.speed;
+            ui.valSpeed.textContent = parseFloat(state.speed).toFixed(2);
+
+            ui.inten.value = state.inten;
+            ui.valInten.textContent = parseFloat(state.inten).toFixed(4);
+
+            ui.scale.value = state.scale;
+            ui.valScale.textContent = parseFloat(state.scale).toFixed(2);
+
+            ui.power.value = state.power;
+            ui.valPower.textContent = parseFloat(state.power).toFixed(1);
+
+            ui.brightness.value = state.brightness;
+            ui.valBrightness.textContent = parseFloat(state.brightness).toFixed(2);
+
+            ui.tintR.value = state.tintR;
+            ui.valTintR.textContent = parseFloat(state.tintR).toFixed(2);
+
+            ui.tintG.value = state.tintG;
+            ui.valTintG.textContent = parseFloat(state.tintG).toFixed(2);
+
+            ui.tintB.value = state.tintB;
+            ui.valTintB.textContent = parseFloat(state.tintB).toFixed(2);
+
+            ui.showTiling.checked = state.showTiling;
+        }
+
+        // 滑块事件监听注册
+        ui.maxIter.addEventListener('input', (e) => { state.maxIter = parseInt(e.target.value); syncUI(); });
+        ui.speed.addEventListener('input', (e) => { state.speed = parseFloat(e.target.value); syncUI(); });
+        ui.inten.addEventListener('input', (e) => { state.inten = parseFloat(e.target.value); syncUI(); });
+        ui.scale.addEventListener('input', (e) => { state.scale = parseFloat(e.target.value); syncUI(); });
+        ui.power.addEventListener('input', (e) => { state.power = parseFloat(e.target.value); syncUI(); });
+        ui.brightness.addEventListener('input', (e) => { state.brightness = parseFloat(e.target.value); syncUI(); });
+        ui.tintR.addEventListener('input', (e) => { state.tintR = parseFloat(e.target.value); syncUI(); });
+        ui.tintG.addEventListener('input', (e) => { state.tintG = parseFloat(e.target.value); syncUI(); });
+        ui.tintB.addEventListener('input', (e) => { state.tintB = parseFloat(e.target.value); syncUI(); });
+        ui.showTiling.addEventListener('change', (e) => { state.showTiling = e.target.checked; syncUI(); });
+
+        // --- 1. 面板拖拽逻辑 ---
+        let isDragging = false;
+        let startX, startY, panelLeft, panelTop;
+
+        ui.panelHeader.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return; // 避开按钮点击
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = ui.panel.getBoundingClientRect();
+            panelLeft = rect.left;
+            panelTop = rect.top;
+
+            // 切换为 fixed 绝对像素坐标
+            ui.panel.style.right = 'auto';
+            ui.panel.style.bottom = 'auto';
+            ui.panel.style.left = `${panelLeft}px`;
+            ui.panel.style.top = `${panelTop}px`;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            
+            const maxLeft = window.innerWidth - ui.panel.offsetWidth;
+            const maxTop = window.innerHeight - ui.panel.offsetHeight;
+
+            const newLeft = Math.max(0, Math.min(maxLeft, panelLeft + dx));
+            const newTop = Math.max(0, Math.min(maxTop, panelTop + dy));
+
+            ui.panel.style.left = `${newLeft}px`;
+            ui.panel.style.top = `${newTop}px`;
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        // Touch 支持
+        ui.panelHeader.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button')) return;
+            const touch = e.touches[0];
+            isDragging = true;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            const rect = ui.panel.getBoundingClientRect();
+            panelLeft = rect.left;
+            panelTop = rect.top;
+
+            ui.panel.style.right = 'auto';
+            ui.panel.style.bottom = 'auto';
+            ui.panel.style.left = `${panelLeft}px`;
+            ui.panel.style.top = `${panelTop}px`;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - startX;
+            const dy = touch.clientY - startY;
+
+            const maxLeft = window.innerWidth - ui.panel.offsetWidth;
+            const maxTop = window.innerHeight - ui.panel.offsetHeight;
+
+            ui.panel.style.left = `${Math.max(0, Math.min(maxLeft, panelLeft + dx))}px`;
+            ui.panel.style.top = `${Math.max(0, Math.min(maxTop, panelTop + dy))}px`;
+        });
+
+        document.addEventListener('touchend', () => { isDragging = false; });
+
+        // --- 2. 面板折叠逻辑 ---
+        let isCollapsed = false;
+        ui.btnCollapse.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                ui.panelBody.classList.add('hidden');
+                ui.iconCollapse.style.transform = 'rotate(180deg)';
+            } else {
+                ui.panelBody.classList.remove('hidden');
+                ui.iconCollapse.style.transform = 'rotate(0deg)';
+            }
+        });
+
+        // --- 3. 快捷键与隐藏逻辑 ---
+        function togglePanelVisibility() {
+            const isHidden = ui.panel.classList.contains('opacity-0');
+            if (isHidden) {
+                ui.panel.classList.remove('opacity-0', 'pointer-events-none');
+                showToast('控制台已显示');
+            } else {
+                ui.panel.classList.add('opacity-0', 'pointer-events-none');
+                showToast('控制台已隐藏 (按 Alt+H 重新显示)');
+            }
+        }
+
+        ui.btnClose.addEventListener('click', togglePanelVisibility);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.keyCode === 72)) {
+                e.preventDefault();
+                togglePanelVisibility();
+            }
+        });
+
+        function showToast(message) {
+            ui.toast.textContent = message;
+            ui.toast.classList.remove('opacity-0', '-translate-y-2', 'pointer-events-none');
+            ui.toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                ui.toast.classList.remove('opacity-100', 'translate-y-0');
+                ui.toast.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // --- 4. 风格预设支持 ---
+        const presets = {
+            deepsea: { tintR: 0.0, tintG: 0.35, tintB: 0.50, scale: 1.0, power: 8.0, inten: 0.005 },
+            emerald: { tintR: 0.0, tintG: 0.55, tintB: 0.25, scale: 1.2, power: 7.0, inten: 0.006 },
+            sunset: { tintR: 0.65, tintG: 0.25, tintB: 0.05, scale: 0.8, power: 9.0, inten: 0.004 },
+            cyber: { tintR: 0.45, tintG: 0.05, tintB: 0.65, scale: 1.5, power: 10.0, inten: 0.007 }
+        };
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const key = e.target.getAttribute('data-preset');
+                if (presets[key]) {
+                    Object.assign(state, presets[key]);
+                    syncUI();
+                    showToast(`已应用风格预设`);
+                }
+            });
+        });
+
+        // --- 5. 辅助功能按钮 ---
+        ui.btnPause.addEventListener('click', () => {
+            state.isPaused = !state.isPaused;
+            ui.pauseText.textContent = state.isPaused ? '继续动画' : '暂停动画';
+            ui.pauseIcon.textContent = state.isPaused ? '▶️' : '⏸️';
+        });
+
+        ui.btnReset.addEventListener('click', () => {
+            Object.assign(state, defaults);
+            syncUI();
+            showToast('参数已重置为初始状态');
+        });
+
+        ui.btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        });
+
+        ui.btnScreenshot.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `water-caustics-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('已导出高清截图');
+        });
+
+        // Canvas 响应式大小自适应
+        function resizeCanvas() {
+            const displayWidth  = window.innerWidth;
+            const displayHeight = window.innerHeight;
+
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width  = displayWidth;
+                canvas.height = displayHeight;
+                gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 渲染主循环与 FPS 计算
+        let startTime = performance.now();
+        let elapsedTime = 0;
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let fpsTimer = 0;
+
+        function render(now) {
+            const deltaTime = (now - lastFrameTime) * 0.001;
+            lastFrameTime = now;
+
+            if (!state.isPaused) {
+                elapsedTime += deltaTime;
+            }
+
+            // 计算 FPS
+            frameCount++;
+            fpsTimer += deltaTime;
+            if (fpsTimer >= 0.5) {
+                const fps = Math.round(frameCount / fpsTimer);
+                ui.fps.textContent = `${fps} FPS`;
+                frameCount = 0;
+                fpsTimer = 0;
+            }
+
+            gl.useProgram(program);
+
+            // 属性绑定
+            gl.enableVertexAttribArray(positionAttributeLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Uniform 传参
+            gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+            gl.uniform1f(uniforms.time, elapsedTime);
+            gl.uniform1f(uniforms.speed, state.speed);
+            gl.uniform1i(uniforms.maxIter, state.maxIter);
+            gl.uniform1f(uniforms.inten, state.inten);
+            gl.uniform1f(uniforms.scale, state.scale);
+            gl.uniform1f(uniforms.power, state.power);
+            gl.uniform1f(uniforms.brightness, state.brightness);
+            gl.uniform3f(uniforms.colorTint, state.tintR, state.tintG, state.tintB);
+            gl.uniform1i(uniforms.showTiling, state.showTiling ? 1 : 0);
+
+            // 绘制
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
+        }
+
+        // 初始化 UI 和 渲染循环
+        syncUI();
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+<div id="__apply-btn-wrap__" style="
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  z-index:99999; display:flex; gap:0.75rem; align-items:center;
+  background:rgba(13,17,23,0.92); border:1px solid #334155;
+  border-radius:2rem; padding:0.5rem 1.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+">
+  <span style="font-size:0.82rem; color:#94a3b8;">a29.html</span>
+  <button id="__apply-btn__" onclick="__applyToNav__()" style="
+    background:#238636; color:#fff; border:none; border-radius:1.5rem;
+    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+  " onmouseover="this.style.background='#2ea043'"
+    onmouseout="this.style.background='#238636'">
+    ✓ 应用到导航页
+  </button>
+  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
+    background:none; border:none; color:#64748b; cursor:pointer;
+    font-size:1rem; padding:0 0.25rem;
+  " title="隐藏">✕</button>
+</div>
+<script>
+function __applyToNav__() {
+  // 【修改点2】：修正文件名为 a29.html
+  var file = 'a29.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

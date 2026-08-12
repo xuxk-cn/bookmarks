@@ -143,7 +143,8 @@
 
 <canvas id="glcanvas"></canvas>
 
-<div id="control-panel">
+<!-- 【修改点】：加上 class="hidden" 实现默认隐藏，并保留丝滑淡入动画 -->
+<div id="control-panel" class="hidden">
     <div id="panel-header">
         <span>控制台 (参数调节)</span>
         <span id="toggle-collapse">折叠</span>
@@ -251,9 +252,6 @@
             float accum = s/4.;
             float prev = 0.;
             float tw = 0.;
-            // Use uniform for loop bound (needs a workaround in webgl1 if loop bound isn't const, 
-            // but we'll use a fixed max and break, or use WebGL2 features if available.
-            // For max compatibility, we'll loop to a fixed max and check condition)
             for (int i = 0; i < 40; ++i) {
                 if(i >= uIter1) break;
                 float mag = dot(p, p);
@@ -514,5 +512,22 @@
     requestAnimationFrame(render);
 
 </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a30.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

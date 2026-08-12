@@ -24,6 +24,15 @@
             color: #f0f0f0;
             z-index: 1000;
             user-select: none;
+            /* 【修改点1】：添加丝滑过渡动画 */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 【修改点2】：隐藏状态类，实现淡出+轻微缩放效果 */
+        #control-panel.hidden-panel {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95) translateY(-10px);
         }
 
         .panel-header {
@@ -130,7 +139,8 @@
 
     <canvas id="glcanvas"></canvas>
 
-    <div id="control-panel">
+    <!-- 【修改点3】：加上 hidden-panel 类名，实现默认隐藏 -->
+    <div id="control-panel" class="hidden-panel">
         <div class="panel-header" id="panel-header">
             <div class="panel-title">
                 ⚙️ 渲染参数控制台
@@ -459,6 +469,7 @@
         let startX, startY, initialLeft, initialTop;
 
         header.addEventListener('mousedown', (e) => {
+            if (e.target === toggleBtn) return;
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
@@ -475,8 +486,14 @@
             if (!isDragging) return;
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            panel.style.left = `${initialLeft + dx}px`;
-            panel.style.top = `${initialTop + dy}px`;
+            
+            let newX = initialLeft + dx;
+            let newY = initialTop + dy;
+            newX = Math.max(0, Math.min(newX, window.innerWidth - panel.offsetWidth));
+            newY = Math.max(0, Math.min(newY, window.innerHeight - panel.offsetHeight));
+
+            panel.style.left = `${newX}px`;
+            panel.style.top = `${newY}px`;
         });
 
         window.addEventListener('mouseup', () => {
@@ -490,10 +507,11 @@
             toggleBtn.textContent = isCollapsed ? '+' : '−';
         });
 
+        // 【修改点4】：使用 classList.toggle 配合 CSS 动画，实现丝滑显隐
         window.addEventListener('keydown', (e) => {
             if (e.altKey && (e.key === 'h' || e.key === 'H')) {
                 e.preventDefault();
-                panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+                panel.classList.toggle('hidden-panel');
             }
         });
 
@@ -547,5 +565,22 @@
 
         render();
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a24.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

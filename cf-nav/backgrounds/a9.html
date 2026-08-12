@@ -378,8 +378,11 @@
         });
 
         // --- 5. Toggle Controls Logic ---
-        let uiVisible = true;
+        let uiVisible = false; // 【修改】改为 false，让控制台默认隐藏
         let isCollapsed = false;
+        
+        // 【修改】初始化时直接隐藏面板
+        panel.style.display = 'none';
 
         // Toggle Expand/Collapse
         const toggleBtn = document.getElementById('ui-toggle');
@@ -438,5 +441,42 @@
         // Start render loop
         requestAnimationFrame(render);
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+<div id="__apply-btn-wrap__" style="
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  z-index:99999; display:flex; gap:0.75rem; align-items:center;
+  background:rgba(13,17,23,0.92); border:1px solid #334155;
+  border-radius:2rem; padding:0.5rem 1.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+">
+  <span style="font-size:0.82rem; color:#94a3b8;">a9.html</span>
+  <button id="__apply-btn__" onclick="__applyToNav__()" style="
+    background:#238636; color:#fff; border:none; border-radius:1.5rem;
+    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+  " onmouseover="this.style.background='#2ea043'"
+    onmouseout="this.style.background='#238636'">
+    ✓ 应用到导航页
+  </button>
+  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
+    background:none; border:none; color:#64748b; cursor:pointer;
+    font-size:1rem; padding:0 0.25rem;
+  " title="隐藏">✕</button>
+</div>
+<script>
+function __applyToNav__() {
+  var file = 'a9.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

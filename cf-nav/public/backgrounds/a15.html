@@ -68,7 +68,8 @@
     <!-- WebGL 画布 -->
     <canvas id="glcanvas"></canvas>
 
-    <div id="control-panel" class="fixed top-6 left-6 bg-slate-900/80 backdrop-blur-lg text-white rounded-xl shadow-2xl border border-slate-700/50 w-80 flex flex-col z-50 transition-opacity duration-300">
+    <!-- 【修改点1】：直接加上 style="opacity: 0; pointer-events: none;" 实现默认隐藏，并保留丝滑淡入动画 -->
+    <div id="control-panel" class="fixed top-6 left-6 bg-slate-900/80 backdrop-blur-lg text-white rounded-xl shadow-2xl border border-slate-700/50 w-80 flex flex-col z-50 transition-opacity duration-300" style="opacity: 0; pointer-events: none;">
         <!-- 标题栏 (可拖拽区域) -->
         <div id="panel-header" class="px-4 py-3 border-b border-slate-700/50 flex justify-between items-center cursor-move select-none rounded-t-xl bg-slate-800/60 hover:bg-slate-800/80 transition-colors">
             <h3 class="font-bold text-sm tracking-wide flex items-center gap-2">
@@ -586,6 +587,24 @@
         
         requestAnimationFrame(render);
     </script>
-<script>document.addEventListener('DOMContentLoaded',function(){var p=document.getElementById('control-panel');if(p)p.style.display='none';});</script>
+
+    <!-- 【修改点2】：删除了末尾冲突的 display='none' 脚本，防止快捷键失效 -->
+
+    <!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+    
+    <script>
+    function __applyToNav__() {
+      var file = 'a15.html';
+      localStorage.setItem('bgChoice', file);
+      var btn = document.getElementById('__apply-btn__');
+      btn.textContent = '✔ 已应用！';
+      btn.style.background = '#1a7f37';
+      setTimeout(function() {
+        btn.textContent = '✓ 应用到导航页';
+        btn.style.background = '#238636';
+      }, 2000);
+    }
+    </script>
+
 </body>
 </html>

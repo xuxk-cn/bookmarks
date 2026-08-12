@@ -12,108 +12,182 @@
             height: 100%;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #e2e8f0;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         
-        /* 控制台面板样式 */
-        #console-panel {
+        #info {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 320px;
-            background: rgba(30, 30, 30, 0.85);
-            border: 1px solid #444;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            color: #eee;
-            display: flex;
-            flex-direction: column;
-            backdrop-filter: blur(5px);
-            z-index: 100;
-            /* 防止移动端长按选中文本导致拖动异常 */
-            user-select: none; 
+            bottom: 24px;
+            left: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(15, 18, 25, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05);
+            user-select: none;
+            z-index: 50;
+        }
+        #info kbd {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
 
-        /* 可拖拽头部 */
-        #console-header {
-            padding: 12px 15px;
-            background: rgba(50, 50, 50, 0.9);
-            border-bottom: 1px solid #444;
-            border-radius: 8px 8px 0 0;
-            cursor: move;
+        /* 高级毛玻璃面板 */
+        .glass-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 320px;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.05);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .glass-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px) scale(0.98);
+        }
+
+        .panel-header {
+            padding: 14px 18px;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px 16px 0 0;
+            cursor: grab;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: bold;
-            font-size: 14px;
-            /* 增加触控区域 */
             touch-action: none;
         }
+        .panel-header:active { cursor: grabbing; }
 
-        #collapse-btn {
-            cursor: pointer;
-            padding: 0 5px;
-            color: #aaa;
-            transition: color 0.2s;
-        }
-        #collapse-btn:hover {
-            color: #fff;
-        }
-
-        /* 控制台主体 */
-        #console-body {
-            padding: 15px;
-            display: block;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-        .control-group:last-child {
-            margin-bottom: 0;
-        }
-        .control-group label {
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
             display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 8px;
-            color: #ccc;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btns { display: flex; gap: 6px; }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .collapse-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .collapse-btn svg { width: 14px; height: 14px; }
+
+        .panel-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 70vh;
+            overflow-y: auto;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
         }
         
-        /* 滑杆样式 */
-        input[type=range] {
-            width: 100%;
-            cursor: pointer;
-            accent-color: #00bcd4;
-            /* 适应移动端触控 */
-            height: 1.5rem;
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .panel-body.collapsed {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            overflow: hidden;
         }
 
-        /* 颜色选择器样式 */
-        input[type="color"] {
-            width: 100%;
-            height: 32px;
-            border: none;
+        .slider-group { display: flex; flex-direction: column; gap: 14px; }
+        .slider-row { display: flex; flex-direction: column; gap: 6px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; }
+        .slider-val {
+            font-family: 'Fira Code', monospace;
+            color: #93c5fd;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 1px 6px;
             border-radius: 4px;
-            background: rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            padding: 2px;
+            font-size: 11px;
         }
 
-        /* 快捷键提示 */
-        .shortcut-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: rgba(255,255,255,0.5);
-            pointer-events: none;
-            font-size: 12px;
+        /* 🌟 定制发光渐变滑杆 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #d946ef);
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
         }
+        input[type=range]:hover { opacity: 1; }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
+        }
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(139, 92, 246, 1), 0 0 6px rgba(255, 255, 255, 1);
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            padding: 0;
+            height: 32px;
+            width: 100%;
+            cursor: pointer;
+            background: transparent;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 6px; }
+        input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; }
 
         #fallback-msg {
             display: none;
@@ -130,33 +204,43 @@
     <canvas id="glcanvas"></canvas>
     <div id="fallback-msg">您的浏览器不支持 WebGL2，请更换现代浏览器（如 Chrome）。</div>
 
-    <!-- 控制台 UI -->
-    <div id="console-panel">
-        <div id="console-header">
-            <span>⚙️ 渲染参数控制台</span>
-            <span id="collapse-btn" title="折叠/展开">[-]</span>
+        <!-- 自定义高级控制台 (默认隐藏) -->
+    <div id="console-panel" class="glass-panel panel-hidden">
+        <div id="console-header" class="panel-header">
+            <div class="panel-title">
+                <span>✨</span>
+                <span>渲染参数控制台</span>
+            </div>
+            <div class="header-btns">
+                <button id="collapse-btn" class="collapse-btn" title="折叠/展开">
+                    <svg id="icon-collapse" style="transition: transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <button id="hide-btn" class="collapse-btn" title="隐藏 (Alt+H)">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
         </div>
-        <div id="console-body">
-            <div class="control-group">
-                <label>色调映射阈值 (Tone Map): <span id="val-tone">0.40</span></label>
-                <input type="range" id="sl-tone" min="0.01" max="2.0" step="0.01" value="0.4">
-            </div>
-            <div class="control-group">
-                <label>发光颜色 (Color):</label>
-                <input type="color" id="color-picker" value="#00b2b2">
-            </div>
-            <div class="control-group">
-                <label>发光强度 (Glow): <span id="val-glow">0.30</span></label>
-                <input type="range" id="sl-glow" min="0" max="2" step="0.01" value="0.3">
-            </div>
-            <div class="control-group">
-                <label>背景亮度 (Bg Brightness): <span id="val-bg">0.80</span></label>
-                <input type="range" id="sl-bg" min="0" max="2" step="0.01" value="0.8">
+        <div id="console-body" class="panel-body">
+            <div class="slider-group">
+                <div class="slider-row">
+                    <div class="slider-label"><span>色调映射阈值 (Tone Map)</span><span class="slider-val" id="val-tone">0.40</span></div>
+                    <input type="range" id="sl-tone" min="0.01" max="2.0" step="0.01" value="0.4">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>发光颜色 (Color)</span></div>
+                    <input type="color" id="color-picker" value="#00b2b2">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>发光强度 (Glow)</span><span class="slider-val" id="val-glow">0.30</span></div>
+                    <input type="range" id="sl-glow" min="0" max="2" step="0.01" value="0.3">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-label"><span>背景亮度 (Bg Brightness)</span><span class="slider-val" id="val-bg">0.80</span></div>
+                    <input type="range" id="sl-bg" min="0" max="2" step="0.01" value="0.8">
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="shortcut-hint">按 <b>Alt + H</b> 隐藏/显示控制台</div>
 
 <script>
     // ==========================================
@@ -166,17 +250,20 @@
     const header = document.getElementById('console-header');
     const body = document.getElementById('console-body');
     const collapseBtn = document.getElementById('collapse-btn');
+    const hideBtn = document.getElementById('hide-btn');
+    const iconCollapse = document.getElementById('icon-collapse');
 
     // 折叠功能
+    let isCollapsed = false;
     collapseBtn.addEventListener('click', (e) => {
-        if (body.style.display === 'none') {
-            body.style.display = 'block';
-            collapseBtn.textContent = '[-]';
-            panel.style.borderRadius = '8px';
+        e.stopPropagation();
+        isCollapsed = !isCollapsed;
+        if (isCollapsed) {
+            body.classList.add('collapsed');
+            iconCollapse.style.transform = 'rotate(-90deg)';
         } else {
-            body.style.display = 'none';
-            collapseBtn.textContent = '[+]';
-            panel.style.borderRadius = '8px 8px 8px 8px';
+            body.classList.remove('collapsed');
+            iconCollapse.style.transform = 'rotate(0deg)';
         }
     });
 
@@ -187,46 +274,67 @@
         isDragging = true;
         startX = clientX;
         startY = clientY;
-        initialX = panel.offsetLeft;
-        initialY = panel.offsetTop;
+        const rect = panel.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        panel.style.right = 'auto'; 
+        panel.style.left = initialX + 'px';
+        panel.style.top = initialY + 'px';
+        panel.style.transition = 'none'; // 拖拽时禁用过渡动画
     }
 
     function doDrag(clientX, clientY) {
         if (!isDragging) return;
-        panel.style.left = (initialX + (clientX - startX)) + 'px';
-        panel.style.top = (initialY + (clientY - startY)) + 'px';
-        panel.style.right = 'auto'; // 清除初始的 right 定位
+        let nx = Math.max(0, Math.min(initialX + (clientX - startX), window.innerWidth - panel.offsetWidth));
+        let ny = Math.max(0, Math.min(initialY + (clientY - startY), window.innerHeight - panel.offsetHeight));
+        panel.style.left = nx + 'px';
+        panel.style.top = ny + 'px';
     }
 
     function stopDrag() {
-        isDragging = false;
+        if (isDragging) {
+            isDragging = false;
+            panel.style.transition = ''; // 恢复过渡动画
+        }
     }
 
     // 鼠标事件
     header.addEventListener('mousedown', (e) => {
-        if (e.target.id === 'collapse-btn') return;
+        if (e.target.closest('button')) return;
         startDrag(e.clientX, e.clientY);
     });
     window.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
     window.addEventListener('mouseup', stopDrag);
 
-    // 触控事件 (移动端适配)
+    // 触控事件
     header.addEventListener('touchstart', (e) => {
-        if (e.target.id === 'collapse-btn') return;
-        const touch = e.touches[0];
-        startDrag(touch.clientX, touch.clientY);
+        if (e.target.closest('button')) return;
+        startDrag(e.touches[0].clientX, e.touches[0].clientY);
     }, {passive: false});
     window.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        const touch = e.touches[0];
-        doDrag(touch.clientX, touch.clientY);
+        doDrag(e.touches[0].clientX, e.touches[0].clientY);
     }, {passive: false});
     window.addEventListener('touchend', stopDrag);
+
+    // 隐藏/显示面板
+    let isPanelVisible = false; // 默认隐藏
+    function togglePanelVisibility() {
+        isPanelVisible = !isPanelVisible;
+        if (isPanelVisible) {
+            panel.classList.remove('panel-hidden');
+        } else {
+            panel.classList.add('panel-hidden');
+        }
+    }
+
+    hideBtn.addEventListener('click', togglePanelVisibility);
 
     // Alt + H 快捷键
     window.addEventListener('keydown', (e) => {
         if (e.altKey && e.key.toLowerCase() === 'h') {
-            panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+            e.preventDefault();
+            togglePanelVisibility();
         }
     });
 
@@ -260,14 +368,12 @@
         throw new Error('WebGL2 not supported');
     }
 
-    // 顶点着色器 (全屏Quad)
     const vsSource = `#version 300 es
     in vec4 aPosition;
     void main() {
         gl_Position = aPosition;
     }`;
 
-    // 片段着色器 (精确还原您的源码)
     const fsSource = `#version 300 es
     precision highp float;
     out vec4 fragColor;
@@ -276,40 +382,27 @@
     uniform float iTime;
     uniform sampler2D iChannel0;
 
-    // 真实的背景纹理
     uniform sampler2D u_bgTexture;
     uniform float u_bgBrightness;
 
-    // 提取的控制参数 uniform
     uniform float u_toneMap;
     uniform vec3 u_color;
     uniform float u_glow;
 
     void mainImage( out vec4 O, in vec2 I ) {
-        // 获取拖尾缓冲
         float v = texelFetch(iChannel0, ivec2(I), 0).x;
-        
-        // tone map keep bright areas visible
         v = v / (u_toneMap + v);
-        
-        // 发光颜色主体
         vec3 glowColor = v * u_color + v * v * u_glow;
 
-        // --- 真实星空背景读取 ---
-        // I 的 y 已经被反转过以适应离屏画布，纹理采样时我们恢复它映射到图片
         vec2 uv = vec2(I.x, iResolution.y - I.y) / iResolution.xy;
         vec3 bgColor = texture(u_bgTexture, uv).rgb * u_bgBrightness;
         
-        // 视觉优化：在有强烈发光拖尾划过的地方，稍微压暗背景图片，凸显层次
         bgColor *= (1.0 - smoothstep(0.0, 0.4, v));
 
-        // 合并光轨与真实星空
         O = vec4(glowColor + bgColor, 1.0);
     }
 
     void main() {
-        // 由于离屏Canvas2D原点在左上，而WebGL在左下，此处反转一下Y轴，
-        // 以确保您使用鼠标画图时，坐标位置是精准对齐的。
         vec2 I = vec2(gl_FragCoord.x, iResolution.y - gl_FragCoord.y);
         mainImage(fragColor, I);
     }`;
@@ -334,7 +427,6 @@
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
 
-    // 设置顶点数据
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -346,7 +438,6 @@
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
 
-    // 获取 Uniforms 地址
     const resLoc   = gl.getUniformLocation(program, 'iResolution');
     const timeLoc  = gl.getUniformLocation(program, 'iTime');
     const toneLoc  = gl.getUniformLocation(program, 'u_toneMap');
@@ -356,15 +447,13 @@
     const chan0Loc = gl.getUniformLocation(program, 'iChannel0');
     const bgTexLoc = gl.getUniformLocation(program, 'u_bgTexture');
 
-    // 加载真实星空背景图并创建纹理
     const bgTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, bgTexture);
-    // 初始设置一个黑色 1x1 像素占位，等待图片加载完毕
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
 
     const bgImg = new Image();
-    bgImg.crossOrigin = "anonymous"; // 允许跨域加载 Web 图片
-    bgImg.src = "https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=2000&auto=format&fit=crop"; // 高清星空图
+    bgImg.crossOrigin = "anonymous"; 
+    bgImg.src = "https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?q=80&w=2000&auto=format&fit=crop"; 
     bgImg.onload = () => {
         gl.bindTexture(gl.TEXTURE_2D, bgTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bgImg);
@@ -374,7 +463,6 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     };
 
-    // 创建一个离屏 Canvas 作为动态输入缓冲 (模拟类似 Shadertoy 的 Buffer A)
     const simCanvas = document.createElement('canvas');
     const simCtx = simCanvas.getContext('2d', { willReadFrequently: true });
     const tex = gl.createTexture();
@@ -383,7 +471,6 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // 鼠标交互状态
     let mouseX = -1000, mouseY = -1000;
     let isMouseMoving = false;
     let moveTimeout;
@@ -398,7 +485,6 @@
     window.addEventListener('mousemove', (e) => handleInput(e.clientX, e.clientY));
     window.addEventListener('touchmove', (e) => handleInput(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
 
-    // 窗口自适应大小
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -406,7 +492,6 @@
         
         simCanvas.width = canvas.width;
         simCanvas.height = canvas.height;
-        // 初始填充黑屏
         simCtx.fillStyle = 'black';
         simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
     }
@@ -417,43 +502,36 @@
     // 3. 渲染循环
     // ==========================================
     function render(time) {
-        time *= 0.001; // 转为秒
+        time *= 0.001; 
 
-        // 1. 更新离屏画布内容 (实现拖尾与画笔效果)
-        // 使用极低的透明度黑色绘制全屏，延长光尾消散的时间 (将 0.04 降低到 0.015)
         simCtx.fillStyle = 'rgba(0, 0, 0, 0.015)';
         simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
 
-        // 计算当前发光球体位置
         let drawX, drawY;
         if (isMouseMoving) {
             drawX = mouseX;
             drawY = mouseY;
         } else {
-            // 如果鼠标没动，使用平滑的李萨如(Lissajous)曲线自动游荡
             drawX = simCanvas.width / 2 + Math.sin(time * 1.5) * (simCanvas.width * 0.35);
             drawY = simCanvas.height / 2 + Math.sin(time * 0.9) * (simCanvas.height * 0.35);
         }
 
-        // 绘制带辐射渐变的柔和发光核 (缩小光点半径，将 0.15 改为 0.025)
         const radius = Math.min(simCanvas.width, simCanvas.height) * 0.025;
         const grad = simCtx.createRadialGradient(drawX, drawY, 0, drawX, drawY, radius);
-        grad.addColorStop(0, 'rgba(255, 255, 255, 1)');      // 中心高亮
-        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.4)');  // 中段柔和
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');            // 边缘消失
+        grad.addColorStop(0, 'rgba(255, 255, 255, 1)');      
+        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.4)');  
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');            
 
-        simCtx.globalCompositeOperation = 'screen'; // 防止重叠处出现暗带
+        simCtx.globalCompositeOperation = 'screen'; 
         simCtx.fillStyle = grad;
         simCtx.beginPath();
         simCtx.arc(drawX, drawY, radius, 0, Math.PI * 2);
         simCtx.fill();
         simCtx.globalCompositeOperation = 'source-over';
 
-        // 将绘制好的平滑 Canvas 更新到 WebGL 纹理上
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, simCanvas);
 
-        // 2. 渲染主画面
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.useProgram(program);
@@ -461,17 +539,14 @@
         gl.uniform2f(resLoc, canvas.width, canvas.height);
         gl.uniform1f(timeLoc, time);
 
-        // 绑定拖尾缓冲纹理到单元 0
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.uniform1i(chan0Loc, 0);
 
-        // 绑定星空背景纹理到单元 1
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, bgTexture);
         gl.uniform1i(bgTexLoc, 1);
 
-        // 传递控制台滑杆参数
         const u_tone = parseFloat(document.getElementById('sl-tone').value);
         const colorHex = document.getElementById('color-picker').value;
         const [u_r, u_g, u_b] = hexToRgb(colorHex);
@@ -488,10 +563,26 @@
         requestAnimationFrame(render);
     }
 
-    // 启动渲染循环
     window.onload = function() {
         requestAnimationFrame(render);
     };
 </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a44.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

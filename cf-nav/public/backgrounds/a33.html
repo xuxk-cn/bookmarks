@@ -28,20 +28,10 @@
         }
 
         /* Custom scrollbar for control panel */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
 
         /* Custom stylish range sliders */
         input[type=range] {
@@ -65,6 +55,16 @@
             background: #60a5fa;
             box-shadow: 0 0 14px rgba(96, 165, 250, 0.8);
         }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #control-panel {
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #control-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px) scale(0.98);
+        }
     </style>
 </head>
 <body class="h-full w-full relative">
@@ -74,11 +74,10 @@
 
     <!-- Shortcut Hint Overlay -->
     <div id="hint-badge" class="absolute top-4 left-4 z-10 text-xs text-white/60 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 pointer-events-none transition-opacity duration-300">
-        快捷键 <span class="text-blue-400 font-mono font-bold">Alt + H</span> 切换控制台显隐
-    </div>
+           </div>
 
-    <!-- Draggable Control Console Panel -->
-    <div id="control-panel" class="glass-panel absolute top-6 right-6 z-20 w-80 sm:w-96 rounded-2xl text-white transition-all duration-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <!-- 【修改点1】：移除 transition-all duration-200，加上 panel-hidden 类名实现默认隐藏 -->
+    <div id="control-panel" class="glass-panel absolute top-6 right-6 z-20 w-80 sm:w-96 rounded-2xl text-white shadow-2xl overflow-hidden flex flex-col max-h-[90vh] panel-hidden">
         
         <!-- Console Header (Drag Handle) -->
         <div id="panel-header" class="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center justify-between cursor-move select-none">
@@ -106,7 +105,6 @@
                     隧道形态参数
                 </div>
 
-                <!-- Speed Slider -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-gray-300">
                         <label for="slider-speed">前进速度 (SPEED)</label>
@@ -115,7 +113,6 @@
                     <input type="range" id="slider-speed" min="0" max="30" step="0.5" value="10.0" class="w-full">
                 </div>
 
-                <!-- Arms Slider -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-gray-300">
                         <label for="slider-arms">螺旋臂数量 (ARMS)</label>
@@ -124,7 +121,6 @@
                     <input type="range" id="slider-arms" min="1" max="8" step="1" value="3.0" class="w-full">
                 </div>
 
-                <!-- Refraction Slider -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-gray-300">
                         <label for="slider-refraction">玻璃折射率 (Refraction)</label>
@@ -133,7 +129,6 @@
                     <input type="range" id="slider-refraction" min="1.000" max="1.100" step="0.002" value="1.012" class="w-full">
                 </div>
 
-                <!-- Fog Density -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-gray-300">
                         <label for="slider-fog">雾气消散系数 (Fog)</label>
@@ -143,7 +138,6 @@
                 </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-white/10"></div>
 
             <!-- Group 2: Lighting & Sun Colors -->
@@ -153,7 +147,6 @@
                     太阳光照与色彩
                 </div>
 
-                <!-- Sun Color Intensity -->
                 <div class="space-y-1">
                     <div class="flex justify-between text-gray-300">
                         <label for="slider-sun-intensity">光照总强度</label>
@@ -162,7 +155,6 @@
                     <input type="range" id="slider-sun-intensity" min="0.1" max="3.0" step="0.1" value="1.0" class="w-full">
                 </div>
 
-                <!-- RGB Controls -->
                 <div class="grid grid-cols-3 gap-2">
                     <div>
                         <label class="block text-gray-400 text-[10px] mb-1">红 (Red)</label>
@@ -179,7 +171,6 @@
                 </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-white/10"></div>
 
             <!-- Group 3: Audio Reactivity -->
@@ -197,7 +188,6 @@
                     <input type="range" id="slider-audio-sens" min="0" max="3" step="0.1" value="1.0" class="w-full">
                 </div>
 
-                <!-- Audio Mode Toggle Buttons -->
                 <div class="space-y-1">
                     <label class="text-gray-400 text-[10px]">音频输入模式</label>
                     <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
@@ -208,7 +198,6 @@
                 </div>
             </div>
 
-            <!-- Divider -->
             <div class="border-t border-white/10"></div>
 
             <!-- Quick Action Buttons -->
@@ -239,12 +228,11 @@
 
         uniform vec3 iResolution;
         uniform float iTime;
-        uniform sampler2D iChannel0; // Noise Texture
-        uniform sampler2D iChannel1; // Nebula Space Texture
-        uniform sampler2D iChannel2; // Planet Texture
-        uniform sampler2D iChannel3; // Audio Spectrum Data
+        uniform sampler2D iChannel0; 
+        uniform sampler2D iChannel1; 
+        uniform sampler2D iChannel2; 
+        uniform sampler2D iChannel3; 
 
-        // Dynamic Uniforms controllable via Chinese UI Console
         uniform float SPEED;
         uniform float ARMS;
         uniform vec3 sunColor;
@@ -546,7 +534,6 @@
     </script>
 
     <script>
-        // System state and parameter defaults
         const params = {
             speed: 10.0,
             arms: 3.0,
@@ -557,7 +544,7 @@
             sunG: 2.0,
             sunB: 1.0,
             audioSens: 1.0,
-            audioType: 'synth' // 'synth', 'mic', 'sim'
+            audioType: 'synth' 
         };
 
         let canvas, gl, program;
@@ -568,7 +555,6 @@
         let micStream = null;
         let synthOsc = null, synthTimer = null;
 
-        // Initialize WebGL context and shaders
         function initWebGL() {
             canvas = document.getElementById('glCanvas');
             gl = canvas.getContext('webgl2');
@@ -585,7 +571,6 @@
             const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
             program = createProgram(gl, vs, fs);
 
-            // Quad buffer for screen rendering
             const positionBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -597,7 +582,6 @@
             gl.enableVertexAttribArray(posLoc);
             gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-            // Fetch uniform locations
             const uniformNames = [
                 'iResolution', 'iTime', 'iChannel0', 'iChannel1', 'iChannel2', 'iChannel3',
                 'SPEED', 'ARMS', 'sunColor', 'u_refraction', 'u_fogDensity', 'u_audioSens'
@@ -606,7 +590,6 @@
                 uniforms[name] = gl.getUniformLocation(program, name);
             });
 
-            // Generate procedural textures for shader channels
             textures.ch0 = createNoiseTexture();
             textures.ch1 = createNebulaTexture();
             textures.ch2 = createPlanetTexture();
@@ -663,7 +646,6 @@
             c.width = c.height = 512;
             const ctx = c.getContext('2d');
             
-            // Draw space stars and nebula colors
             ctx.fillStyle = '#020208';
             ctx.fillRect(0, 0, 512, 512);
 
@@ -743,7 +725,6 @@
             if (!audioCtx) return;
             stopAudioSources();
 
-            // Create a procedural beat rhythm synthesizer
             synthTimer = setInterval(() => {
                 if (audioCtx.state === 'suspended') return;
                 const osc = audioCtx.createOscillator();
@@ -797,7 +778,6 @@
                     }
                 }
             } else {
-                // Simulated rhythmic wave pattern
                 for (let i = 0; i < 256; i++) {
                     const wave = Math.sin(currentTime * 8.0 + i * 0.05) * 0.5 + 0.5;
                     const beat = Math.pow(Math.sin(currentTime * 3.0), 4.0);
@@ -820,18 +800,15 @@
 
             gl.useProgram(program);
 
-            // Pass standard ShaderToy uniforms
             gl.uniform3f(uniforms.iResolution, canvas.width, canvas.height, 1.0);
             gl.uniform1f(uniforms.iTime, currentTime);
 
-            // Pass user-defined GUI uniforms
             gl.uniform1f(uniforms.SPEED, params.speed);
             gl.uniform1f(uniforms.ARMS, params.arms);
             gl.uniform1f(uniforms.u_refraction, params.refraction);
             gl.uniform1f(uniforms.u_fogDensity, params.fogDensity);
             gl.uniform1f(uniforms.u_audioSens, params.audioSens);
 
-            // Sun color calculated from intensity * RGB
             gl.uniform3f(
                 uniforms.sunColor,
                 params.sunR * params.sunIntensity,
@@ -839,7 +816,6 @@
                 params.sunB * params.sunIntensity
             );
 
-            // Bind Texture Channels 0..3
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, textures.ch0);
             gl.uniform1i(uniforms.iChannel0, 0);
@@ -872,7 +848,6 @@
             let isDragging = false;
             let dragOffsetX = 0, dragOffsetY = 0;
 
-            // Make console panel draggable
             header.addEventListener('mousedown', (e) => {
                 isDragging = true;
                 dragOffsetX = e.clientX - panel.offsetLeft;
@@ -884,18 +859,16 @@
                 let newX = e.clientX - dragOffsetX;
                 let newY = e.clientY - dragOffsetY;
 
-                // Restrict within viewport bounds
                 newX = Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, newX));
                 newY = Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, newY));
 
                 panel.style.left = `${newX}px`;
                 panel.style.top = `${newY}px`;
-                panel.style.right = 'auto'; // Clear right binding when dragged
+                panel.style.right = 'auto'; 
             });
 
             window.addEventListener('mouseup', () => { isDragging = false; });
 
-            // Collapse & Expand Toggle
             let isCollapsed = false;
             btnCollapse.addEventListener('click', () => {
                 isCollapsed = !isCollapsed;
@@ -908,20 +881,18 @@
                 }
             });
 
-            // Close (Hide) panel button
+            // 【修改点2】：使用自定义的 panel-hidden 类，配合 CSS 实现丝滑显隐动画
             btnClose.addEventListener('click', () => {
-                panel.classList.add('hidden');
+                panel.classList.add('panel-hidden');
             });
 
-            // Hotkey [Alt + H] to show/hide panel
             window.addEventListener('keydown', (e) => {
                 if (e.altKey && (e.key === 'h' || e.key === 'H' || e.keyCode === 72)) {
                     e.preventDefault();
-                    panel.classList.toggle('hidden');
+                    panel.classList.toggle('panel-hidden');
                 }
             });
 
-            // Slider bindings
             bindSlider('slider-speed', 'val-speed', val => params.speed = parseFloat(val));
             bindSlider('slider-arms', 'val-arms', val => params.arms = parseFloat(val));
             bindSlider('slider-refraction', 'val-refraction', val => params.refraction = parseFloat(val));
@@ -932,12 +903,10 @@
             bindSlider('slider-sun-b', null, val => params.sunB = parseFloat(val));
             bindSlider('slider-audio-sens', 'val-audio-sens', val => params.audioSens = parseFloat(val));
 
-            // Audio Mode selector buttons
             document.getElementById('btn-audio-synth').addEventListener('click', () => setAudioMode('synth'));
             document.getElementById('btn-audio-mic').addEventListener('click', () => setAudioMode('mic'));
             document.getElementById('btn-audio-sim').addEventListener('click', () => setAudioMode('sim'));
 
-            // Reset Button
             document.getElementById('btn-reset').addEventListener('click', () => {
                 params.speed = 10.0;
                 params.arms = 3.0;
@@ -951,7 +920,6 @@
                 updateSliderUI();
             });
 
-            // Fullscreen Button
             document.getElementById('btn-fullscreen').addEventListener('click', () => {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen();
@@ -960,7 +928,6 @@
                 }
             });
 
-            // User gesture to un-suspend AudioContext
             window.addEventListener('pointerdown', () => {
                 if (!audioCtx) initAudio();
                 if (audioCtx && audioCtx.state === 'suspended') {
@@ -1031,5 +998,22 @@
             requestAnimationFrame(render);
         });
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a33.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

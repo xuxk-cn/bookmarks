@@ -1,851 +1,728 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-
-<meta charset="UTF-8">
-<title>Shader 动态控制台</title>
-
-<style>
-
-html,body{
-margin:0;
-width:100%;
-height:100%;
-overflow:hidden;
-background:#000;
-font-family:"Microsoft YaHei";
-}
-
-canvas{
-width:100%;
-height:100%;
-display:block;
-}
-
-
-#panel{
-
-position:absolute;
-left:30px;
-top:30px;
-
-width:320px;
-
-background:rgba(20,20,20,.92);
-color:white;
-
-border-radius:12px;
-
-box-shadow:0 10px 40px #000;
-
-user-select:none;
-
-}
-
-
-#title{
-
-padding:12px;
-
-background:#333;
-
-cursor:move;
-
-border-radius:12px 12px 0 0;
-
-}
-
-
-#content{
-
-padding:15px;
-
-}
-
-
-
-.item{
-
-margin-bottom:15px;
-
-}
-
-
-label{
-
-font-size:14px;
-
-display:block;
-
-margin-bottom:5px;
-
-}
-
-
-.value{
-
-float:right;
-
-color:#00ffcc;
-
-}
-
-
-input{
-
-width:100%;
-
-}
-
-
-button{
-
-width:100%;
-
-padding:8px;
-
-background:#444;
-
-color:white;
-
-border:0;
-
-border-radius:5px;
-
-cursor:pointer;
-
-}
-
-
-
-.hidden{
-
-display:none;
-
-}
-
-
-#tip{
-
-position:absolute;
-
-bottom:15px;
-
-left:15px;
-
-color:#aaa;
-
-}
-
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 过程化火焰 Shader 控制台</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        #webgl-canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(18, 20, 29, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff6b00;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.2s;
+            box-shadow: 0 0 10px rgba(255, 107, 0, 0.5);
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #ff8800;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
 </head>
+<body class="relative">
 
+    <!-- WebGL Canvas Context -->
+    <canvas id="webgl-canvas"></canvas>
 
-<body>
+    <!-- Hotkey Notice Banner -->
+    <div id="hotkey-toast" class="fixed bottom-4 left-4 glass-panel px-4 py-2.5 rounded-xl text-xs text-gray-300 flex items-center space-x-2 z-40 transition-opacity duration-500 pointer-events-none">
+        <i class="fa-solid fa-keyboard text-amber-500"></i>
+        <span>提示：按 <kbd class="px-1.5 py-0.5 bg-gray-800 border border-gray-600 rounded text-amber-400 font-mono">Alt + H</kbd> 可隐藏/显示控制面板</span>
+    </div>
 
+    <!-- Floating Draggable & Collapsible Control Panel -->
+    <div id="control-panel" class="fixed top-6 right-6 w-80 glass-panel rounded-2xl z-50 text-white shadow-2xl transition-all duration-200">
+        <!-- Header / Drag Handle -->
+        <div id="panel-header" class="p-4 border-b border-white/10 flex items-center justify-between cursor-move select-none rounded-t-2xl bg-white/5 hover:bg-white/10 transition-colors">
+            <div class="flex items-center space-x-2.5">
+                <i class="fa-solid fa-fire-flame-curved text-amber-500 text-lg"></i>
+                <span class="font-bold text-sm tracking-wide text-gray-100">火焰特效参数调整</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <button id="toggle-collapse-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="折叠/展开">
+                    <i class="fa-solid fa-minus text-xs"></i>
+                </button>
+                <button id="toggle-hide-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="隐藏控制面板 (Alt+H)">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+        </div>
 
-<canvas id="canvas"></canvas>
+        <!-- Collapsible Content Section -->
+        <div id="panel-body" class="p-4 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            
+            <!-- Quick Presets -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-gray-400 tracking-wider uppercase">预设风格</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="preset-btn px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-lg text-xs font-medium text-amber-300 transition-all text-left" data-preset="classic">
+                        🔥 经典红火
+                    </button>
+                    <button class="preset-btn px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-lg text-xs font-medium text-blue-300 transition-all text-left" data-preset="blue">
+                        ❄️ 幽蓝冷焰
+                    </button>
+                    <button class="preset-btn px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg text-xs font-medium text-purple-300 transition-all text-left" data-preset="purple">
+                        🔮 魔幻紫火
+                    </button>
+                    <button class="preset-btn px-3 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 rounded-lg text-xs font-medium text-yellow-300 transition-all text-left" data-preset="gold">
+                        ⚡ 黄金烈焰
+                    </button>
+                </div>
+            </div>
 
+            <hr class="border-white/10">
 
+            <!-- Controls List -->
+            <div class="space-y-3.5">
+                <!-- Time Speed -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">动画速度</span>
+                        <span id="val-timeSpeed" class="text-amber-400 font-mono">0.50</span>
+                    </div>
+                    <input type="range" id="input-timeSpeed" min="0.0" max="2.0" step="0.05" value="0.5">
+                </div>
 
-<div id="panel">
+                <!-- Flame Clip Height -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">火焰高度 (Clip)</span>
+                        <span id="val-clip" class="text-amber-400 font-mono">210</span>
+                    </div>
+                    <input type="range" id="input-clip" min="50" max="500" step="5" value="210">
+                </div>
 
-<div id="title">
-Shader 控制台
-<span style="float:right">▼</span>
-</div>
+                <!-- Flame Scale -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">火焰缩放</span>
+                        <span id="val-flameScale" class="text-amber-400 font-mono">0.010</span>
+                    </div>
+                    <input type="range" id="input-flameScale" min="0.002" max="0.03" step="0.001" value="0.01">
+                </div>
 
+                <!-- Fire Intensity -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">火焰亮度</span>
+                        <span id="val-fireIntensity" class="text-amber-400 font-mono">1.50</span>
+                    </div>
+                    <input type="range" id="input-fireIntensity" min="0.2" max="4.0" step="0.1" value="1.5">
+                </div>
 
-<div id="content">
+                <!-- Smoke Intensity -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">烟雾浓度</span>
+                        <span id="val-smokeIntensity" class="text-amber-400 font-mono">0.30</span>
+                    </div>
+                    <input type="range" id="input-smokeIntensity" min="0.0" max="1.5" step="0.05" value="0.3">
+                </div>
 
+                <!-- Spark Size -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">火花大小</span>
+                        <span id="val-sparkSize" class="text-amber-400 font-mono">0.080</span>
+                    </div>
+                    <input type="range" id="input-sparkSize" min="0.00" max="0.25" step="0.005" value="0.08">
+                </div>
 
-<div class="item">
+                <!-- Turbulence -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-gray-300">紊流强度</span>
+                        <span id="val-turbulence" class="text-amber-400 font-mono">0.40</span>
+                    </div>
+                    <input type="range" id="input-turbulence" min="0.1" max="1.0" step="0.05" value="0.4">
+                </div>
 
-<label>
-暗角强度
-<span id="v1" class="value"></span>
-</label>
+                <!-- Color Selector -->
+                <div class="space-y-1.5 pt-1">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-gray-300">火焰色调</span>
+                        <input type="color" id="input-fireColor" value="#ff8811" class="w-7 h-7 rounded border-0 cursor-pointer bg-transparent">
+                    </div>
+                </div>
+            </div>
 
-<input id="dark"
-type="range"
-min="0"
-max="2"
-step=".01"
-value="1">
+            <!-- Footer Buttons -->
+            <div class="pt-2 flex space-x-2">
+                <button id="reset-btn" class="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs text-gray-300 font-medium transition-colors flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>重置默认</span>
+                </button>
+                <button id="pause-btn" class="flex-1 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl text-xs text-amber-300 font-medium transition-colors flex items-center justify-center space-x-1.5">
+                    <i id="pause-icon" class="fa-solid fa-pause"></i>
+                    <span id="pause-text">暂停动画</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-</div>
+    <!-- Hidden floating button to bring back control panel if closed -->
+    <button id="show-panel-btn" class="fixed top-6 right-6 w-11 h-11 glass-panel rounded-full z-40 hidden items-center justify-center text-amber-500 hover:text-amber-400 hover:scale-110 transition-all shadow-xl">
+        <i class="fa-solid fa-sliders text-lg"></i>
+    </button>
 
+    <script>
+        // Vertex Shader
+        const vertexShader = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
 
+        // Extended Fragment Shader based on user input, injected with custom Uniform controls
+        const fragmentShader = `
+            uniform vec3 iResolution;
+            uniform float iTime;
 
-<div class="item">
+            // Interactive Uniform Parameters
+            uniform float u_timeSpeed;
+            uniform float u_clip;
+            uniform float u_flameScale;
+            uniform float u_fireIntensity;
+            uniform float u_smokeIntensity;
+            uniform float u_sparkSize;
+            uniform float u_turbulence;
+            uniform vec3 u_fireColor;
 
-<label>
-动态速度
-<span id="v2" class="value"></span>
-</label>
+            vec3 mod289(vec3 x) {
+                return x - floor(x * (1.0 / 289.0)) * 289.0;
+            }
 
-<input id="speed"
-type="range"
-min="0"
-max="5"
-step=".01"
-value="1">
+            vec4 mod289(vec4 x) {
+                return x - floor(x * (1.0 / 289.0)) * 289.0;
+            }
 
-</div>
+            vec4 permute(vec4 x) {
+                return mod289(((x*34.0)+1.0)*x);
+            }
 
+            vec4 taylorInvSqrt(vec4 r) {
+                return 1.79284291400159 - 0.85373472095314 * r;
+            }
 
+            float snoise(vec3 v) {
+                const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
 
-<div class="item">
+                // First corner
+                vec3 i  = floor(v + dot(v, C.yyy) );
+                vec3 x0 =    v - i + dot(i, C.xxx) ;
 
-<label>
-动态幅度
-<span id="v3" class="value"></span>
-</label>
+                // Other corners
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min( g.xyz, l.zxy );
+                vec3 i2 = max( g.xyz, l.zxy );
 
-<input id="amp"
-type="range"
-min="0"
-max=".02"
-step=".001"
-value=".003">
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy; 
+                vec3 x3 = x0 - D.yyy;      
 
-</div>
+                // Permutations
+                i = mod289(i); 
+                vec4 p = permute( permute( permute( 
+                                     i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                                 + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                                 + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
 
+                // Gradients
+                float n_ = 0.142857142857; // 1.0/7.0
+                vec3  ns = n_ * D.wyz - D.xzx;
 
+                vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  
 
-<div class="item">
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_ );
 
-<label>
-亮度
-<span id="v4" class="value"></span>
-</label>
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
 
-<input id="bright"
-type="range"
-min="0"
-max="2"
-step=".01"
-value="1">
+                vec4 b0 = vec4( x.xy, y.xy );
+                vec4 b1 = vec4( x.zw, y.zw );
 
-</div>
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
 
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
 
+                vec3 p0 = vec3(a0.xy,h.x);
+                vec3 p1 = vec3(a0.zw,h.y);
+                vec3 p2 = vec3(a1.xy,h.z);
+                vec3 p3 = vec3(a1.zw,h.w);
 
-<div class="item">
+                // Normalise gradients
+                vec4 norm = inversesqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x;
+                p1 *= norm.y;
+                p2 *= norm.z;
+                p3 *= norm.w;
 
-<label>
-对比度
-<span id="v5" class="value"></span>
-</label>
+                // Mix final noise value
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+            }
 
-<input id="contrast"
-type="range"
-min="0"
-max="3"
-step=".01"
-value="1">
+            // PRNG
+            float prng(in vec2 seed) {
+                seed = fract (seed * vec2 (5.3983, 5.4427));
+                seed += dot (seed.yx, seed.xy + vec2 (21.5351, 14.3137));
+                return fract (seed.x * seed.y * 95.4337);
+            }
 
-</div>
+            const float PI = 3.1415926535897932384626433832795;
 
+            float noiseStack(vec3 pos, int octaves, float falloff){
+                float noise = snoise(vec3(pos));
+                float off = 1.0;
+                if (octaves>1) {
+                    pos *= 2.0;
+                    off *= falloff;
+                    noise = (1.0-off)*noise + off*snoise(vec3(pos));
+                }
+                if (octaves>2) {
+                    pos *= 2.0;
+                    off *= falloff;
+                    noise = (1.0-off)*noise + off*snoise(vec3(pos));
+                }
+                if (octaves>3) {
+                    pos *= 2.0;
+                    off *= falloff;
+                    noise = (1.0-off)*noise + off*snoise(vec3(pos));
+                }
+                return (1.0+noise)/2.0;
+            }
 
+            vec2 noiseStackUV(vec3 pos, int octaves, float falloff, float diff){
+                float displaceA = noiseStack(pos, octaves, falloff);
+                float displaceB = noiseStack(pos + vec3(3984.293, 423.21, 5235.19), octaves, falloff);
+                return vec2(displaceA, displaceB);
+            }
 
-<button onclick="reset()">
-恢复默认
-</button>
+            void main() {
+                vec2 fragCoord = gl_FragCoord.xy;
+                float time = iTime;
+                vec2 resolution = iResolution.xy;
+                vec2 offset = vec2(0.0); // 移除鼠标跟随偏移
 
+                float xpart = fragCoord.x / resolution.x;
+                float ypart = fragCoord.y / resolution.y;
 
-</div>
+                float clip = u_clip;
+                float ypartClip = fragCoord.y / clip;
+                float ypartClippedFalloff = clamp(2.0 - ypartClip, 0.0, 1.0);
+                float ypartClipped = min(ypartClip, 1.0);
+                float ypartClippedn = 1.0 - ypartClipped;
 
-</div>
+                float xfuel = 1.0 - abs(2.0 * xpart - 1.0);
 
+                float timeSpeed = u_timeSpeed;
+                float realTime = timeSpeed * time;
 
+                vec2 coordScaled = u_flameScale * fragCoord - (u_flameScale * 2.0) * vec2(offset.x, 0.0);
+                vec3 position = vec3(coordScaled, 0.0) + vec3(1223.0, 6434.0, 8425.0);
+                vec3 flow = vec3(4.1 * (0.5 - xpart) * pow(ypartClippedn, 4.0), -2.0 * xfuel * pow(ypartClippedn, 64.0), 0.0);
+                vec3 timing = realTime * vec3(0.0, -1.7, 1.1) + flow;
 
-<div id="tip">
-Alt + H 显示/隐藏控制台
-</div>
+                vec3 displacePos = vec3(1.0, 0.5, 1.0) * 2.4 * position + realTime * vec3(0.01, -0.7, 1.3);
+                vec3 displace3 = vec3(noiseStackUV(displacePos, 2, u_turbulence, 0.1), 0.0);
 
+                vec3 noiseCoord = (vec3(2.0, 1.0, 1.0) * position + timing + 0.4 * displace3) / 1.0;
+                float noise = noiseStack(noiseCoord, 3, u_turbulence);
 
+                float flames = pow(ypartClipped, 0.3 * xfuel) * pow(noise, 0.3 * xfuel);
+
+                float f = ypartClippedFalloff * pow(1.0 - flames * flames * flames, 8.0);
+                float fff = f * f * f;
+                
+                // Base fire color output modulated by user color setting & intensity
+                vec3 baseFire = u_fireIntensity * vec3(f, fff, fff * fff);
+                vec3 fire = baseFire * u_fireColor;
+
+                // Smoke calculation
+                float smokeNoise = 0.5 + snoise(0.4 * position + timing * vec3(1.0, 1.0, 0.2)) / 2.0;
+                vec3 smoke = vec3(u_smokeIntensity * pow(xfuel, 3.0) * pow(ypart, 2.0) * (smokeNoise + 0.4 * (1.0 - noise)));
+
+                // Sparks calculation
+                float sparkGridSize = 30.0;
+                vec2 sparkCoord = fragCoord - vec2(2.0 * offset.x, 190.0 * realTime);
+                sparkCoord -= 30.0 * noiseStackUV(0.01 * vec3(sparkCoord, 30.0 * time), 1, u_turbulence, 0.1);
+                sparkCoord += 100.0 * flow.xy;
+                if (mod(sparkCoord.y / sparkGridSize, 2.0) < 1.0) sparkCoord.x += 0.5 * sparkGridSize;
+                vec2 sparkGridIndex = vec2(floor(sparkCoord / sparkGridSize));
+                float sparkRandom = prng(sparkGridIndex);
+                float sparkLife = min(10.0 * (1.0 - min((sparkGridIndex.y + (190.0 * realTime / sparkGridSize)) / (24.0 - 20.0 * sparkRandom), 1.0)), 1.0);
+                vec3 sparks = vec3(0.0);
+                if (sparkLife > 0.0 && u_sparkSize > 0.001) {
+                    float sparkSize = xfuel * xfuel * sparkRandom * u_sparkSize;
+                    float sparkRadians = 999.0 * sparkRandom * 2.0 * PI + 2.0 * time;
+                    vec2 sparkCircular = vec2(sin(sparkRadians), cos(sparkRadians));
+                    vec2 sparkOffset = (0.5 - sparkSize) * sparkGridSize * sparkCircular;
+                    vec2 sparkModulus = mod(sparkCoord + sparkOffset, sparkGridSize) - 0.5 * vec2(sparkGridSize);
+                    float sparkLength = length(sparkModulus);
+                    float sparksGray = max(0.0, 1.0 - sparkLength / (sparkSize * sparkGridSize));
+                    sparks = sparkLife * sparksGray * vec3(1.0, 0.4, 0.1) * (u_fireColor * 0.8 + vec3(0.2));
+                }
+
+                gl_FragColor = vec4(max(fire, sparks) + smoke, 1.0);
+            }
+        `;
+
+        let scene, camera, renderer, material, mesh;
+        let isPaused = false;
+        let clock = new THREE.Clock();
+
+        // Default Uniform values state
+        const defaultState = {
+            timeSpeed: 0.5,
+            clip: 210.0,
+            flameScale: 0.01,
+            fireIntensity: 1.5,
+            smokeIntensity: 0.3,
+            sparkSize: 0.08,
+            turbulence: 0.4,
+            fireColor: '#ff8811'
+        };
+
+        const uniforms = {
+            iResolution: { value: new THREE.Vector3() },
+            iTime: { value: 0 },
+            u_timeSpeed: { value: defaultState.timeSpeed },
+            u_clip: { value: defaultState.clip },
+            u_flameScale: { value: defaultState.flameScale },
+            u_fireIntensity: { value: defaultState.fireIntensity },
+            u_smokeIntensity: { value: defaultState.smokeIntensity },
+            u_sparkSize: { value: defaultState.sparkSize },
+            u_turbulence: { value: defaultState.turbulence },
+            u_fireColor: { value: new THREE.Color(defaultState.fireColor) }
+        };
+
+        function initWebGL() {
+            const canvas = document.getElementById('webgl-canvas');
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // Scene & Orthographic Camera for Fullscreen Quad
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            // Shader Material
+            material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                uniforms: uniforms,
+                depthWrite: false,
+                depthTest: false
+            });
+
+            // Plane Geometry
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Set initial resolution uniform
+            uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+
+            // Window resize handler
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isPaused) {
+                uniforms.iTime.value += clock.getDelta();
+            } else {
+                clock.getDelta(); // keep clock delta updated without advancing iTime
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function initControlsUI() {
+            // Control Panel Element References
+            const panel = document.getElementById('control-panel');
+            const panelHeader = document.getElementById('panel-header');
+            const panelBody = document.getElementById('panel-body');
+            const toggleCollapseBtn = document.getElementById('toggle-collapse-btn');
+            const toggleHideBtn = document.getElementById('toggle-hide-btn');
+            const showPanelBtn = document.getElementById('show-panel-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+
+            // Sliders mapping
+            const sliders = [
+                { id: 'timeSpeed', uniform: 'u_timeSpeed', fixed: 2 },
+                { id: 'clip', uniform: 'u_clip', fixed: 0 },
+                { id: 'flameScale', uniform: 'u_flameScale', fixed: 3 },
+                { id: 'fireIntensity', uniform: 'u_fireIntensity', fixed: 2 },
+                { id: 'smokeIntensity', uniform: 'u_smokeIntensity', fixed: 2 },
+                { id: 'sparkSize', uniform: 'u_sparkSize', fixed: 3 },
+                { id: 'turbulence', uniform: 'u_turbulence', fixed: 2 }
+            ];
+
+            // Bind slider events
+            sliders.forEach(item => {
+                const input = document.getElementById(`input-${item.id}`);
+                const display = document.getElementById(`val-${item.id}`);
+
+                input.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    uniforms[item.uniform].value = val;
+                    display.innerText = val.toFixed(item.fixed);
+                });
+            });
+
+            // Color picker handler
+            const colorInput = document.getElementById('input-fireColor');
+            colorInput.addEventListener('input', (e) => {
+                uniforms.u_fireColor.value.set(e.target.value);
+            });
+
+            // Presets
+            const presets = {
+                classic: { timeSpeed: 0.5, clip: 210, flameScale: 0.01, fireIntensity: 1.5, smokeIntensity: 0.3, sparkSize: 0.08, turbulence: 0.4, fireColor: '#ff8811' },
+                blue:    { timeSpeed: 0.7, clip: 260, flameScale: 0.008, fireIntensity: 1.8, smokeIntensity: 0.15, sparkSize: 0.12, turbulence: 0.5, fireColor: '#00aaff' },
+                purple:  { timeSpeed: 0.4, clip: 190, flameScale: 0.012, fireIntensity: 2.0, smokeIntensity: 0.4, sparkSize: 0.06, turbulence: 0.6, fireColor: '#bb33ff' },
+                gold:    { timeSpeed: 0.6, clip: 300, flameScale: 0.007, fireIntensity: 2.2, smokeIntensity: 0.2, sparkSize: 0.15, turbulence: 0.3, fireColor: '#ffcc00' }
+            };
+
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const presetName = btn.dataset.preset;
+                    if (presets[presetName]) {
+                        applyState(presets[presetName]);
+                    }
+                });
+            });
+
+            function applyState(state) {
+                sliders.forEach(item => {
+                    const input = document.getElementById(`input-${item.id}`);
+                    const display = document.getElementById(`val-${item.id}`);
+                    if (state[item.id] !== undefined) {
+                        input.value = state[item.id];
+                        uniforms[item.uniform].value = state[item.id];
+                        display.innerText = state[item.id].toFixed(item.fixed);
+                    }
+                });
+
+                if (state.fireColor) {
+                    colorInput.value = state.fireColor;
+                    uniforms.u_fireColor.value.set(state.fireColor);
+                }
+            }
+
+            // Reset Button
+            resetBtn.addEventListener('click', () => {
+                applyState(defaultState);
+            });
+
+            // Pause/Play Button
+            pauseBtn.addEventListener('click', () => {
+                isPaused = !isPaused;
+                const icon = document.getElementById('pause-icon');
+                const text = document.getElementById('pause-text');
+                if (isPaused) {
+                    icon.className = 'fa-solid fa-play';
+                    text.innerText = '继续动画';
+                } else {
+                    icon.className = 'fa-solid fa-pause';
+                    text.innerText = '暂停动画';
+                }
+            });
+
+            // Panel Collapse Toggle
+            let isCollapsed = false;
+            toggleCollapseBtn.addEventListener('click', () => {
+                isCollapsed = !isCollapsed;
+                if (isCollapsed) {
+                    panelBody.classList.add('hidden');
+                    toggleCollapseBtn.innerHTML = '<i class="fa-solid fa-plus text-xs"></i>';
+                } else {
+                    panelBody.classList.remove('hidden');
+                    toggleCollapseBtn.innerHTML = '<i class="fa-solid fa-minus text-xs"></i>';
+                }
+            });
+
+            // Hide/Show Panel Functionality
+            function togglePanelVisibility(show) {
+                const isCurrentlyHidden = panel.classList.contains('hidden');
+                const targetShow = show !== undefined ? show : isCurrentlyHidden;
+
+                if (targetShow) {
+                    panel.classList.remove('hidden');
+                    showPanelBtn.classList.add('hidden');
+                    showPanelBtn.classList.remove('flex');
+                } else {
+                    panel.classList.add('hidden');
+                    showPanelBtn.classList.remove('hidden');
+                    showPanelBtn.classList.add('flex');
+                }
+            }
+
+            toggleHideBtn.addEventListener('click', () => togglePanelVisibility(false));
+            showPanelBtn.addEventListener('click', () => togglePanelVisibility(true));
+
+            // Hotkey Listener (Alt + H)
+            window.addEventListener('keydown', (e) => {
+                if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                    e.preventDefault();
+                    const isHidden = panel.classList.contains('hidden');
+                    togglePanelVisibility(isHidden);
+                }
+            });
+
+            let isDragging = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            panelHeader.addEventListener('mousedown', (e) => {
+                // Don't trigger drag on action buttons
+                if (e.target.closest('button')) return;
+
+                isDragging = true;
+                const rect = panel.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+
+                panel.style.transition = 'none'; // Disable transition during drag
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                let left = e.clientX - dragOffsetX;
+                let top = e.clientY - dragOffsetY;
+
+                // Clamp within screen viewport
+                const maxLeft = window.innerWidth - panel.offsetWidth;
+                const maxTop = window.innerHeight - panel.offsetHeight;
+
+                left = Math.max(0, Math.min(left, maxLeft));
+                top = Math.max(0, Math.min(top, maxTop));
+
+                panel.style.left = `${left}px`;
+                panel.style.top = `${top}px`;
+                panel.style.right = 'auto'; // Clear right offset positioning once dragged
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    panel.style.transition = '';
+                }
+            });
+
+            // 【新增逻辑】：页面加载完毕后，默认隐藏面板，并显示右上角的圆形恢复按钮
+            togglePanelVisibility(false);
+            
+            // 【新增逻辑】：左下角的快捷键提示横幅 3秒后自动淡出消失，保持界面清爽
+            setTimeout(() => {
+                const toast = document.getElementById('hotkey-toast');
+                if (toast) toast.style.opacity = '0';
+            }, 3000);
+        }
+
+        window.onload = function() {
+            initWebGL();
+            initControlsUI();
+            animate();
+        };
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
 
 <script>
-
-
-const canvas=
-document.getElementById("canvas");
-
-const gl=
-canvas.getContext("webgl");
-
-
-
-function resize(){
-
-canvas.width=innerWidth;
-
-canvas.height=innerHeight;
-
-gl.viewport(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
+function __applyToNav__() {
+  var file = 'a53.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
 }
-
-resize();
-
-window.onresize=resize;
-
-
-
-const vertex=`
-
-attribute vec2 position;
-
-void main(){
-
-gl_Position=
-vec4(position,0.0,1.0);
-
-}
-
-`;
-
-
-
-const fragment=`
-
-precision highp float;
-
-
-uniform vec2 iResolution;
-
-uniform float iTime;
-
-
-uniform sampler2D iChannel0;
-
-
-
-uniform float uDark;
-uniform float uSpeed;
-uniform float uAmp;
-
-uniform float uBright;
-uniform float uContrast;
-
-
-
-void mainImage(
-out vec4 fragColor,
-in vec2 fragCoord
-)
-{
-
-
-vec2 p=
-fragCoord/iResolution.xy;
-
-
-
-float t=
-iTime*uSpeed;
-
-
-
-//动态漂移
-
-p += vec2(
-sin(t),
-cos(t*0.8)
-)
-*uAmp;
-
-
-
-vec3 col=
-texture2D(
-iChannel0,
-p
-).rgb;
-
-
-
-//你的原始暗角算法
-
-float v=
-16.0*
-p.x*
-p.y*
-(1.0-p.x)*
-(1.0-p.y);
-
-
-
-col *=
-0.5+
-0.5*
-pow(
-max(v,0.0001),
-0.05
-);
-
-
-
-col *=
-mix(
-1.0,
-v,
-uDark
-);
-
-
-
-col*=uBright;
-
-
-col=
-(col-0.5)
-*uContrast
-+0.5;
-
-
-
-fragColor=
-vec4(col,1.0);
-
-
-}
-
-
-
-void main(){
-
-mainImage(
-gl_FragColor,
-gl_FragCoord.xy
-);
-
-}
-
-`;
-
-
-
-
-
-function shader(type,src){
-
-let s=
-gl.createShader(type);
-
-gl.shaderSource(
-s,
-src
-);
-
-gl.compileShader(s);
-
-return s;
-
-}
-
-
-
-let program=
-gl.createProgram();
-
-
-gl.attachShader(
-program,
-shader(
-gl.VERTEX_SHADER,
-vertex
-)
-);
-
-
-gl.attachShader(
-program,
-shader(
-gl.FRAGMENT_SHADER,
-fragment
-)
-);
-
-
-gl.linkProgram(program);
-
-gl.useProgram(program);
-
-
-
-
-
-
-let buffer=
-gl.createBuffer();
-
-
-gl.bindBuffer(
-gl.ARRAY_BUFFER,
-buffer
-);
-
-
-gl.bufferData(
-gl.ARRAY_BUFFER,
-new Float32Array([
-
--1,-1,
-1,-1,
--1,1,
-
--1,1,
-1,-1,
-1,1
-
-]),
-gl.STATIC_DRAW
-);
-
-
-
-let position=
-gl.getAttribLocation(
-program,
-"position"
-);
-
-
-gl.enableVertexAttribArray(position);
-
-
-gl.vertexAttribPointer(
-position,
-2,
-gl.FLOAT,
-false,
-0,
-0
-);
-
-
-
-
-
-
-
-let texture=
-gl.createTexture();
-
-
-
-let img=
-new Image();
-
-
-img.src="a7.png";
-
-
-
-let ready=false;
-
-
-img.onload=function(){
-
-
-gl.bindTexture(
-gl.TEXTURE_2D,
-texture
-);
-
-
-
-gl.pixelStorei(
-gl.UNPACK_FLIP_Y_WEBGL,
-true
-);
-
-
-
-gl.texImage2D(
-gl.TEXTURE_2D,
-0,
-gl.RGBA,
-gl.RGBA,
-gl.UNSIGNED_BYTE,
-img
-);
-
-
-
-gl.texParameteri(
-gl.TEXTURE_2D,
-gl.TEXTURE_MIN_FILTER,
-gl.LINEAR
-);
-
-
-gl.texParameteri(
-gl.TEXTURE_2D,
-gl.TEXTURE_MAG_FILTER,
-gl.LINEAR
-);
-
-
-gl.texParameteri(
-gl.TEXTURE_2D,
-gl.TEXTURE_WRAP_S,
-gl.CLAMP_TO_EDGE
-);
-
-
-gl.texParameteri(
-gl.TEXTURE_2D,
-gl.TEXTURE_WRAP_T,
-gl.CLAMP_TO_EDGE
-);
-
-
-
-gl.uniform1i(
-gl.getUniformLocation(
-program,
-"iChannel0"
-),
-0
-);
-
-
-ready=true;
-
-console.log("a7.png loaded");
-
-};
-
-
-
-
-
-let U={};
-
-
-[
-"iResolution",
-"iTime",
-"uDark",
-"uSpeed",
-"uAmp",
-"uBright",
-"uContrast"
-
-].forEach(n=>{
-
-U[n]=
-gl.getUniformLocation(
-program,
-n
-);
-
-});
-
-
-
-
-
-function render(){
-
-
-if(ready){
-
-
-gl.activeTexture(
-gl.TEXTURE0
-);
-
-
-gl.bindTexture(
-gl.TEXTURE_2D,
-texture
-);
-
-
-
-gl.uniform2f(
-U.iResolution,
-canvas.width,
-canvas.height
-);
-
-
-
-gl.uniform1f(
-U.iTime,
-performance.now()/1000
-);
-
-
-
-let ids=[
-"dark",
-"speed",
-"amp",
-"bright",
-"contrast"
-];
-
-
-let names=[
-"uDark",
-"uSpeed",
-"uAmp",
-"uBright",
-"uContrast"
-];
-
-
-
-for(let i=0;i<ids.length;i++){
-
-let val=
-parseFloat(
-document.getElementById(ids[i]).value
-);
-
-
-gl.uniform1f(
-U[names[i]],
-val
-);
-
-
-document.getElementById(
-"v"+(i+1)
-).innerHTML=
-val.toFixed(3);
-
-}
-
-
-
-gl.drawArrays(
-gl.TRIANGLES,
-0,
-6
-);
-
-
-}
-
-
-requestAnimationFrame(render);
-
-}
-
-
-render();
-
-
-
-
-
-//折叠
-
-title.onclick=function(){
-
-content.classList.toggle(
-"hidden"
-);
-
-};
-
-
-
-
-
-//ALT H
-
-document.addEventListener(
-"keydown",
-e=>{
-
-if(e.altKey &&
-e.key.toLowerCase()=="h")
-{
-
-panel.classList.toggle(
-"hidden"
-);
-
-}
-
-});
-
-
-
-
-
-
-//拖动
-
-let move=false;
-
-let ox,oy;
-
-
-title.onmousedown=e=>{
-
-move=true;
-
-ox=e.clientX-panel.offsetLeft;
-
-oy=e.clientY-panel.offsetTop;
-
-};
-
-
-document.onmousemove=e=>{
-
-if(move){
-
-panel.style.left=
-e.clientX-ox+"px";
-
-panel.style.top=
-e.clientY-oy+"px";
-
-}
-
-};
-
-
-document.onmouseup=()=>{
-
-move=false;
-
-};
-
-
-
-
-
-function reset(){
-
-dark.value=1;
-speed.value=1;
-amp.value=.003;
-bright.value=1;
-contrast.value=1;
-
-}
-
-
 </script>
-<script>document.addEventListener('DOMContentLoaded',function(){var p=document.getElementById('panel');if(p)p.style.display='none';});</script>
-
 
 </body>
-
 </html>

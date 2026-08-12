@@ -217,17 +217,35 @@ def build_categories(items: List[BookmarkItem]) -> List[Dict]:
     return categories
 
 def generate_html_pure(template_path: str, output_path: str, categories: list):
-    """安全地读取前端模板，利用字符串替换注入数据，规避了由于正则提取导致样式崩塌的致命Bug"""
+    """生成导航页，图标单独提取到 icons.js，HTML 主体只保留 URL 引用"""
     with open(template_path, "r", encoding="utf-8") as f:
         template_content = f.read()
-    
-    data_json_str = json.dumps({"categories": categories}, ensure_ascii=False, indent=2)
-    
-    # 将 JSON 数据注入到模板中的占位符位置
+
+    # 提取图标字典，key = item url，value = base64 data uri
+    icons: dict = {}
+    clean_categories = []
+    for cat in categories:
+        clean_items = []
+        for item in cat["items"]:
+            icon = item.get("icon", "")
+            if icon and icon.startswith("data:"):
+                icons[item["url"]] = icon
+            clean_items.append({**item, "icon": ""})  # HTML 里 icon 置空
+        clean_categories.append({**cat, "items": clean_items})
+
+    # 写 icons.js
+    icons_js_path = os.path.join(os.path.dirname(output_path), "icons.js")
+    icons_js = "window.__NAV_ICONS__ = " + json.dumps(icons, ensure_ascii=False) + ";"
+    with open(icons_js_path, "w", encoding="utf-8") as f:
+        f.write(icons_js)
+
+    data_json_str = json.dumps({"categories": clean_categories}, ensure_ascii=False, indent=2)
     final_html = template_content.replace("INSERT_DATA_HERE", data_json_str)
-    
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(final_html)
+
+    print(f"图标文件已生成: {icons_js_path} ({len(icons)} 个图标)")
 
 def _write_recognized_list(path: str, items: List[BookmarkItem], duration: float) -> None:
     with open(path, "w", encoding="utf-8") as f:
@@ -279,7 +297,7 @@ def main():
 
     bookmarks_path = "bookmarks.html"
     template_path = os.path.join("templates", "index.html")
-    output_html_path = os.path.join("output", "my_nav.html")
+    output_html_path = os.path.join("output", "bmarks.html")
     report_path = os.path.join("output", "report.txt")
     recognized_path = os.path.join("output", "recognized.txt")
     failed_path = os.path.join("output", "failed.txt")

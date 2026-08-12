@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的导航 - Dashy 风格</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#0a1729;color:#cfd8dc;min-height:100vh;overflow-x:hidden}
+
+/* 整体容器 */
+.app{max-width:1400px;margin:0 auto;padding:30px 20px}
+
+/* 顶部 */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px}
+.brand-title{color:#00d4aa;font-size:32px;font-weight:600;letter-spacing:1px}
+.brand-sub{color:#cfd8dc;font-size:13px;font-style:italic;opacity:.7}
+.top-links{display:flex;gap:8px;align-items:center}
+.top-link{padding:6px 14px;border:1px solid rgba(0,212,170,.3);border-radius:4px;color:#cfd8dc;font-size:12px;cursor:pointer;transition:all .2s;text-decoration:none}
+.top-link:hover{background:rgba(0,212,170,.1);border-color:#00d4aa;color:#00d4aa}
+
+/* 配置栏 */
+.config-bar{display:flex;justify-content:flex-end;gap:14px;align-items:center;margin-bottom:20px;flex-wrap:wrap;font-size:12px;color:#cfd8dc}
+.config-item{display:flex;align-items:center;gap:6px}
+.config-label{color:#cfd8dc;opacity:.7}
+.config-select,.config-btn{background:#0d1729;border:1px solid rgba(0,212,170,.25);border-radius:4px;color:#cfd8dc;padding:4px 8px;font-size:11px;cursor:pointer;outline:none}
+.config-select:focus,.config-btn:focus{border-color:#00d4aa}
+.config-btns{display:flex;gap:4px}
+.config-btns button{background:#0d1729;border:1px solid rgba(0,212,170,.2);color:#cfd8dc;width:24px;height:24px;border-radius:3px;cursor:pointer;font-size:11px;transition:all .2s}
+.config-btns button:hover{border-color:#00d4aa;color:#00d4aa}
+.config-btns button.active{background:#00d4aa;color:#0a1729;border-color:#00d4aa}
+
+/* 搜索行 */
+.search-row{display:flex;gap:12px;align-items:center;margin-bottom:24px;flex-wrap:wrap}
+.search-box{flex:1;min-width:280px;background:#0d1729;border:1px solid rgba(0,212,170,.25);border-radius:4px;padding:8px 14px;color:#cfd8dc;font-size:13px;outline:none}
+.search-box:focus{border-color:#00d4aa}
+.search-box::placeholder{color:#5f6975;font-style:italic}
+
+/* Section 分组网格 */
+.sections{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.section{background:#0d1729;border:1px solid rgba(0,212,170,.3);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;min-height:240px}
+.section-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,212,170,.08);border-bottom:1px solid rgba(0,212,170,.2);color:#00d4aa;font-size:13px;font-weight:600;cursor:pointer;user-select:none}
+.section-header i{font-size:14px}
+.section-header .toggle{margin-left:auto;color:#00d4aa;opacity:.6;transition:transform .2s;font-size:11px}
+.section.collapsed .section-header .toggle{transform:rotate(-90deg)}
+.section.collapsed .section-body{display:none}
+.section-body{padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1}
+
+/* 垂直卡片 */
+.card-v{background:#0a1729;border:1px solid rgba(0,212,170,.08);border-radius:4px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;transition:all .2s;min-height:90px}
+.card-v:hover{border-color:#00d4aa;background:#0f1d36;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,212,170,.15)}
+.card-v-icon{width:32px;height:32px;border-radius:4px;background:#fff;overflow:hidden;margin-bottom:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card-v-icon img{width:90%;height:90%;object-fit:contain}
+.card-v-title{color:#cfd8dc;font-size:11px;font-weight:600;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.card-v:hover .card-v-title{color:#00d4aa}
+.card-v-desc{color:#5f6975;font-size:9px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:100%;min-height:24px}
+
+/* 回到顶部 */
+.to-top{position:fixed;right:30px;bottom:30px;width:44px;height:44px;background:#0d1729;border:1px solid rgba(0,212,170,.3);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#00d4aa;cursor:pointer;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:all .2s;z-index:50;opacity:0;pointer-events:none}
+.to-top.show{opacity:1;pointer-events:auto}
+.to-top:hover{background:#00d4aa;color:#0a1729}
+
+/* 底部 */
+.footer{text-align:center;padding:30px 20px 10px;color:#5f6975;font-size:11px}
+.footer a{color:#00d4aa;text-decoration:none}
+.footer a:hover{text-decoration:underline}
+
+@media(max-width:1100px){.sections{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.sections{grid-template-columns:1fr}.section-body{grid-template-columns:repeat(2,1fr)}.brand-title{font-size:24px}}
+</style>
+</head>
+<body>
+
+<div class="app">
+    <!-- 顶部 -->
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-title">我的导航</div>
+            <div class="brand-sub">Personal Dashboard of Tabbit</div>
+        </div>
+        <div class="top-links">
+            <a class="top-link" href="https://github.com/" target="_blank"><i class="fa fa-github"></i> GitHub</a>
+            <a class="top-link" href="#" target="_blank"><i class="fa fa-book"></i> Documentation</a>
+        </div>
+    </div>
+
+    <!-- 配置栏 -->
+    <div class="config-bar">
+        <div class="config-item">
+            <span class="config-label">Theme</span>
+            <select class="config-select" id="theme-sel">
+                <option>Default</option>
+                <option>Callisto</option>
+                <option>Dracula</option>
+                <option>Monokai</option>
+            </select>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Layout</span>
+            <div class="config-btns" id="layout-btns">
+                <button data-layout="auto" class="active" title="Auto">▦</button>
+                <button data-layout="horizontal" title="Horizontal">▥</button>
+                <button data-layout="vertical" title="Vertical">▤</button>
+            </div>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Item size</span>
+            <div class="config-btns" id="size-btns">
+                <button data-size="small">S</button>
+                <button data-size="medium" class="active">M</button>
+                <button data-size="large">L</button>
+            </div>
+        </div>
+        <div class="config-item">
+            <span class="config-label">Config</span>
+            <div class="config-btns">
+                <button title="Edit"><i class="fa fa-pencil"></i></button>
+                <button title="Settings"><i class="fa fa-cog"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索行 -->
+    <div class="search-row">
+        <input type="text" class="search-box" id="search" placeholder="Start typing to filter...">
+    </div>
+
+    <!-- 分组内容 -->
+    <div class="sections" id="sections"></div>
+
+    <!-- 底部 -->
+    <div class="footer">
+        Developed by <a href="#">Tabbit</a>. Licensed under MIT © 2026. Get the <a href="#">Source Code</a>.
+    </div>
+</div>
+
+<!-- 回到顶部 -->
+<div class="to-top" id="totop"><i class="fa fa-arrow-up"></i></div>
+
+<script id="nav-data" type="application/json">
+{"sections":[{"title":"resourse","icon":"fa-graduation-cap"},{"title":"tools","icon":"fa-wrench"},{"title":"视频","icon":"fa-film"},{"title":"AIGC","icon":"fa-magic"},{"title":"AI大语言","icon":"fa-comments"},{"title":"AI声音","icon":"fa-volume-up"},{"title":"AI-3D","icon":"fa-cube"},{"title":"反推提示词","icon":"fa-keyboard-o"},{"title":"API-VPS","icon":"fa-server"},{"title":"APK-Proxy","icon":"fa-mobile"},{"title":"Nano Banana","icon":"fa-leaf"},{"title":"Blog","icon":"fa-rss"},{"title":"YouTube","icon":"fa-youtube-play"},{"title":"mail","icon":"fa-envelope-o"},{"title":"Google","icon":"fa-google"},{"title":"电影","icon":"fa-ticket"},{"title":"身份","icon":"fa-user-secret"},{"title":"壁纸","icon":"fa-image"}],"cats":{"resourse":[{"t":"doyoudo","u":"https://www.doyoudo.com/","h":"设计与视频教程"},{"t":"Panzoid","u":"https://panzoid.com/","h":"在线视频动画"},{"t":"耳聆网","u":"https://www.ear0.com/","h":"免费音效素材"},{"t":"免费字体","u":"https://www.hellofont.cn/","h":"字体服务平台"},{"t":"矢量图标","u":"https://www.iconfont.cn/","h":"矢量图标库"},{"t":"大众脸","u":"https://www.lookae.com/","h":"影视后期特效"},{"t":"台词素材","u":"https://33tc.net/","h":"影视台词搜索"},{"t":"找台词","u":"http://www.zhaotaici.cn/","h":"台词搜索"},{"t":"AE脚本","u":"https://jpsmile.com/","h":"AE插件扩展"},{"t":"用户脚本","u":"https://greasyfork.org/zh-CN/scripts","h":"脚本分享"}],"tools":[{"t":"SubHD","u":"https://subhd.tv/","h":"字幕下载"},{"t":"猫啃字体","u":"https://www.maoken.com/","h":"免费字体"},{"t":"Magic Studio","u":"https://magicstudio.com/zh/","h":"AI图像处理"},{"t":"书法欣赏","u":"http://www.yac8.com/","h":"书法作品"},{"t":"大叔汁源","u":"https://www.kdocs.cn/l/ceZS4cRWJBxs","h":"资源分享"},{"t":"Colab","u":"https://colab.research.google.com/","h":"云端Python"},{"t":"万能命令","u":"https://wannengrun.com/zh/","h":"工具导航"},{"t":"GFXCamp","u":"http://www.gfxcamp.com/","h":"CG资源"},{"t":"Blaze","u":"https://blaze.vercel.app/","h":"文件共享"},{"t":"Artec 3D","u":"https://www.artec3d.com/","h":"3D扫描"},{"t":"3D模型","u":"https://3dmodels.org/zh/","h":"3D模型资源"},{"t":"RenderPeople","u":"https://renderpeople.com/","h":"3D人物模型"}],"视频":[{"t":"快手","u":"https://www.kuaishou.com/new-reco","h":"短视频平台"},{"t":"小红书","u":"https://www.xiaohongshu.com/","h":"生活方式"},{"t":"哔哩哔哩","u":"https://www.bilibili.com/","h":"视频社区"},{"t":"X.COM","u":"https://x.com/xuxk17125","h":"社交平台"},{"t":"西瓜创作","u":"https://studio.ixigua.com/","h":"视频后台"},{"t":"今日头条","u":"https://www.toutiao.com/","h":"资讯平台"},{"t":"好看视频","u":"https://haokan.baidu.com/","h":"百度短视频"},{"t":"老王导航","u":"https://nav.eooce.com/","h":"网址导航"},{"t":"科技lion","u":"https://dh.kejilion.pro/","h":"科技导航"},{"t":"TikTok","u":"https://www.tiktok.com/en/","h":"国际版"},{"t":"百家号","u":"https://baijiahao.baidu.com/","h":"百度创作"},{"t":"Product Hunt","u":"https://www.producthunt.com/?bc=1","h":"新产品社区"}],"AIGC":[{"t":"GitHub","u":"https://github.com/","h":"代码托管"},{"t":"魔搭社区","u":"https://modelscope.cn/models","h":"阿里AI模型"},{"t":"HuggingFace","u":"https://huggingface.co/","h":"AI模型共享"},{"t":"HF Mirror","u":"https://hf-mirror.com/","h":"镜像访问"},{"t":"NovelAI","u":"https://novelai.dev/","h":"AI绘画资源"},{"t":"Civitai","u":"https://civitai.com/models","h":"AI绘画模型"},{"t":"LiblibAI","u":"https://www.liblib.art/","h":"国内AI绘画"},{"t":"SD解析","u":"https://spell.novelai.dev/","h":"SD参数解析"},{"t":"cobalt","u":"https://cobalt.tools/","h":"媒体下载"},{"t":"Medium","u":"https://medium.com/","h":"内容平台"},{"t":"FMHY","u":"https://fmhy.net/","h":"资源导航"},{"t":"巨量创意","u":"https://cc.oceanengine.com/","h":"广告创意"}],"AI大语言":[{"t":"通义","u":"https://tongyi.aliyun.com/","h":"阿里大模型"},{"t":"OpenAI","u":"https://openai.com/","h":"AI研究"},{"t":"文心一言","u":"https://yiyan.baidu.com/","h":"百度AI"},{"t":"跃问","u":"https://yuewen.cn/chats/new","h":"阶跃AI助手"},{"t":"Cici","u":"https://www.cici.com/chat/","h":"字节海外AI"},{"t":"HyperAI","u":"https://hyper.ai/cn","h":"AI资讯"},{"t":"bolt.new","u":"https://bolt.new/","h":"AI编程"},{"t":"灵光","u":"https://www.lingguang.com/chat","h":"AI助手"},{"t":"Pinterest","u":"https://www.pinterest.com/","h":"图片灵感"},{"t":"PoseMy","u":"https://posemy.art/","h":"3D姿势参考"},{"t":"Quick-poses","u":"https://quickposes.com/en","h":"绘画姿势"},{"t":"Magic Poser","u":"https://webapp.magicposer.com/","h":"3D姿态"}],"AI声音":[{"t":"AI声音","u":"https://musichero.ai/zh-CN/sound-effect","h":"AI音效生成"},{"t":"Stable Audio","u":"https://stability.ai/stable-audio","h":"AI音频"},{"t":"Google FX","u":"https://labs.google/fx","h":"AI实验"},{"t":"Beatoven","u":"https://www.beatoven.ai/","h":"AI音乐"},{"t":"Free TTS","u":"https://freetts.com/text-to-speech","h":"文字转语音"},{"t":"海豚AI","u":"https://www.ttson.cn/","h":"语音处理"},{"t":"马克配音","u":"https://ttsmaker.cn/","h":"在线配音"},{"t":"Audio转换","u":"https://onlineaudioconverter.com/","h":"音频转换"},{"t":"Fish Audio","u":"https://fish.audio/zh-CN/","h":"语音生成"},{"t":"Mureka","u":"https://www.mureka.ai/","h":"AI音乐创作"},{"t":"Audiomatic","u":"https://audiomatic.io/","h":"AI音乐"}],"AI-3D":[{"t":"HYPER-3D","u":"https://hyper3d.ai/","h":"AI 3D生成"},{"t":"Meshy","u":"https://www.meshy.ai/","h":"3D模型生成"},{"t":"Kinetix","u":"https://www.kinetix.tech/","h":"角色动画"},{"t":"腾讯混元3D","u":"https://3d.hunyuan.tencent.com/","h":"腾讯3D"},{"t":"MakerWorld","u":"https://makerworld.com/zh","h":"3D打印模型"},{"t":"Rendair","u":"https://app.rendair.ai/chat/821421","h":"AI 3D设计"},{"t":"NexodusAI","u":"https://nexodusai.com/","h":"图片转3D"}],"反推提示词":[{"t":"Y2MP3","u":"https://y2mp3.net/","h":"视频转MP3"},{"t":"Medio AI","u":"https://medio.cool/en/","h":"AI视频下载"},{"t":"VGO","u":"https://vgo.pub/","h":"视频处理"},{"t":"小红下载","u":"https://dy.kukutool.com/xiaohongshu","h":"小红书下载"},{"t":"Watermark","u":"https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal","h":"水印去除"},{"t":"SnapTik","u":"https://snaptik.app/en2","h":"TikTok下载"},{"t":"飞影数字人","u":"https://hifly.cc/","h":"AI数字人"},{"t":"OpenCut","u":"https://opencut.net/","h":"AI视频编辑"},{"t":"Visuali","u":"https://visuali.io/","h":"AI图像"}],"API-VPS":[{"t":"OpenRouter","u":"https://openrouter.ai/","h":"AI API聚合"},{"t":"ClawCloud","u":"https://us-east-1.run.claw.cloud/","h":"云端应用"},{"t":"智谱API","u":"https://bigmodel.cn/usercenter/proj-mgmt/apikeys","h":"智谱接口"},{"t":"阿里百炼","u":"https://bailian.console.aliyun.com/cn-beijing/","h":"通义接口"},{"t":"阶跃星辰","u":"https://platform.stepfun.com/","h":"Step模型"},{"t":"智谱国际","u":"https://z.ai/subscribe","h":"海外服务"},{"t":"HubuHost","u":"https://hubuhost.com/","h":"虚拟主机"}],"APK-Proxy":[{"t":"Aptoide","u":"https://cn.aptoide.com/","h":"Android应用"},{"t":"APKPure","u":"https://apkpure.com/cn/","h":"APK下载"},{"t":"APKMirror","u":"https://www.apkmirror.com/","h":"APK下载"},{"t":"APKCombo","u":"https://apkcombo.com/zh/","h":"APK资源"},{"t":"OpenProxy","u":"https://openproxylist.com/","h":"免费代理"},{"t":"ITDOG测速","u":"https://www.itdog.cn/ping/","h":"网络检测"},{"t":"DNS查询","u":"https://dnschecker.org/","h":"DNS查询"},{"t":"APP收入","u":"https://www.paywallscreens.com/","h":"付费墙"}],"Nano Banana":[{"t":"小云雀","u":"https://xyq.jianying.com/home?tab_name=home","h":"剪映AI"},{"t":"Pippit","u":"https://www.pippit.ai/home?","h":"海外AI创作"},{"t":"火山方舟","u":"https://console.volcengine.com/auth/login","h":"火山AI"},{"t":"LMArena","u":"https://lmarena.ai/","h":"模型评测"},{"t":"Nano Banana","u":"https://nanobananafree.ai/","h":"AI图像"},{"t":"RunningHub","u":"https://www.runninghub.cn/quick-create","h":"AI工作流"},{"t":"Vibe Banana","u":"https://intent.app/banana/","h":"AI创作"},{"t":"iMini","u":"https://imini.com/zh","h":"AI智能体"},{"t":"Opal-VEO","u":"https://opal.withgoogle.com/?mode=canvas","h":"Google AI"}],"Blog":[{"t":"IP查询","u":"https://ip.sb/","h":"IP查询"},{"t":"IP风险","u":"https://ping0.cc/","h":"风险查询"},{"t":"Windsurf","u":"https://windsurf.com/account/register","h":"AI编程"},{"t":"Fast.com","u":"https://fast.com/zh/cn","h":"网速测试"},{"t":"果汁榜","u":"http://www.guozhivip.com/rank/","h":"榜单信息"},{"t":"Tally","u":"https://tally.so/dashboard","h":"在线表单"},{"t":"ManyChat","u":"https://manychat.com/","h":"聊天机器人"},{"t":"Scamalytics","u":"https://scamalytics.com/","h":"IP检测"}],"YouTube":[{"t":"FMHY","u":"https://fmhy.pages.dev/","h":"资源导航"},{"t":"SkyReels","u":"https://www.skyreels.ai/home/","h":"AI视频生成"},{"t":"相逢解析","u":"https://pan.xfyzyyb.xyz/user/parse","h":"网盘解析"},{"t":"百度加速","u":"https://jyjc.cloudns.org/bdwpbxs_1","h":"网盘加速"},{"t":"Ideogram","u":"https://ideogram.ai/character","h":"角色一致性"},{"t":"Pixabay","u":"https://pixabay.com/","h":"免费素材"},{"t":"PS-key","u":"https://gen.paramore.su/","h":"PS资源"},{"t":"Photoshop","u":"https://photoshop.adobe.com/","h":"Adobe图像"}],"mail":[{"t":"One.IDkey","u":"https://one.idkey.cc/","h":"身份验证"},{"t":"CoPaw","u":"https://copaw.agentscope.io/","h":"AI智能体"},{"t":"MoeMail","u":"https://moemail.app/zh-CN","h":"在线邮箱"},{"t":"Outlook","u":"https://outlook.live.com/mail/","h":"微软邮件"},{"t":"临时邮箱","u":"https://linshiyouxiang.net/","h":"一次性邮箱"},{"t":"临时Gmail","u":"https://emailtick.com/zh","h":"临时邮箱"},{"t":"网易数帆","u":"https://console.163yun.com/","h":"网易云"},{"t":"1.1.1.1","u":"https://one.one.one.one/","h":"Cloudflare"}],"Google":[{"t":"google安全","u":"https://myaccount.google.com/security","h":"账号安全"},{"t":"NotebookLM","u":"https://notebooklm.google.com/","h":"AI笔记"},{"t":"Genie 3","u":"https://deepmind.google/models/genie/","h":"AI世界模型"},{"t":"Imagen","u":"https://deepmind.google/models/imagen/","h":"图像生成"},{"t":"Disco","u":"https://labs.google/disco","h":"实验AI"},{"t":"Firebase","u":"https://idx.google.com/","h":"应用开发"},{"t":"Opal","u":"https://opal.google/?mode=canvas","h":"AI应用"},{"t":"OpenCode","u":"https://opencode.ai/","h":"AI编程"},{"t":"Stitch","u":"https://stitch.withgoogle.com/","h":"AI设计"},{"t":"Higgsfield","u":"https://higgsfield.ai/","h":"AI视频"},{"t":"Coze","u":"https://www.coze.com/","h":"AI智能体"},{"t":"OpenAI API","u":"https://platform.openai.com/docs/overview","h":"开发者接口"}],"电影":[{"t":"奈飞工厂","u":"https://www.netflixgc.com/","h":"影视播放"},{"t":"音范丝","u":"https://www.yinfans.net/","h":"高清影视"},{"t":"低端影视","u":"https://www.hjdpj.com/","h":"影视播放"},{"t":"低端影视","u":"https://www.iqingtun.com/","h":"影视播放"},{"t":"大米星球","u":"https://www.5zsz.net/","h":"影视资源"},{"t":"剧圈圈","u":"https://www.jqqzx.me/","h":"影视资源"},{"t":"南瓜影院","u":"http://www.tjwqjz.com/","h":"在线影视"},{"t":"Flixbaba","u":"https://flixbaba.tv/","h":"免费影视"}],"身份":[{"t":"CF IP","u":"http://ip.flares.cloud/","h":"IP优选"},{"t":"FOFA","u":"https://fofa.info/","h":"网络搜索"},{"t":"5sim","u":"https://5sim.net/zh/login","h":"短信验证"},{"t":"Psiphon","u":"https://psiphon.ca/zh/","h":"网络代理"},{"t":"nthLink","u":"https://www.nthlink.com/zh/","h":"网络连接"},{"t":"HostMonit","u":"https://stock.hostmonit.com/CloudFlareYes","h":"主机监控"},{"t":"85LA","u":"https://www.85la.com/","h":"网络节点"}],"壁纸":[{"t":"FARFETCH","u":"https://www.farfetch.com/","h":"时尚电商"},{"t":"VOGUE","u":"https://www.vogue.com.cn/","h":"时尚资讯"},{"t":"Pexels","u":"https://www.pexels.com/zh-cn/","h":"免费图片"},{"t":"Unsplash","u":"https://unsplash.com/","h":"高质量图片"},{"t":"Wallhaven","u":"https://wallhaven.cc/","h":"高清壁纸"},{"t":"Wallpapers","u":"https://wallpaperscraft.com/","h":"壁纸下载"},{"t":"Freepik","u":"https://www.freepik.com/","h":"设计素材"},{"t":"Mytheresa","u":"https://www.mytheresa.com/cn/zh","h":"奢侈品"},{"t":"Vectorizer","u":"https://vectorizer.ai/","h":"位图转矢量"}]}}
+</script>
+
+<script>
+const DATA=JSON.parse(document.getElementById('nav-data').textContent);
+const SECTIONS=DATA.sections;
+const CATS=DATA.cats;
+const sectionsEl=document.getElementById('sections');
+const searchEl=document.getElementById('search');
+const totopEl=document.getElementById('totop');
+
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function getHost(url){try{return new URL(url).hostname}catch(e){return ''}}
+function favicon(url){const h=getHost(url);return h?`https://www.google.com/s2/favicons?domain=${h}&sz=64`:''}
+
+function buildSections(){
+    SECTIONS.forEach(sec=>{
+        const items=CATS[sec.title]||[];
+        const div=document.createElement('div');
+        div.className='section';
+        div.dataset.cat=sec.title;
+        div.innerHTML=`
+            <div class="section-header">
+                <i class="fa ${sec.icon}"></i>
+                <span>${escHtml(sec.title)}</span>
+                <span style="margin-left:auto;color:#5f6975;font-size:11px;font-weight:400">${items.length}</span>
+                <span class="toggle"><i class="fa fa-chevron-down"></i></span>
+            </div>
+            <div class="section-body"></div>`;
+        const body=div.querySelector('.section-body');
+        items.forEach(it=>{
+            const card=document.createElement('div');
+            card.className='card-v';
+            card.dataset.title=it.t.toLowerCase();
+            card.dataset.desc=(it.h||'').toLowerCase();
+            card.onclick=()=>window.open(it.u,'_blank');
+            card.innerHTML=`
+                <div class="card-v-icon"><img src="${favicon(it.u)}" onerror="this.style.visibility='hidden'" alt=""></div>
+                <div class="card-v-title">${escHtml(it.t)}</div>
+                <div class="card-v-desc">${escHtml(it.h||'')}</div>`;
+            body.appendChild(card);
+        });
+        const header=div.querySelector('.section-header');
+        header.onclick=()=>div.classList.toggle('collapsed');
+        sectionsEl.appendChild(div);
+    });
+}
+
+function applyFilter(q){
+    const query=q.trim().toLowerCase();
+    document.querySelectorAll('.section').forEach(sec=>{
+        const cat=sec.dataset.cat;
+        let visible=0;
+        sec.querySelectorAll('.card-v').forEach(card=>{
+            const match=!query||card.dataset.title.includes(query)||card.dataset.desc.includes(query);
+            card.style.display=match?'':'none';
+            if(match)visible++;
+        });
+        sec.style.display=(visible===0&&query)?'none':'';
+        const counter=sec.querySelector('.section-header span:nth-child(3)');
+        const total=(CATS[cat]||[]).length;
+        counter.textContent=query?visible+'/'+total:total;
+    });
+}
+
+buildSections();
+
+searchEl.addEventListener('input',e=>applyFilter(e.target.value));
+
+document.querySelectorAll('#layout-btns button').forEach(b=>{
+    b.onclick=()=>{
+        document.querySelectorAll('#layout-btns button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const layout=b.dataset.layout;
+        sectionsEl.style.gridTemplateColumns=layout==='horizontal'?'repeat(4,1fr)':layout==='vertical'?'repeat(2,1fr)':'repeat(3,1fr)';
+    };
+});
+
+document.querySelectorAll('#size-btns button').forEach(b=>{
+    b.onclick=()=>{
+        document.querySelectorAll('#size-btns button').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        const size=b.dataset.size;
+        const scale=size==='large'?1.1:size==='small'?0.9:1;
+        document.querySelectorAll('.card-v').forEach(c=>{
+            c.style.padding=(12*scale)+'px '+(6*scale)+'px';
+            c.style.minHeight=(90*scale)+'px';
+        });
+    };
+});
+
+window.addEventListener('scroll',()=>{
+    totopEl.classList.toggle('show',window.scrollY>400);
+});
+totopEl.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+</script>
+
+<script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+<div id="__apply-btn-wrap__" style="
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  z-index:99999; display:flex; gap:0.75rem; align-items:center;
+  background:rgba(13,17,23,0.92); border:1px solid #334155;
+  border-radius:2rem; padding:0.5rem 1.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+">
+  <span style="font-size:0.82rem; color:#94a3b8;">styles6.html</span>
+  <button id="__apply-btn__" onclick="__applyToNav__()" style="
+    background:#238636; color:#fff; border:none; border-radius:1.5rem;
+    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+  " onmouseover="this.style.background='#2ea043'"
+    onmouseout="this.style.background='#238636'">
+    ✓ 应用到导航页
+  </button>
+  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
+    background:none; border:none; color:#64748b; cursor:pointer;
+    font-size:1rem; padding:0 0.25rem;
+  " title="隐藏">✕</button>
+</div>
+<script>
+function __applyToNav__() {
+  var file = 'styles6.html';
+  localStorage.setItem('styleChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

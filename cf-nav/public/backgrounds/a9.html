@@ -378,8 +378,11 @@
         });
 
         // --- 5. Toggle Controls Logic ---
-        let uiVisible = true;
+        let uiVisible = false; // 【修改】改为 false，让控制台默认隐藏
         let isCollapsed = false;
+        
+        // 【修改】初始化时直接隐藏面板
+        panel.style.display = 'none';
 
         // Toggle Expand/Collapse
         const toggleBtn = document.getElementById('ui-toggle');
@@ -438,5 +441,22 @@
         // Start render loop
         requestAnimationFrame(render);
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a9.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

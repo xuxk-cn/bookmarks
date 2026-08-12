@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>导航编辑器</title>
+<style>
+:root {
+  --bg: #0f172a; --card: #1e293b; --border: #334155;
+  --accent: #38bdf8; --text: #f8fafc; --muted: #94a3b8;
+  --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: system-ui,sans-serif; }
+
+/* ── 顶部栏 ── */
+.topbar { display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+  padding:1rem 1.5rem; background:var(--card); border-bottom:1px solid var(--border); }
+.topbar h1 { font-size:1.1rem; color:var(--accent); margin-right:auto; }
+input[type=file] { display:none; }
+
+/* ── 按钮 ── */
+button, label.btn {
+  background:var(--accent); color:var(--bg); border:none;
+  padding:0.4rem 0.9rem; border-radius:0.5rem; cursor:pointer;
+  font-size:0.85rem; font-weight:600; white-space:nowrap; transition:opacity .2s;
+}
+button:hover,label.btn:hover { opacity:.85; }
+button.sec { background:var(--card); color:var(--text); border:1px solid var(--border); }
+button.danger { background:#7f1d1d; color:var(--red); border:1px solid var(--red); }
+button.warning { background:#78350f; color:var(--yellow); border:1px solid var(--yellow); }
+#status { font-size:0.8rem; color:var(--green); margin-left:auto; }
+
+/* ── 主布局 ── */
+.layout { display:flex; height:calc(100vh - 56px); }
+
+/* ── 左侧板块列表 ── */
+.sidebar { width:200px; flex-shrink:0; border-right:1px solid var(--border);
+  overflow-y:auto; padding:0.75rem 0; }
+.sidebar-item { padding:0.6rem 1rem; cursor:pointer; font-size:0.9rem;
+  color:var(--muted); display:flex; justify-content:space-between; align-items:center;
+  border-left:3px solid transparent; transition:all .15s; }
+.sidebar-item:hover { background:var(--card); color:var(--text); }
+.sidebar-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--card); }
+.sidebar-item .cat-count { font-size:0.75rem; opacity:.6; }
+.sidebar-item.changed { border-left-color:var(--green); }
+.sidebar-add { padding:0.5rem 1rem; }
+.sidebar-add button { width:100%; font-size:0.8rem; }
+
+
+/* ── 主区域 ── */
+.main { flex:1; overflow-y:auto; padding:1.5rem; }
+.main-header { display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:2px solid var(--border); }
+.main-title { font-size:1.2rem; font-weight:600; color:var(--text); }
+.main-actions { display:flex; gap:0.5rem; flex-wrap:wrap; }
+.main-actions button { font-size:0.8rem; padding:0.35rem 0.75rem; }
+
+/* ── 书签列表 ── */
+.items-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
+.item-card { background:var(--card); border:2px solid var(--border);
+  border-radius:0.75rem; padding:1rem; transition:border .2s; position:relative; }
+.item-card.changed { border-color:var(--green); }
+.item-card.selected { border-color:var(--accent); }
+
+.card-header { display:flex; gap:0.75rem; align-items:start; margin-bottom:0.75rem; }
+.card-icon-wrap { width:48px; height:48px; flex-shrink:0; background:#fff;
+  border-radius:0.5rem; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; font-size:1.2rem; }
+.card-icon-wrap img { width:100%; height:100%; object-fit:contain; }
+
+.card-info { flex:1; min-width:0; }
+.card-id { font-size:0.7rem; color:var(--accent); margin-bottom:0.25rem; }
+.input-field { width:100%; padding:0.4rem 0.6rem; font-size:0.85rem; margin-bottom:0.4rem;
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:0.4rem; font-family:inherit; }
+.input-field:focus { outline:none; border-color:var(--accent); }
+.input-field.changed { border-color:var(--green); }
+textarea.input-field { min-height:60px; resize:vertical; }
+
+.card-actions { display:flex; gap:0.4rem; margin-top:0.5rem; flex-wrap:wrap; }
+.btn-sm { font-size:0.7rem; padding:0.25rem 0.5rem; }
+
+/* ── 模态窗 ── */
+.modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85);
+  z-index:999; align-items:center; justify-content:center; }
+.modal.show { display:flex; }
+.modal-box { background:var(--card); border:1px solid var(--border);
+  border-radius:0.75rem; padding:1.5rem; max-width:700px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal-header { display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border); }
+.modal-title { font-size:1.1rem; font-weight:600; }
+.modal-close { cursor:pointer; font-size:1.5rem; color:var(--muted); }
+.modal-close:hover { color:var(--text); }
+.modal-actions { display:flex; gap:0.75rem; margin-top:1rem; justify-content:flex-end; }
+.prompt-area { width:100%; height:300px; padding:1rem; font-size:0.85rem;
+  background:var(--bg); border:1px solid var(--border); color:var(--text);
+  border-radius:0.5rem; font-family:'Consolas',monospace; resize:vertical; }
+.help-text { color:var(--muted); font-size:0.8rem; line-height:1.5; margin-top:0.5rem; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📑 导航编辑器</h1>
+  <label class="btn" for="file-input">加载文件</label>
+  <input type="file" id="file-input" accept=".html">
+  <label class="btn sec" for="icons-file-input">加载 icons.js</label>
+  <input type="file" id="icons-file-input" accept=".js">
+  <button class="sec" onclick="openMigrateModal()">迁移介绍</button>
+  <button onclick="exportFiles()">💾 导出</button>
+  <span id="status"></span>
+</div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title" id="main-title">选择一个板块</div>
+      <div class="main-actions">
+        <button class="btn-sm" onclick="addNewItem()">+ 新增书签</button>
+        <button class="btn-sm sec" onclick="generatePrompt()">📝 生成提示词</button>
+        <button class="btn-sm sec" onclick="openPasteModal()">📥 合并AI结果</button>
+      </div>
+    </div>
+    <div id="items-grid" class="items-grid"></div>
+  </main>
+</div>
+
+<!-- AI 提示词弹窗 -->
+<div id="prompt-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">AI 提示词</div>
+      <span class="modal-close" onclick="closeModal('prompt-modal')">&times;</span>
+    </div>
+    <p class="help-text">复制下方内容交给 ChatGPT/Gemini，获取结果后点"合并AI结果"。</p>
+    <textarea id="prompt-output" class="prompt-area" readonly></textarea>
+    <div class="modal-actions">
+      <button onclick="copyPrompt()">📋 复制</button>
+    </div>
+  </div>
+</div>
+
+<!-- 粘贴 AI 结果弹窗 -->
+<div id="paste-modal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">粘贴 AI 结果</div>
+      <span class="modal-close" onclick="closeModal('paste-modal')">&times;</span>
+    </div>
+    <p class="help-text">格式：C1-1: 介绍内容</p>
+    <textarea id="paste-input" class="prompt-area" placeholder="粘贴 AI 返回内容..."></textarea>
+    <div class="modal-actions">
+      <button class="sec" onclick="closeModal('paste-modal')">取消</button>
+      <button onclick="applyAI()">✓ 应用</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增书签弹窗 -->
+<div id="add-modal" class="modal">
+  <div class="modal-box" style="max-width:500px;">
+    <div class="modal-header">
+      <div class="modal-title">新增书签</div>
+      <span class="modal-close" onclick="closeModal('add-modal')">&times;</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
+      <div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">标题 *</div>
+        <input id="add-title" class="input-field" placeholder="网站标题">
+      </div>
+      <div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">链接 *</div>
+        <input id="add-url" class="input-field" placeholder="https://...">
+      </div>
+      <div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">悬停介绍</div>
+        <textarea id="add-hover" class="input-field" placeholder="网站功能介绍（可选）" style="min-height:80px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="sec" onclick="closeModal('add-modal')">取消</button>
+      <button onclick="confirmAddItem()">✓ 添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 迁移介绍弹窗 -->
+<div id="migrate-modal" class="modal">
+  <div class="modal-box" style="max-width:900px;">
+    <div class="modal-header">
+      <div class="modal-title">迁移悬停介绍</div>
+      <span class="modal-close" onclick="closeModal('migrate-modal')">&times;</span>
+    </div>
+    <p class="help-text">加载旧的 my_nav.html，按 URL 匹配，勾选要迁移的条目后点应用。</p>
+    <div style="display:flex;gap:0.75rem;margin-top:1rem;align-items:center;flex-wrap:wrap;">
+      <label class="btn sec" for="old-file-input">选择旧文件</label>
+      <input type="file" id="old-file-input" accept=".html">
+      <button class="sec btn-sm" onclick="toggleAllMigrate(true)">全选</button>
+      <button class="sec btn-sm" onclick="toggleAllMigrate(false)">全不选</button>
+      <span id="migrate-count" style="font-size:0.8rem;color:var(--muted);"></span>
+    </div>
+    <div id="migrate-list" style="margin-top:1rem;max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="sec" onclick="closeModal('migrate-modal')">取消</button>
+      <button onclick="applyMigrate()">✓ 应用选中</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let navData = null;
+let rawHtml = '';
+let currentCat = 0;
+let changes = {};
+let clipboard = null;
+let iconsStore = {};  // 存放所有 base64 图标，key = url
+
+document.getElementById('file-input').addEventListener('change', loadFile);
+document.getElementById('icons-file-input').addEventListener('change', loadIconsFile);
+document.getElementById('old-file-input').addEventListener('change', migrateDescriptions);
+
+function loadFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    rawHtml = ev.target.result;
+    // 用字符串查找替代正则，避免大文件卡死
+    const startTag = rawHtml.indexOf('id="data"');
+    if (startTag === -1) { alert('未找到数据块'); return; }
+    const dataStart = rawHtml.indexOf('>', startTag) + 1;
+    const dataEnd = rawHtml.indexOf('<\/script>', dataStart);
+    if (dataStart <= 0 || dataEnd === -1) { alert('数据块解析失败'); return; }
+    try {
+      navData = JSON.parse(rawHtml.slice(dataStart, dataEnd).trim());
+      if (!navData.categories) navData.categories = [];
+      changes = {};
+      clipboard = null;
+      iconsStore = {};
+      navData.categories.forEach(cat => {
+        cat.items.forEach(item => {
+          if (item.icon && item.icon.startsWith('data:')) {
+            iconsStore[item.url] = item.icon;
+            item.icon = '';
+          }
+        });
+      });
+      renderSidebar();
+      renderMain();
+      setStatus(`已加载 ${file.name}，icons: ${Object.keys(iconsStore).length} 个`);
+      if (Object.keys(iconsStore).length === 0) {
+        setTimeout(() => {
+          if (confirm('是否同时加载同目录的 icons.js？（点确定后选择文件）')) {
+            document.getElementById('icons-file-input').click();
+          }
+        }, 200);
+      }
+    } catch(err) {
+      alert('JSON 解析失败: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function loadIconsFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      // 执行 icons.js，提取 window.__NAV_ICONS__
+      const sandbox = {};
+      const code = ev.target.result.replace('window.__NAV_ICONS__', 'sandbox.__NAV_ICONS__');
+      // eslint-disable-next-line no-new-func
+      new Function('sandbox', code)(sandbox);
+      const loaded = sandbox.__NAV_ICONS__ || {};
+      Object.assign(iconsStore, loaded);
+      setStatus(`icons.js 已加载，共 ${Object.keys(iconsStore).length} 个图标`);
+      renderMain();
+    } catch(err) {
+      alert('icons.js 解析失败: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+  e.target.value = '';
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  navData.categories.forEach((cat, ci) => {
+    const item = document.createElement('div');
+    item.className = 'sidebar-item' + (ci === currentCat ? ' active' : '');
+    const changedCount = cat.items.filter((_, ii) => changes[`${ci}_${ii}`]).length;
+    if (changedCount > 0) item.classList.add('changed');
+    item.innerHTML = `<span>${cat.title}</span><span class="cat-count">${cat.items.length}</span>`;
+    item.onclick = () => { currentCat = ci; renderSidebar(); renderMain(); };
+    sidebar.appendChild(item);
+  });
+  const addWrap = document.createElement('div');
+  addWrap.className = 'sidebar-add';
+  addWrap.innerHTML = '<button class="sec">+ 新增板块</button>';
+  addWrap.querySelector('button').onclick = addNewCategory;
+  sidebar.appendChild(addWrap);
+}
+
+function renderMain() {
+  if (!navData.categories[currentCat]) return;
+  const cat = navData.categories[currentCat];
+  document.getElementById('main-title').textContent = cat.title;
+  const grid = document.getElementById('items-grid');
+  grid.innerHTML = '';
+  cat.items.forEach((item, ii) => {
+    try {
+      grid.appendChild(makeCard(item, currentCat, ii));
+    } catch(e) {
+      console.error('makeCard error', ii, item, e);
+    }
+  });
+}
+
+function makeCard(item, ci, ii) {
+  const key = `${ci}_${ii}`;
+  const change = changes[key] || {};
+  const card = document.createElement('div');
+  card.className = 'item-card' + (change ? ' changed' : '');
+  card.dataset.key = key;
+
+  const iconWrap = document.createElement('div');
+  iconWrap.className = 'card-icon-wrap';
+  const icon = change.icon !== undefined ? change.icon : (iconsStore[item.url] || item.icon || '');
+  if (icon && icon.startsWith('data:')) {
+    iconWrap.innerHTML = `<img src="${icon}" alt="">`;
+  } else {
+    iconWrap.textContent = '🔗';
+  }
+
+  const info = document.createElement('div');
+  info.className = 'card-info';
+  const catPrefix = 'C' + (ci + 1) + '-';
+
+  const idDiv = document.createElement('div');
+  idDiv.className = 'card-id';
+  idDiv.textContent = catPrefix + (ii + 1);
+
+  const titleInput = document.createElement('input');
+  titleInput.className = 'input-field' + (change.title !== undefined ? ' changed' : '');
+  titleInput.placeholder = '标题';
+  titleInput.value = change.title !== undefined ? change.title : (item.title || '');
+
+  const urlInput = document.createElement('input');
+  urlInput.className = 'input-field' + (change.url !== undefined ? ' changed' : '');
+  urlInput.placeholder = '链接';
+  urlInput.value = change.url !== undefined ? change.url : (item.url || '');
+
+  const hoverInput = document.createElement('textarea');
+  hoverInput.className = 'input-field' + (change.hover !== undefined ? ' changed' : '');
+  hoverInput.placeholder = '悬停介绍';
+  hoverInput.value = change.hover !== undefined ? change.hover : (item.hover || '');
+
+  const iconInput = document.createElement('textarea');
+  iconInput.className = 'input-field' + (change.icon !== undefined ? ' changed' : '');
+  iconInput.placeholder = '图标 base64（粘贴 data:image/... 或纯 base64 字符串）';
+  iconInput.style.minHeight = '52px';
+  iconInput.style.fontFamily = 'monospace';
+  iconInput.style.fontSize = '0.75rem';
+  const currentIconVal = change.icon !== undefined ? change.icon : (iconsStore[item.url] || item.icon || '');
+  iconInput.value = currentIconVal;
+
+  titleInput.addEventListener('input', e => handleChange(key, 'title', e.target.value, item.title, card));
+  urlInput.addEventListener('input', e => handleChange(key, 'url', e.target.value, item.url, card));
+  hoverInput.addEventListener('input', e => handleChange(key, 'hover', e.target.value, item.hover || '', card));
+  iconInput.addEventListener('input', e => {
+    let val = e.target.value.trim();
+    if (val && !val.startsWith('data:')) {
+      const mime = val.startsWith('/9j/') ? 'image/jpeg' : val.startsWith('R0lG') ? 'image/gif' : 'image/png';
+      val = `data:${mime};base64,${val}`;
+    }
+    if (!changes[key]) changes[key] = {};
+    if (!val) {
+      delete changes[key].icon;
+    } else {
+      changes[key].icon = val;
+      iconsStore[item.url] = val;
+      // 更新图标预览
+      iconWrap.innerHTML = `<img src="${val}" onerror="this.parentNode.textContent='🔗'" alt="">`;
+    }
+    card.classList.toggle('changed', Object.keys(changes[key] || {}).length > 0);
+    iconInput.classList.toggle('changed', !!val);
+  });
+
+  info.append(idDiv, titleInput, urlInput, hoverInput, iconInput);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  actions.innerHTML = `
+    <button class="btn-sm sec" onclick="cutItem(${ci},${ii})">✂ 剪切</button>
+    <button class="btn-sm danger" onclick="deleteItem(${ci},${ii})">🗑 删除</button>
+  `;
+
+  const header = document.createElement('div');
+  header.className = 'card-header';
+  header.append(iconWrap, info);
+  card.append(header, actions);
+  return card;
+}
+
+function handleChange(key, field, newVal, origVal, card) {
+  if (!changes[key]) changes[key] = {};
+  if (newVal.trim() === (origVal || '').trim()) {
+    delete changes[key][field];
+    if (Object.keys(changes[key]).length === 0) delete changes[key];
+  } else {
+    changes[key][field] = newVal.trim();
+  }
+  card.classList.toggle('changed', changes[key] !== undefined);
+  const inp = card.querySelector(`.input-field:nth-child(${field === 'title' ? 2 : field === 'url' ? 3 : 4})`);
+  if (inp) inp.classList.toggle('changed', changes[key] && changes[key][field] !== undefined);
+  renderSidebar();
+}
+
+function addNewItem() {
+  if (!navData.categories[currentCat]) return;
+  document.getElementById('add-title').value = '';
+  document.getElementById('add-url').value = '';
+  document.getElementById('add-hover').value = '';
+  openModal('add-modal');
+  setTimeout(() => document.getElementById('add-title').focus(), 100);
+}
+
+function confirmAddItem() {
+  const title = document.getElementById('add-title').value.trim();
+  const url = document.getElementById('add-url').value.trim();
+  const hover = document.getElementById('add-hover').value.trim();
+  if (!title) { document.getElementById('add-title').focus(); return; }
+  if (!url) { document.getElementById('add-url').focus(); return; }
+  navData.categories[currentCat].items.push({ title, url, icon: '', hover });
+  closeModal('add-modal');
+  renderSidebar();
+  renderMain();
+  setStatus('已添加新书签');
+}
+
+function deleteItem(ci, ii) {
+  if (!confirm('确定删除这条书签？')) return;
+  navData.categories[ci].items.splice(ii, 1);
+  // 清理相关 changes
+  Object.keys(changes).filter(k => k.startsWith(`${ci}_`)).forEach(k => {
+    const idx = parseInt(k.split('_')[1]);
+    if (idx === ii) delete changes[k];
+    else if (idx > ii) {
+      const newKey = `${ci}_${idx - 1}`;
+      changes[newKey] = changes[k];
+      delete changes[k];
+    }
+  });
+  renderSidebar();
+  renderMain();
+  setStatus('已删除');
+}
+
+function cutItem(ci, ii) {
+  clipboard = { ci, ii, item: navData.categories[ci].items[ii] };
+  setStatus('已剪切，在其他板块右键粘贴或点顶部"粘贴"按钮');
+}
+
+function pasteItem() {
+  if (!clipboard) { alert('剪贴板为空'); return; }
+  const targetCat = currentCat;
+  navData.categories[targetCat].items.push(clipboard.item);
+  // 从原板块删除
+  navData.categories[clipboard.ci].items.splice(clipboard.ii, 1);
+  clipboard = null;
+  renderSidebar();
+  renderMain();
+  setStatus('已粘贴');
+}
+
+function pasteIconPrompt(ci, ii) {
+  const b64 = prompt('粘贴 base64 字符串:');
+  if (!b64) return;
+  const key = `${ci}_${ii}`;
+  if (!changes[key]) changes[key] = {};
+  let icon = b64.trim();
+  if (!icon.startsWith('data:')) {
+    const mime = icon.startsWith('/9j/') ? 'image/jpeg' : icon.startsWith('R0lG') ? 'image/gif' : 'image/png';
+    icon = `data:${mime};base64,${icon}`;
+  }
+  changes[key].icon = icon;
+  const itemUrl = navData.categories[ci]?.items[ii]?.url;
+  if (itemUrl) iconsStore[itemUrl] = icon;
+  renderSidebar();
+  renderMain();
+  setStatus('图标已更新');
+}
+
+function addNewCategory() {
+  const name = prompt('板块名称:');
+  if (!name) return;
+  navData.categories.push({ title: name.trim(), items: [] });
+  currentCat = navData.categories.length - 1;
+  renderSidebar();
+  renderMain();
+  setStatus('已添加板块');
+}
+
+function getCatPrefix(ci) { return 'C' + (ci + 1) + '-'; }
+
+function generatePrompt() {
+  if (!navData.categories[currentCat]) return;
+  const cat = navData.categories[currentCat];
+  const prefix = getCatPrefix(currentCat);
+  let prompt = `请帮我搜索以下网站，用不少于50字的中文介绍每个网站的用途和核心功能。\n要求：务实、简洁、突出功能，不要营销话术。\n严格按以下格式返回（编号+冒号+空格+介绍），不要添加其他内容：\n\n`;
+  cat.items.forEach((item, ii) => {
+    prompt += `${prefix}${ii + 1}: 标题《${item.title}》 网址：${item.url}\n`;
+  });
+  prompt += `\n请严格按 "${prefix}1: 介绍内容" 格式返回，每行一个。`;
+  document.getElementById('prompt-output').value = prompt;
+  openModal('prompt-modal');
+}
+
+function copyPrompt() {
+  const ta = document.getElementById('prompt-output');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(() => setStatus('已复制'));
+}
+
+function openPasteModal() {
+  document.getElementById('paste-input').value = '';
+  openModal('paste-modal');
+}
+
+function applyAI() {
+  const text = document.getElementById('paste-input').value.trim();
+  if (!text) { alert('请粘贴内容'); return; }
+  const cat = navData.categories[currentCat];
+  const prefix = getCatPrefix(currentCat);
+  let matched = 0;
+  text.split('\n').forEach(line => {
+    const m = line.match(/^(C\d+[-_]\d+)[\s:：.\-]*(.+)$/);
+    if (!m) return;
+    const normId = m[1].replace('_', '-');
+    if (!normId.startsWith(prefix)) return;
+    const ii = parseInt(normId.split('-')[1]) - 1;
+    if (ii < 0 || ii >= cat.items.length) return;
+    const key = `${currentCat}_${ii}`;
+    if (!changes[key]) changes[key] = {};
+    changes[key].hover = m[2].trim();
+    matched++;
+  });
+  if (!matched) { alert('未匹配到内容，请检查格式'); return; }
+  closeModal('paste-modal');
+  renderSidebar();
+  renderMain();
+  setStatus(`✓ 匹配 ${matched} 条`);
+}
+
+function openMigrateModal() {
+  document.getElementById('migrate-list').innerHTML = '';
+  document.getElementById('migrate-count').textContent = '';
+  openModal('migrate-modal');
+}
+
+let migrateItems = []; // [{ci, ii, url, oldHover, newHover, key}]
+
+function migrateDescriptions(e) {
+  const file = e.target.files[0];
+  if (!file || !navData) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const html = ev.target.result;
+    const startTag = html.indexOf('id="data"');
+    if (startTag === -1) { alert('旧文件格式不对'); return; }
+    const dStart = html.indexOf('>', startTag) + 1;
+    const dEnd = html.indexOf('<\/script>', dStart);
+    let oldData;
+    try { oldData = JSON.parse(html.slice(dStart, dEnd).trim()); } catch(err) { alert('解析失败'); return; }
+
+    const hoverMap = {};
+    (oldData.categories || []).forEach(cat => {
+      cat.items.forEach(item => { if (item.url && item.hover) hoverMap[item.url] = item.hover; });
+    });
+
+    migrateItems = [];
+    navData.categories.forEach((cat, ci) => {
+      cat.items.forEach((item, ii) => {
+        if (!hoverMap[item.url]) return;
+        const currentHover = (changes[`${ci}_${ii}`]?.hover) || item.hover || '';
+        migrateItems.push({
+          ci, ii, key: `${ci}_${ii}`,
+          url: item.url,
+          title: item.title,
+          catTitle: cat.title,
+          oldHover: hoverMap[item.url],
+          currentHover
+        });
+      });
+    });
+
+    renderMigrateList();
+    document.getElementById('migrate-count').textContent = `共匹配 ${migrateItems.length} 条`;
+  };
+  reader.readAsText(file, 'utf-8');
+  e.target.value = '';
+}
+
+function renderMigrateList() {
+  const list = document.getElementById('migrate-list');
+  list.innerHTML = '';
+  if (!migrateItems.length) {
+    list.innerHTML = '<div style="color:var(--muted);padding:1rem;">未找到可匹配的条目</div>';
+    return;
+  }
+  migrateItems.forEach((it, idx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:32px 1fr;gap:0.75rem;align-items:start;padding:0.75rem;border-bottom:1px solid var(--border);';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.dataset.idx = idx;
+    cb.style.cssText = 'width:16px;height:16px;margin-top:4px;accent-color:var(--accent);cursor:pointer;';
+    const content = document.createElement('div');
+    content.innerHTML = `
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.25rem;">${escHtml(it.title)}</div>
+      <div style="font-size:0.7rem;color:var(--accent);margin-bottom:0.5rem;">${escHtml(it.catTitle)} · ${escHtml(it.url)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+        <div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.25rem;">当前介绍</div>
+          <div style="font-size:0.8rem;padding:0.4rem;background:var(--bg);border-radius:0.4rem;color:${it.currentHover ? 'var(--text)' : 'var(--muted)'};">${it.currentHover || '（空）'}</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem;color:var(--green);margin-bottom:0.25rem;">旧文件介绍</div>
+          <div style="font-size:0.8rem;padding:0.4rem;background:var(--bg);border-radius:0.4rem;">${escHtml(it.oldHover)}</div>
+        </div>
+      </div>
+    `;
+    row.append(cb, content);
+    list.appendChild(row);
+  });
+}
+
+function toggleAllMigrate(checked) {
+  document.querySelectorAll('#migrate-list input[type=checkbox]').forEach(cb => cb.checked = checked);
+}
+
+function applyMigrate() {
+  const checkboxes = document.querySelectorAll('#migrate-list input[type=checkbox]');
+  let count = 0;
+  checkboxes.forEach(cb => {
+    if (!cb.checked) return;
+    const it = migrateItems[parseInt(cb.dataset.idx)];
+    if (!changes[it.key]) changes[it.key] = {};
+    changes[it.key].hover = it.oldHover;
+    count++;
+  });
+  closeModal('migrate-modal');
+  renderSidebar();
+  renderMain();
+  setStatus(`✓ 已迁移 ${count} 条介绍`);
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function getExportData() {
+  const exportData = JSON.parse(JSON.stringify(navData));
+  Object.entries(changes).forEach(([key, chg]) => {
+    const [ci, ii] = key.split('_').map(Number);
+    const item = exportData.categories[ci]?.items[ii];
+    if (!item) return;
+    if (chg.icon !== undefined) item.icon = chg.icon;
+    if (chg.title !== undefined) item.title = chg.title;
+    if (chg.url !== undefined) item.url = chg.url;
+    if (chg.hover !== undefined) item.hover = chg.hover;
+  });
+  return exportData;
+}
+
+function exportFiles() {
+  if (!navData || !rawHtml) { alert('请先加载文件'); return; }
+  const exportData = getExportData();
+
+  // 合并 iconsStore + changes 里的新图标，HTML 里 icon 置空
+  const icons = Object.assign({}, iconsStore);
+
+  // 处理 URL 变更：旧 URL 的图标迁移到新 URL
+  Object.entries(changes).forEach(([key, chg]) => {
+    if (!chg.url || !chg.url.trim()) return;
+    const [ci, ii] = key.split('_').map(Number);
+    const origItem = navData.categories[ci]?.items[ii];
+    if (!origItem) return;
+    const oldUrl = origItem.url;
+    const newUrl = chg.url.trim();
+    if (oldUrl !== newUrl && icons[oldUrl]) {
+      icons[newUrl] = icons[oldUrl];
+      delete icons[oldUrl];
+    }
+  });
+
+  const cleanData = JSON.parse(JSON.stringify(exportData));
+  cleanData.categories.forEach(cat => {
+    cat.items.forEach(item => {
+      if (item.icon && item.icon.startsWith('data:')) {
+        icons[item.url] = item.icon;
+      }
+      item.icon = '';
+    });
+  });
+
+  const jsonStr = JSON.stringify(cleanData, null, 2);
+  const dataStart = rawHtml.indexOf('id="data"');
+  const tagEnd = rawHtml.indexOf('>', dataStart) + 1;
+  const dataEnd = rawHtml.indexOf('<\/script>', tagEnd);
+  let newHtml = rawHtml.slice(0, tagEnd) + '\n' + jsonStr + '\n' + rawHtml.slice(dataEnd);
+
+  // 确保 <script src="icons.js"> 存在
+  if (!newHtml.includes('src="icons.js"')) {
+    newHtml = newHtml.replace('</head>', '<script src="icons.js"><\/script>\n</head>');
+  }
+
+  // 下载 HTML
+  dl(new Blob([newHtml], {type:'text/html;charset=utf-8'}), 'my_nav.html');
+
+  // 下载 icons.js
+  if (Object.keys(icons).length > 0) {
+    const js = 'window.__NAV_ICONS__ = ' + JSON.stringify(icons) + ';';
+    setTimeout(() => dl(new Blob([js], {type:'application/javascript;charset=utf-8'}), 'icons.js'), 300);
+  }
+
+  setStatus(`✓ 已导出 my_nav.html${Object.keys(icons).length > 0 ? ' + icons.js' : ''}，两文件放同一目录`);
+}
+
+function dl(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+</script>
+</body>
+</html>

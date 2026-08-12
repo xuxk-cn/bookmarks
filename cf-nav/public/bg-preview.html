@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -169,6 +169,22 @@
   }
   .btn-apply:hover { background: #2ea043; }
   .btn-apply:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+  /* 卡片内应用按钮 */
+  .card-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .card-apply:hover { background: #2ea043; }
+  .card.active .card-apply { background: #1a7f37; }
 </style>
 </head>
 <body>
@@ -194,6 +210,21 @@
   // 读取当前已选背景
   let chosen = localStorage.getItem('bgChoice') || 'none';
 
+  function applyBg(file, name) {
+    updateSelected(file, name);
+    localStorage.setItem('bgChoice', file);
+    // 通知主页（如果从主页打开的）
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'applyBg', bgFile: file }, '*'); } catch(ex) {}
+    }
+    // 显示提示
+    var tip = document.createElement('div');
+    tip.textContent = '✔ 已应用：' + (file === 'none' ? '无背景' : file);
+    tip.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:0.5rem 1.5rem;border-radius:1rem;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2500);
+  }
+
   function updateSelected(file, name) {
     chosen = file;
     selectedLabel.textContent = name;
@@ -215,33 +246,49 @@
         <div class="card-footer">
           <span class="card-name">${name}</span>
           <span class="card-file">none</span>
+          <button class="card-apply">应用</button>
         </div>`;
+      card.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyBg('none', name);
+      });
     } else {
       const iframe = document.createElement('iframe');
       iframe.className = 'preview';
       iframe.loading = 'lazy';
       // 用 IntersectionObserver 懒加载，避免全部同时渲染
-      const observer = new IntersectionObserver((entries) => {
+            const observer = new IntersectionObserver((entries) => {
         entries.forEach(e => {
           if (e.isIntersecting) {
-            iframe.src = `/backgrounds/${file}`;
-            observer.unobserve(iframe);
+            if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+              iframe.src = `/backgrounds/${file}`;
+            }
+          } else {
+            iframe.src = 'about:blank';
           }
         });
-      }, { rootMargin: '200px' });
+      }, { rootMargin: '100px', threshold: 0 });
       observer.observe(iframe);
 
       const footer = document.createElement('div');
       footer.className = 'card-footer';
       footer.innerHTML = `
         <span class="card-name">${name}</span>
-        <span class="card-file">${file}</span>`;
+        <span class="card-file">${file}</span>
+        <button class="card-apply">应用</button>`;
+      footer.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyBg(file, name);
+      });
 
       card.appendChild(iframe);
       card.appendChild(footer);
     }
 
-    card.addEventListener('click', () => updateSelected(file, name));
+    card.addEventListener('click', function() {
+      updateSelected(file, name);
+      window.open('/backgrounds/' + file, '_blank');
+    });
     return card;
   }
 
@@ -287,5 +334,25 @@
   });
 })();
 </script>
+
+<!-- 监听子窗口应用操作（由 inject_apply_button.py 注入） -->
+<!-- __patched_by_inject__ -->
+<script>
+window.addEventListener('storage', function(e) {
+  if (e.key === 'bgChoice' && e.newValue) {
+    var label = document.getElementById('selected-label');
+    if (label) label.textContent = e.newValue;
+    document.querySelectorAll('.card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.file === e.newValue);
+    });
+    var tip = document.createElement('div');
+    tip.textContent = '✔ 已应用：' + e.newValue;
+    tip.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:0.5rem 1.5rem;border-radius:1rem;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 3000);
+  }
+});
+</script>
+
 </body>
 </html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的导航</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    min-height:100vh; background:#161f2c; color:#e2e8f0;
+    font-family:"Segoe UI","Microsoft YaHei",sans-serif;
+    padding:28px 20px 60px;
+  }
+  h1 { text-align:center; color:#4fc3f7; font-size:28px; margin-bottom:28px; }
+
+  /* ---------- 分类板块 ---------- */
+  .tabs { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:1200px; margin:0 auto 18px; }
+  .tab {
+    padding:8px 18px; border-radius:6px; cursor:pointer; font-size:14px;
+    background:#1f2b3a; border:1px solid #3a4a5c; color:#cbd5e1; transition:.2s;
+  }
+  .tab:hover { border-color:#4fc3f7; color:#4fc3f7; }
+  .tab.active { background:#4fc3f7; border-color:#4fc3f7; color:#0b1520; font-weight:600; }
+
+  /* ---------- 悬停音效开关 ---------- */
+  .sound-row { text-align:center; margin:6px 0 22px; font-size:13px; color:#cbd5e1; }
+  .sound-row label { cursor:pointer; user-select:none; }
+  .sound-row input { vertical-align:-2px; margin-right:6px; }
+
+  /* ---------- 搜索框 ---------- */
+  .search-row { display:flex; justify-content:center; margin-bottom:34px; }
+  #searchInput {
+    width:min(640px,92%); padding:12px 22px; font-size:14px;
+    background:#1f2b3a; border:1px solid #303f50; border-radius:22px;
+    color:#e2e8f0; outline:none;
+  }
+  #searchInput::placeholder { color:#64748b; }
+  #searchInput:focus { border-color:#4fc3f7; }
+
+  /* ---------- 书签网格 ---------- */
+  .grid {
+    max-width:1400px; margin:0 auto;
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:26px 22px; padding:0 12px;
+  }
+  /* ★ 已去掉标签外面的浅色黑框：背景透明、无边框、无阴影 */
+  .card {
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    padding:16px 0; text-decoration:none; color:#e2e8f0;
+    background:transparent; border:none; box-shadow:none; border-radius:0;
+    transition:transform .2s;
+  }
+  .card:hover { transform:translateY(-4px); background:transparent; }
+  .card img {
+    width:72px; height:72px; border-radius:12px; background:#fff;
+    object-fit:contain; display:block;
+  }
+  .card .name { font-size:14px; font-weight:600; text-align:center; }
+  .empty { grid-column:1/-1; text-align:center; color:#64748b; padding:60px 0; font-size:14px; }
+</style>
+</head>
+<body>
+
+<h1>我的导航</h1>
+
+<nav class="tabs" id="tabs"></nav>
+
+<div class="sound-row">
+  <label><input type="checkbox" id="soundSwitch"> 悬停音效</label>
+</div>
+
+<div class="search-row">
+  <input id="searchInput" placeholder="搜索书签...">
+</div>
+
+<main class="grid" id="grid"></main>
+
+<script>
+/* ================= 书签数据：增删改都在这里 ================= */
+const TABS = ["resourse","tools","soft","视频","AIGC","AI","ai","AI大语言","AI声音",
+  "反推提示词","YouTube","Google","电影","身份","壁纸","API-VPS","AI-3D",
+  "APK-Proxy","Nano Banana","Blog","mail"];
+
+const DATA = {
+  "resourse": [
+    { n:"doyoudo官网",        u:"https://doyoudo.com" },
+    { n:"Panzoid",            u:"https://panzoid.com" },
+    { n:"耳聆网-音效素材库",  u:"https://www.ear0.com" },
+    { n:"免费字体",           u:"https://www.100font.com" },
+    { n:"矢量图标库",         u:"https://www.iconfont.cn" },
+    { n:"大众脸影视后期特效", u:"https://www.lookae.com" },
+    { n:"台词找影片素材",     u:"http://33.agilestudio.cn" },
+    { n:"找台词",             u:"https://zhaotaici.cn" },
+    { n:"AE脚本/扩展-拉屁笑", u:"https://jpsmile.com" },
+    { n:"用户脚本",           u:"https://greasyfork.org" }
+  ],
+  "tools": [
+    { n:"草料二维码", u:"https://cli.im" },
+    { n:"在线工具",   u:"https://tool.lu" },
+    { n:"ProcessOn",  u:"https://www.processon.com" }
+  ],
+  "soft": [
+    { n:"果核剥壳",   u:"https://www.ghxi.com" },
+    { n:"423Down",    u:"https://www.423down.com" }
+  ],
+  "视频": [
+    { n:"哔哩哔哩", u:"https://www.bilibili.com" },
+    { n:"YouTube",  u:"https://www.youtube.com" }
+  ],
+  "AIGC": [
+    { n:"Midjourney", u:"https://www.midjourney.com" },
+    { n:"LiblibAI",   u:"https://www.liblib.art" }
+  ],
+  "AI": [
+    { n:"ChatGPT", u:"https://chat.openai.com" },
+    { n:"Claude",  u:"https://claude.ai" }
+  ],
+  "ai": [
+    { n:"Gemini", u:"https://gemini.google.com" }
+  ],
+  "AI大语言": [
+    { n:"Kimi",     u:"https://kimi.moonshot.cn" },
+    { n:"DeepSeek", u:"https://www.deepseek.com" },
+    { n:"文心一言", u:"https://yiyan.baidu.com" }
+  ],
+  "AI声音": [
+    { n:"魔音工坊", u:"https://www.moyin.com" }
+  ],
+  "反推提示词": [
+    { n:"CLIP Interrogator", u:"https://prompt.noonshot.com" }
+  ],
+  "YouTube": [ { n:"YouTube", u:"https://www.youtube.com" } ],
+  "Google":  [ { n:"Google",  u:"https://www.google.com" } ],
+  "电影": [
+    { n:"豆瓣电影", u:"https://movie.douban.com" },
+    { n:"找台词",   u:"https://zhaotaici.cn" }
+  ],
+  "身份": [],
+  "壁纸": [
+    { n:"Wallhaven", u:"https://wallhaven.cc" }
+  ],
+  "API-VPS": [
+    { n:"VPS234",   u:"https://www.vps234.com" },
+    { n:"老左博客", u:"https://www.laozuo.org" }
+  ],
+  "AI-3D": [
+    { n:"Meshy",    u:"https://www.meshy.ai" },
+    { n:"Tripo3D",  u:"https://www.tripo3d.ai" }
+  ],
+  "APK-Proxy": [ { n:"APKPure", u:"https://apkpure.com" } ],
+  "Nano Banana": [ { n:"Nano Banana", u:"https://nanobanana.google" } ],
+  "Blog": [
+    { n:"CSDN", u:"https://blog.csdn.net" },
+    { n:"简书", u:"https://www.jianshu.com" }
+  ],
+  "mail": [
+    { n:"Gmail",    u:"https://mail.google.com" },
+    { n:"QQ邮箱",   u:"https://mail.qq.com" },
+    { n:"Outlook",  u:"https://outlook.live.com" }
+  ]
+};
+/* =========================================================== */
+
+const tabsEl = document.getElementById('tabs');
+const gridEl = document.getElementById('grid');
+const searchEl = document.getElementById('searchInput');
+const soundEl = document.getElementById('soundSwitch');
+let curTab = TABS[0];
+
+const favicon = u => 'https://www.google.com/s2/favicons?sz=128&domain_url=' + encodeURIComponent(u);
+
+function renderTabs(){
+  tabsEl.innerHTML = '';
+  TABS.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (t === curTab ? ' active' : '');
+    b.textContent = t;
+    b.onclick = () => { curTab = t; searchEl.value = ''; renderTabs(); renderGrid(); };
+    tabsEl.appendChild(b);
+  });
+}
+
+function cardsHTML(list){
+  if(!list.length) return '<div class="empty">该板块暂无书签，可在 JS 顶部 DATA 中添加</div>';
+  return list.map(it => `
+    <a class="card" href="${it.u}" target="_blank" rel="noopener">
+      <img src="${favicon(it.u)}" alt="${it.n}" loading="lazy">
+      <span class="name">${it.n}</span>
+    </a>`).join('');
+}
+
+function renderGrid(){
+  const q = searchEl.value.trim();
+  if(q){                                   // 搜索：跨全部板块
+    const all = [];
+    Object.values(DATA).forEach(l => l.forEach(it => it.n.includes(q) && all.push(it)));
+    gridEl.innerHTML = cardsHTML(all);
+  }else{
+    gridEl.innerHTML = cardsHTML(DATA[curTab] || []);
+  }
+}
+
+/* ---------- 悬停音效（Web Audio，无需音频文件） ---------- */
+let ctx = null;
+function blip(){
+  if(!soundEl.checked) return;
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if(ctx.state === 'suspended') ctx.resume();
+  const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = 'sine'; o.frequency.value = 880;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  o.connect(g).connect(ctx.destination);
+  o.start(t); o.stop(t + 0.2);
+}
+document.addEventListener('mouseover', e => {
+  if(e.target.closest('.card') || e.target.closest('.tab')) blip();
+});
+
+searchEl.addEventListener('input', renderGrid);
+renderTabs(); renderGrid();
+</script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+<div id="__apply-btn-wrap__" style="
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+  z-index:99999; display:flex; gap:0.75rem; align-items:center;
+  background:rgba(13,17,23,0.92); border:1px solid #334155;
+  border-radius:2rem; padding:0.5rem 1.25rem;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
+">
+  <span style="font-size:0.82rem; color:#94a3b8;">styles17.html</span>
+  <button id="__apply-btn__" onclick="__applyToNav__()" style="
+    background:#238636; color:#fff; border:none; border-radius:1.5rem;
+    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+  " onmouseover="this.style.background='#2ea043'"
+    onmouseout="this.style.background='#238636'">
+    ✓ 应用到导航页
+  </button>
+  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
+    background:none; border:none; color:#64748b; cursor:pointer;
+    font-size:1rem; padding:0 0.25rem;
+  " title="隐藏">✕</button>
+</div>
+<script>
+function __applyToNav__() {
+  var file = 'styles17.html';
+  localStorage.setItem('styleChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

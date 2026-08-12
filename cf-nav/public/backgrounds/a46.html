@@ -27,6 +27,7 @@
             cursor: grabbing;
         }
 
+        /* 高级毛玻璃面板 */
         #console-panel {
             position: absolute;
             top: 20px;
@@ -41,14 +42,16 @@
             color: #fff;
             display: flex;
             flex-direction: column;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            /* 【修改点1】：使用更丝滑的 cubic-bezier 曲线 */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
         }
 
-        #console-panel.hidden-panel {
+        /* 【修改点2】：向右滑出+微缩放的隐藏动画 */
+        #console-panel.panel-hidden {
             opacity: 0;
             pointer-events: none;
-            transform: translateY(-12px);
+            transform: translateX(20px) scale(0.98);
         }
 
         #console-header {
@@ -99,38 +102,43 @@
             font-weight: 500;
         }
 
+        /* 🌟 陶土/红铜主题定制发光渐变滑杆 (橙-红-紫) */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
-            background: transparent;
-        }
-
-        input[type=range]:focus {
+            height: 6px;
+            background: linear-gradient(90deg, #f97316, #ef4444, #a855f7);
+            border-radius: 3px;
             outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
         }
-
+        input[type=range]:hover { opacity: 1; }
+        
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 16px;
             width: 16px;
+            height: 16px;
+            background: #ffffff;
             border-radius: 50%;
-            background: #e68066;
             cursor: pointer;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
             margin-top: -6px;
-            box-shadow: 0 0 10px rgba(230, 128, 102, 0.6);
-            transition: transform 0.1s ease;
         }
-
-        input[type=range]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(239, 68, 68, 1), 0 0 6px rgba(255, 255, 255, 1);
         }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
             cursor: pointer;
-            background: #374151;
-            border-radius: 2px;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.9);
         }
         
         input[type=color] {
@@ -165,42 +173,55 @@
             color: #fff;
         }
 
+        /* 优化左下角的快捷键提示 */
         #shortcut-hint {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: rgba(0,0,0,0.6);
+            bottom: 24px;
+            left: 24px;
+            color: rgba(255, 255, 255, 0.8);
             font-size: 0.8rem;
             pointer-events: none;
-            background: rgba(255,255,255,0.85);
-            padding: 6px 14px;
+            background: rgba(15, 18, 25, 0.75);
+            padding: 8px 16px;
             border-radius: 20px;
             backdrop-filter: blur(8px);
-            border: 1px solid rgba(0,0,0,0.1);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 50;
+        }
+        #shortcut-hint kbd {
+            background: rgba(249, 115, 22, 0.2);
+            color: #fdba74;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            border: 1px solid rgba(249, 115, 22, 0.3);
         }
     </style>
 </head>
 <body>
 
-    <!-- Canvas Rendering Target -->
     <canvas id="glcanvas"></canvas>
-
-    <div id="shortcut-hint">💡 提示：在画面拖拽旋转视角 | 滚轮缩放距离 | 按 Alt + H 隐藏控制台</div>
-    
-    <!-- Error log fallback container -->
+ 
     <div id="error-log" style="position:absolute; top:10px; left:10px; color:#ff4444; z-index:9999; background:rgba(0,0,0,0.85); padding:12px; display:none; border-radius:8px; font-family:monospace; max-width:80%; white-space:pre-wrap; border:1px solid #f44336;"></div>
 
-    <!-- UI Control Console -->
-    <div id="console-panel">
+    <!-- 【修改点3】：加上 panel-hidden 类名实现默认隐藏 -->
+    <div id="console-panel" class="panel-hidden">
         <div id="console-header">
             <div class="flex items-center gap-2">
                 <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
                 <span class="font-semibold text-sm tracking-wide">Shadertoy (fcK3Rt) 参数台</span>
             </div>
-            <button id="btn-collapse" class="btn-icon" title="折叠/展开">
-                <svg id="icon-collapse" class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
-            </button>
+            <div class="flex items-center gap-1">
+                <button id="btn-collapse" class="btn-icon" title="折叠/展开">
+                    <svg id="icon-collapse" class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                </button>
+                <!-- 【新增】隐藏面板按钮 -->
+                <button id="btn-hide" class="btn-icon" title="隐藏 (Alt+H)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
         </div>
         <div id="console-body">
             
@@ -246,7 +267,8 @@
         </div>
     </div>
 
-    <script>
+    <!-- 优化后的快捷键提示 -->
+        <script>
         const vertexShaderSource = `
             attribute vec2 a_position;
             void main() {
@@ -254,7 +276,6 @@
             }
         `;
 
-        // Exact Shadertoy fcK3Rt Logic with Fixed High-Precision Normals & Wave Heightmap
         const fragmentShaderSource = `
             #ifdef GL_FRAGMENT_PRECISION_HIGH
             precision highp float;
@@ -266,7 +287,6 @@
             uniform vec3 iMouse;
             uniform float iTime;
 
-            // Interactive Uniforms
             uniform float u_camDist;
             uniform float u_heightMult;
             uniform float u_scale;
@@ -276,14 +296,12 @@
             #define N normalize
             #define PI 3.14159265359
 
-            // Custom WebGL 1.0 compatible hyperbolic tangent
             float s_tanh(float x) {
                 float ex = exp(clamp(x, -10.0, 10.0));
                 float emx = exp(clamp(-x, -10.0, 10.0));
                 return (ex - emx) / (ex + emx);
             }
 
-            // High-frequency hash and noise for organic heightmap details
             float hash21(vec2 p) {
                 p = fract(p * vec2(123.34, 456.21));
                 p += dot(p, p + 45.32);
@@ -310,12 +328,10 @@
                 return val;
             }
 
-            // Procedural replacement for iChannel0 (Dynamic Concentric Ripple & FBM Heightmap)
             vec4 sampleChannel0(vec2 uv) {
                 float t = iTime * 0.6;
                 vec2 p = uv * 8.0;
                 
-                // Overlapping concentric and linear wave ripples
                 float d1 = length(p - vec2(2.0, 2.0));
                 float d2 = length(p + vec2(3.0, 1.0));
                 
@@ -329,7 +345,6 @@
                 return vec4(h, h, h, 1.0);
             }
 
-            // Procedural replacement for iChannel1 (CubeMap Ambient Light Environment)
             vec3 sampleChannel1(vec3 dir) {
                 dir = N(dir);
                 vec3 skyColor = vec3(0.92, 0.95, 1.0);
@@ -342,7 +357,6 @@
                 return mix(groundColor, skyColor, skyGrad) * 0.7 + vec3(1.0, 0.9, 0.8) * diff * 0.5;
             }
 
-            // Procedural replacement for iChannel2 (CubeMap Specular Reflection Environment)
             vec3 sampleChannel2(vec3 dir) {
                 dir = N(dir);
                 float horizon = smoothstep(-0.2, 0.2, dir.y);
@@ -351,7 +365,6 @@
                 
                 vec3 reflCol = mix(groundRefl, skyRefl, horizon);
                 
-                // Studio Softbox Reflection Highlights
                 vec3 light1 = N(vec3(0.5, 0.8, 0.5));
                 vec3 light2 = N(vec3(-0.6, 0.5, -0.4));
                 
@@ -361,10 +374,8 @@
                 return reflCol * 0.5 + vec3(1.5, 1.3, 1.1) * spec1 + vec3(0.7, 0.8, 1.0) * spec2;
             }
 
-            // Camera path from fcK3Rt
             vec3 camPath() {
                 if(iMouse.z < 0.5 && length(iMouse.xy) < 0.01) {
-                    // Smooth subtle auto orbit if mouse not pressed
                     float autoTheta = sin(iTime * 0.25) * 0.6;
                     float autoPhi = 0.45 + sin(iTime * 0.2) * 0.1;
                     vec3 autoPos = vec3(
@@ -391,16 +402,14 @@
                 return u_camDist * camPos;
             }
 
-            // Map function: heightfield surface
             float map(vec3 p) {
                 vec2 uv = p.xz * (u_scale / 100.0);
                 float texVal = sampleChannel0(uv).y;
                 return p.y - s_tanh(texVal * 2.0) * u_heightMult;
             }
 
-            // Precision normal calculation with small epsilon to capture sharp wave gradients
             vec3 getNormal(vec3 p) {
-                float e = 0.003; // Fix: small epsilon to capture sharp heightfield derivatives
+                float e = 0.003; 
                 float d = map(p);
                 vec3 n = vec3(
                     d - map(p + vec3(e, 0.0, 0.0)),
@@ -410,7 +419,6 @@
                 return N(n / -e);
             }
 
-            // Raymarching loop from fcK3Rt
             vec2 rmf(vec3 ro, vec3 rd) {
                 float td = 0.0;
                 bool hit = false;
@@ -426,7 +434,6 @@
                 return vec2(hit ? 1.0 : 0.0, td);
             }
 
-            // mainImage entry point from fcK3Rt
             void mainImage( out vec4 O, in vec2 I )
             {
                 vec2 p = (I - 0.5 * res) / res.y;
@@ -451,21 +458,19 @@
                     
                     vec3 lightDir = N(vec3(0.8, 1.0, 0.6));
                     vec2 srm = rmf(hitPoint + 0.005 * normal, lightDir);
-                    float shadow = srm.x > 0.5 ? 0.45 : 1.0; // Soft directional raymarched shadow
+                    float shadow = srm.x > 0.5 ? 0.45 : 1.0; 
 
-                    // Ambient + specular light reflection mix
                     vec3 light = sampleChannel2(reflect(rd, normal)) * 0.45 +
                                  sampleChannel1(normal) * 0.55;
                     
                     vec3 color = u_color;
                     col = color * light * shadow;
                     
-                    // Soft distance fog fade
                     float fog = smoothstep(2.0, 25.0, td);
                     col = mix(col, vec3(1.0), fog * 0.85);
                 }
                 else {
-                    col = vec3(1.0); // Clean white background
+                    col = vec3(1.0); 
                 }
                 
                 O = vec4(col, 1.0);
@@ -565,7 +570,6 @@
             isMouseDown = false;
         });
 
-        // Touch Interaction Support for Mobile Devices
         window.addEventListener('touchstart', (e) => {
             if (e.target.closest('#console-panel')) return;
             if (e.touches.length === 1) {
@@ -586,7 +590,6 @@
             isMouseDown = false;
         });
 
-        // Mouse wheel zooming
         window.addEventListener('wheel', (e) => {
             if (e.target.closest('#console-panel')) return;
             const elCamDist = document.getElementById('camDist');
@@ -623,12 +626,19 @@
         let isPanelDragging = false;
         let dragOffsetX = 0, dragOffsetY = 0;
 
+        // 【修改点4】：拖拽时禁用过渡动画，保证丝滑跟手
         header.addEventListener('mousedown', (e) => {
             if (e.target.closest('button')) return;
             isPanelDragging = true;
             const rect = panel.getBoundingClientRect();
             dragOffsetX = e.clientX - rect.left;
             dragOffsetY = e.clientY - rect.top;
+            
+            panel.style.right = 'auto';
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.transition = 'none'; 
+            
             document.body.style.userSelect = 'none';
         });
 
@@ -642,13 +652,16 @@
 
                 panel.style.left = newLeft + 'px';
                 panel.style.top = newTop + 'px';
-                panel.style.right = 'auto';
             }
         });
 
+        // 【修改点5】：鼠标松开时恢复过渡动画，确保隐藏动画能正常触发
         window.addEventListener('mouseup', () => {
-            isPanelDragging = false;
-            document.body.style.userSelect = '';
+            if (isPanelDragging) {
+                isPanelDragging = false;
+                panel.style.transition = ''; 
+                document.body.style.userSelect = '';
+            }
         });
 
         const btnCollapse = document.getElementById('btn-collapse');
@@ -664,11 +677,23 @@
             }
         });
 
-        // Alt + H Shortcut
+        // 【修改点6】：使用自定义的 panel-hidden 类，配合 CSS 实现丝滑显隐动画
+        let isPanelVisible = false; // 默认隐藏
+        function togglePanelVisibility() {
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                panel.classList.remove('panel-hidden');
+            } else {
+                panel.classList.add('panel-hidden');
+            }
+        }
+
+        document.getElementById('btn-hide').addEventListener('click', togglePanelVisibility);
+
         window.addEventListener('keydown', (e) => {
             if (e.altKey && e.key.toLowerCase() === 'h') {
                 e.preventDefault();
-                panel.classList.toggle('hidden-panel');
+                togglePanelVisibility();
             }
         });
 
@@ -726,5 +751,22 @@
             requestAnimationFrame(render);
         }
     </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a46.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
 </body>
 </html>

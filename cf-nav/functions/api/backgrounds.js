@@ -1,22 +1,16 @@
 // GET /api/backgrounds → 返回 backgrounds/ 目录下的 HTML 文件列表
-// CF Pages 的静态文件通过 ASSETS 服务，无法直接列目录
-// 所以用 manifest 方式：扫描已知文件，返回存在的
-
 import { json } from '../lib/utils.js';
 
-// 背景文件的显示名称映射（可按需添加）
 const NAME_MAP = {
   'rain.html':    '🌧 下雨(Canvas)',
-  'snow.html':    '❄️ 下雪(Canvas)',
-  'forest.html':  '🌿 落叶(Canvas)',
   'a1.html':  '✨ 特效1',
   'a2.html':  '🔥 特效2',
   'a3.html':  '🌀 特效3',
-  'a4.html':  '🌊 海浪',
-  'a5.html':  '☁️ 云雾',
+  'a4.html':  '🌊 特效4',
+  'a5.html':  '☁️ 特效5',
   'a6.html':  '💫 特效6',
   'a7.html':  '🎨 特效7',
-  'a8.html':  '🌤 天空',
+  'a8.html':  '🌤 特效8',
   'a9.html':  '⚡ 特效9',
   'a10.html': '🎭 特效10',
   'a11.html': '🌌 特效11',
@@ -29,9 +23,35 @@ const NAME_MAP = {
   'a18.html': '🌫 特效18',
   'a19.html': '🎆 特效19',
   'a20.html': '🎇 特效20',
+  'a21.html': '✨ 特效21',
+  'a22.html': '✨ 特效22',
+  'a23.html': '✨ 特效23',
+  'a24.html': '✨ 特效24',
+  'a25.html': '✨ 特效25',
+  'a26.html': '✨ 特效26',
+  'a27.html': '✨ 特效27',
+  'a28.html': '✨ 特效28',
+  'a29.html': '✨ 特效29',
+  'a30.html': '✨ 特效30',
+  'a31.html': '✨ 特效31',
+  'a32.html': '✨ 特效32',
+  'a33.html': '✨ 特效33',
+  'a34.html': '✨ 特效34',
+  'a35.html': '✨ 特效35',
+  'a36.html': '✨ 特效36',
+  'a37.html': '✨ 特效37',
+  'a38.html': '✨ 特效38',
+  'a39.html': '✨ 特效39',
+  'a40.html': '✨ 特效40',
+  'a41.html': '✨ 特效41',
+  'a42.html': '✨ 特效42',
+  'a43.html': '✨ 特效43',
+  'a44.html': '✨ 特效44',
+  'a45.html': '✨ 特效45',
+  'a46.html': '✨ 特效46',
+  'a47.html': '✨ 特效47',
 };
 
-// 风格文件映射（可按需添加）
 const STYLES_MAP = {
   'styles1.html':  '风格 1',
   'styles2.html':  '风格 2',
@@ -50,58 +70,26 @@ const STYLES_MAP = {
   'styles15.html': '风格 15',
   'styles16.html': '风格 16',
   'styles17.html': '风格 17',
-  'styles18.html': '风格 18',
-  'styles19.html': '风格 19',
-  'styles20.html': '风格 20',
 };
 
-export async function onRequestGet({ env }) {
-  const files = [];
+export function onRequestGet() {
+  const files = Object.entries(NAME_MAP).map(([file, name]) => ({ file, name }));
 
-  // 逐个探测文件是否存在
-  const candidates = Object.keys(NAME_MAP);
-  await Promise.all(candidates.map(async (filename) => {
-    try {
-      const res = await env.ASSETS.fetch(
-        new Request(`https://placeholder/backgrounds/${filename}`, { method: 'HEAD' })
-      );
-      if (res.status === 200) {
-        files.push({ file: filename, name: NAME_MAP[filename] || filename });
-      }
-    } catch {}
-  }));
-
-  // 按文件名排序：Canvas 背景在前，a*.html 按数字排序
   files.sort((a, b) => {
-    const order = ['rain.html', 'snow.html', 'forest.html'];
-    const ai = order.indexOf(a.file);
-    const bi = order.indexOf(b.file);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    // a*.html 按数字排
+    if (a.file === 'rain.html') return -1;
+    if (b.file === 'rain.html') return 1;
     const na = parseInt(a.file.match(/\d+/)?.[0] || '0');
     const nb = parseInt(b.file.match(/\d+/)?.[0] || '0');
     return na - nb;
   });
 
-  // 探测 styles 文件
-  const styleFiles = [];
-  await Promise.all(Object.keys(STYLES_MAP).map(async (filename) => {
-    try {
-      const res = await env.ASSETS.fetch(
-        new Request(`https://placeholder/backgrounds/${filename}`, { method: 'HEAD' })
-      );
-      if (res.status === 200) {
-        styleFiles.push({ file: filename, name: STYLES_MAP[filename] });
-      }
-    } catch {}
-  }));
-  styleFiles.sort((a, b) => {
-    const na = parseInt(a.file.match(/\d+/)?.[0] || '0');
-    const nb = parseInt(b.file.match(/\d+/)?.[0] || '0');
-    return na - nb;
-  });
+  const styleFiles = Object.entries(STYLES_MAP)
+    .map(([file, name]) => ({ file, name }))
+    .sort((a, b) => {
+      const na = parseInt(a.file.match(/\d+/)?.[0] || '0');
+      const nb = parseInt(b.file.match(/\d+/)?.[0] || '0');
+      return na - nb;
+    });
 
   return json({ backgrounds: files, styles: styleFiles });
 }
