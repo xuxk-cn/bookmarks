@@ -288,44 +288,11 @@ mark {
 
 <div class="content" id="content"></div>
 
-<script id="data" type="application/json">
-{
-  "categories": [
-    {
-      "title": "常用",
-      "items": [
-        { "title": "GitHub", "url": "https://github.com", "hover": "代码托管" },
-        { "title": "Google", "url": "https://google.com", "hover": "搜索引擎" },
-        { "title": "YouTube", "url": "https://youtube.com", "hover": "视频平台" },
-        { "title": "Twitter", "url": "https://twitter.com", "hover": "社交媒体" },
-        { "title": "Cloudflare", "url": "https://cloudflare.com", "hover": "CDN服务" },
-        { "title": "Vercel", "url": "https://vercel.com", "hover": "部署平台" }
-      ]
-    },
-    {
-      "title": "AI",
-      "items": [
-        { "title": "ChatGPT", "url": "https://chat.openai.com", "hover": "OpenAI" },
-        { "title": "Claude", "url": "https://claude.ai", "hover": "Anthropic" },
-        { "title": "Gemini", "url": "https://gemini.google.com", "hover": "Google AI" },
-        { "title": "Perplexity", "url": "https://perplexity.ai", "hover": "AI搜索" }
-      ]
-    },
-    {
-      "title": "工具",
-      "items": [
-        { "title": "Notion", "url": "https://notion.so", "hover": "笔记工具" },
-        { "title": "Figma", "url": "https://figma.com", "hover": "设计工具" },
-        { "title": "VS Code", "url": "https://vscode.dev", "hover": "在线编辑器" }
-      ]
-    }
-  ]
-}
-</script>
+<script id="nav-data" type="application/json">{{NAV_DATA}}</script>
 
 <script>
 (function() {
-  var rawData = JSON.parse(document.getElementById('data').textContent);
+  var rawData = JSON.parse(document.getElementById('nav-data').textContent);
   var categories = rawData.categories || [];
   var allItems = [];
   categories.forEach(function(cat) {

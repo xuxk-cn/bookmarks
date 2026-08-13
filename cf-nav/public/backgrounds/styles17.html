@@ -75,90 +75,12 @@
 
 <main class="grid" id="grid"></main>
 
+<script id="nav-data" type="application/json">{{NAV_DATA}}</script>
 <script>
 /* ================= 书签数据：增删改都在这里 ================= */
-const TABS = ["resourse","tools","soft","视频","AIGC","AI","ai","AI大语言","AI声音",
-  "反推提示词","YouTube","Google","电影","身份","壁纸","API-VPS","AI-3D",
-  "APK-Proxy","Nano Banana","Blog","mail"];
-
-const DATA = {
-  "resourse": [
-    { n:"doyoudo官网",        u:"https://doyoudo.com" },
-    { n:"Panzoid",            u:"https://panzoid.com" },
-    { n:"耳聆网-音效素材库",  u:"https://www.ear0.com" },
-    { n:"免费字体",           u:"https://www.100font.com" },
-    { n:"矢量图标库",         u:"https://www.iconfont.cn" },
-    { n:"大众脸影视后期特效", u:"https://www.lookae.com" },
-    { n:"台词找影片素材",     u:"http://33.agilestudio.cn" },
-    { n:"找台词",             u:"https://zhaotaici.cn" },
-    { n:"AE脚本/扩展-拉屁笑", u:"https://jpsmile.com" },
-    { n:"用户脚本",           u:"https://greasyfork.org" }
-  ],
-  "tools": [
-    { n:"草料二维码", u:"https://cli.im" },
-    { n:"在线工具",   u:"https://tool.lu" },
-    { n:"ProcessOn",  u:"https://www.processon.com" }
-  ],
-  "soft": [
-    { n:"果核剥壳",   u:"https://www.ghxi.com" },
-    { n:"423Down",    u:"https://www.423down.com" }
-  ],
-  "视频": [
-    { n:"哔哩哔哩", u:"https://www.bilibili.com" },
-    { n:"YouTube",  u:"https://www.youtube.com" }
-  ],
-  "AIGC": [
-    { n:"Midjourney", u:"https://www.midjourney.com" },
-    { n:"LiblibAI",   u:"https://www.liblib.art" }
-  ],
-  "AI": [
-    { n:"ChatGPT", u:"https://chat.openai.com" },
-    { n:"Claude",  u:"https://claude.ai" }
-  ],
-  "ai": [
-    { n:"Gemini", u:"https://gemini.google.com" }
-  ],
-  "AI大语言": [
-    { n:"Kimi",     u:"https://kimi.moonshot.cn" },
-    { n:"DeepSeek", u:"https://www.deepseek.com" },
-    { n:"文心一言", u:"https://yiyan.baidu.com" }
-  ],
-  "AI声音": [
-    { n:"魔音工坊", u:"https://www.moyin.com" }
-  ],
-  "反推提示词": [
-    { n:"CLIP Interrogator", u:"https://prompt.noonshot.com" }
-  ],
-  "YouTube": [ { n:"YouTube", u:"https://www.youtube.com" } ],
-  "Google":  [ { n:"Google",  u:"https://www.google.com" } ],
-  "电影": [
-    { n:"豆瓣电影", u:"https://movie.douban.com" },
-    { n:"找台词",   u:"https://zhaotaici.cn" }
-  ],
-  "身份": [],
-  "壁纸": [
-    { n:"Wallhaven", u:"https://wallhaven.cc" }
-  ],
-  "API-VPS": [
-    { n:"VPS234",   u:"https://www.vps234.com" },
-    { n:"老左博客", u:"https://www.laozuo.org" }
-  ],
-  "AI-3D": [
-    { n:"Meshy",    u:"https://www.meshy.ai" },
-    { n:"Tripo3D",  u:"https://www.tripo3d.ai" }
-  ],
-  "APK-Proxy": [ { n:"APKPure", u:"https://apkpure.com" } ],
-  "Nano Banana": [ { n:"Nano Banana", u:"https://nanobanana.google" } ],
-  "Blog": [
-    { n:"CSDN", u:"https://blog.csdn.net" },
-    { n:"简书", u:"https://www.jianshu.com" }
-  ],
-  "mail": [
-    { n:"Gmail",    u:"https://mail.google.com" },
-    { n:"QQ邮箱",   u:"https://mail.qq.com" },
-    { n:"Outlook",  u:"https://outlook.live.com" }
-  ]
-};
+const _navData = JSON.parse(document.getElementById('nav-data').textContent);
+const TABS = _navData.categories.map(c => c.title);
+const DATA = Object.fromEntries(_navData.categories.map(c => [c.title, c.items.map(i => ({ n: i.title, u: i.url }))]));
 /* =========================================================== */
 
 const tabsEl = document.getElementById('tabs');

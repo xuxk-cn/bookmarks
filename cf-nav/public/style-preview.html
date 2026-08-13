@@ -110,7 +110,10 @@ var INJECT_HEAD = [
 
 async function fetchStyleDoc(htmlFile) {
   try {
-    var res = await fetch('/backgrounds/' + htmlFile);
+    // 从 styles14.html 提取 id=14，走 SSR 路由注入真实书签数据
+    var m = htmlFile.match(/styles(\d+)\.html/);
+    var url = m ? '/styles/' + m[1] : '/backgrounds/' + htmlFile;
+    var res = await fetch(url);
     var html = await res.text();
     // 在 </head> 前注入隐藏背景的代码
     html = html.replace(/<\/head>/i, INJECT_HEAD + '</head>');
@@ -128,19 +131,19 @@ async function fetchStyleDoc(htmlFile) {
 
   function applyStyle(htmlFile, name) {
     updateSelected(htmlFile, name);
-    var css = toCssFile(htmlFile);
-    if (!css) return;
-    localStorage.setItem('styleCSS', css);
-    var link = document.getElementById('style-css');
-    if (link) link.href = '/css/' + css;
+    // 提取编号，如 styles1.html -> 1
+    var m = htmlFile.match(/styles(\d+)\.html/);
+    if (!m) return;
+    var id = m[1];
+    localStorage.setItem('styleChoice', id);
+    // 通知主页
     if (window.opener) {
-      try { window.opener.postMessage({ type: 'applyStyle', cssFile: css }, '*'); } catch(ex) {}
+      try { window.opener.postMessage({ type: 'applyStyle', styleId: id }, '*'); } catch(ex) {}
+      window.close();
+    } else {
+      // 直接跳转
+      window.location.href = '/styles/' + id;
     }
-    var tip = document.createElement('div');
-    tip.textContent = '✔ 已应用：' + name;
-    tip.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:0.5rem 1.5rem;border-radius:1rem;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
-    document.body.appendChild(tip);
-    setTimeout(function() { tip.remove(); }, 2500);
   }
 
   function updateSelected(htmlFile, name) {

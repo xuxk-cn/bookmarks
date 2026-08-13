@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -10,6 +10,11 @@
 <link id="style-css" rel="stylesheet" href="">
 <script>
 (function() {
+  // 检查是否有风格选择，有则跳转
+  var styleChoice = localStorage.getItem('styleChoice');
+  if (styleChoice && window.location.pathname === '/') {
+    window.location.replace('/styles/' + styleChoice);
+  }
   function applyStyleCSS(cssFile) {
     var link = document.getElementById('style-css');
     if (cssFile) {
@@ -27,9 +32,9 @@
   // 监听 postMessage（style-preview / bg-preview 通过 window.opener.postMessage 通知）
   window.addEventListener('message', function(e) {
     if (!e.data) return;
-    if (e.data.type === 'applyStyle' && e.data.cssFile) {
-      localStorage.setItem('styleCSS', e.data.cssFile);
-      applyStyleCSS(e.data.cssFile);
+    if (e.data.type === 'applyStyle' && e.data.styleId) {
+      localStorage.setItem('styleChoice', e.data.styleId);
+      window.location.href = '/styles/' + e.data.styleId;
     }
     if (e.data.type === 'applyBg' && e.data.bgFile !== undefined) {
       localStorage.setItem('bgChoice', e.data.bgFile);
@@ -213,41 +218,16 @@
       var saved = localStorage.getItem('bgChoice') || 'none';
       sel.value = saved;
       sel.addEventListener('change', function() {
-        var bgSel = document.getElementById('bg-select');
-        if (bgSel) {
-          bgSel.value = this.value;
-          bgSel.dispatchEvent(new Event('change'));
+        var val = this.value;
+        if (!val) {
+          localStorage.removeItem('styleChoice');
+          window.location.href = '/';
+          return;
         }
-        localStorage.setItem('bgChoice', this.value);
-      });
-    } catch(e) { console.warn('背景列表加载失败', e); }
-  })();
-
-  // 风格列表加载
-  (async function loadStyleOptions() {
-    try {
-      var res = await fetch('/api/backgrounds');
-      var data = await res.json();
-      var sel = document.getElementById('style-select');
-      // 先加一个"默认"选项
-      var defOpt = document.createElement('option');
-      defOpt.value = '';
-      defOpt.textContent = '默认';
-      sel.appendChild(defOpt);
-      (data.styles || []).forEach(function(item) {
-        var opt = document.createElement('option');
-        var n = (item.file.match(/styles(\d+)\.html/) || [])[1];
-        opt.value = n ? 'styles' + (parseInt(n) < 10 ? '0' + n : n) + '.css' : '';
-        opt.textContent = item.name || item.file;
-        sel.appendChild(opt);
-      });
-      var saved = localStorage.getItem('styleCSS') || '';
-      sel.value = saved;
-      sel.addEventListener('change', function() {
-        var cssFile = this.value;
-        localStorage.setItem('styleCSS', cssFile);
-        var link = document.getElementById('style-css');
-        if (link) link.href = cssFile ? '/css/' + cssFile : '';
+        var nm = val.match(/styles0*(\d+)\.css/);
+        if (!nm) return;
+        localStorage.setItem('styleChoice', nm[1]);
+        window.location.href = '/styles/' + nm[1];
       });
     } catch(e) { console.warn('风格列表加载失败', e); }
   })();
