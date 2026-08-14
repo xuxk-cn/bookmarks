@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式 Raymarching 着色器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(30, 30, 35, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            color: #eee;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s ease;
+        }
+
+        #ui-header {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px 12px 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        #ui-header:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #toggle-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0 4px;
+            transition: color 0.2s;
+        }
+
+        #toggle-btn:hover {
+            color: #fff;
+        }
+
+        #ui-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .val-display {
+            color: #4ade80;
+            font-family: monospace;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="glcanvas"></canvas>
+
+    <!-- 【修改点1】：加上 style="opacity: 0; pointer-events: none;" 实现默认隐藏，并保留丝滑淡入动画 -->
+    <div id="ui-container" style="opacity: 0; pointer-events: none;">
+        <div id="ui-header">
+            <span>✨ 着色器控制台</span>
+            <button id="toggle-btn" title="折叠/展开面板">-</button>
+        </div>
+        <div id="ui-body">
+            <div class="control-group">
+                <div class="control-label"><span>物体核心大小</span><span class="val-display" id="val-objSize">0.50</span></div>
+                <input type="range" id="in-objSize" min="0.1" max="0.9" step="0.01" value="0.5">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>发光外壳大小</span><span class="val-display" id="val-shellSize">0.60</span></div>
+                <input type="range" id="in-shellSize" min="0.3" max="1.5" step="0.01" value="0.6">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>表面噪波频率</span><span class="val-display" id="val-noiseScale">123.0</span></div>
+                <input type="range" id="in-noiseScale" min="10" max="300" step="1" value="123">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>表面噪波深度 (数值越小越深)</span><span class="val-display" id="val-noiseInt">100000</span></div>
+                <input type="range" id="in-noiseInt" min="10000" max="500000" step="1000" value="100000">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>空间扭曲速度</span><span class="val-display" id="val-rotSpeed">0.30</span></div>
+                <input type="range" id="in-rotSpeed" min="0.0" max="2.0" step="0.01" value="0.3">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>发光颜色 R</span><span class="val-display" id="val-colorR">1.0</span></div>
+                <input type="range" id="in-colorR" min="0" max="10" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>发光颜色 G</span><span class="val-display" id="val-colorG">2.0</span></div>
+                <input type="range" id="in-colorG" min="0" max="10" step="0.1" value="2.0">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>发光颜色 B</span><span class="val-display" id="val-colorB">9.0</span></div>
+                <input type="range" id="in-colorB" min="0" max="10" step="0.1" value="9.0">
+            </div>
+            <div class="hint">快捷键: Alt + H 隐藏/显示面板</div>
+        </div>
+    </div>
+
+    <script>
+        const vertexShaderSource = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+        `;
+
+        const fragmentShaderSource = `#version 300 es
+        precision highp float;
+
+        out vec4 fragColor;
+        uniform vec2 iResolution;
+        uniform float iTime;
+
+        // UI 交互 Uniforms
+        uniform float u_objSize;
+        uniform float u_shellSize;
+        uniform float u_noiseScale;
+        uniform float u_noiseInt;
+        uniform float u_rotSpeed;
+        uniform vec3 u_glowColor;
+
+        // 全局变量
+        mat2 R;
+        float d = 1., z = 0., G = 9., M = 1e-3;
+
+        // SDF 距离场函数
+        float D(vec3 p) {
+            p.xy *= R;
+            p.xz *= R;
+            vec3 S = sin(u_noiseScale * p);
+            
+            G = min(
+                G,
+                max(
+                    abs(length(p) - u_shellSize),
+                    d = pow(dot(p *= p * p * p, p), .125) - u_objSize - pow(1. + S.x * S.y * S.z, 8.) / u_noiseInt
+                )
+            );
+            return d;
+        }
+
+        void mainImage(out vec4 o, vec2 C) {
+            vec3 p = vec3(0.0), 
+                 O = vec3(0.0), 
+                 r_vec = vec3(iResolution, 0.0);
+                 
+            vec3 I = normalize(vec3(C - .5 * r_vec.xy, r_vec.y));
+            vec3 B = u_glowColor * M;
+
+            // 预先计算旋转矩阵
+            R = mat2(cos(u_rotSpeed * iTime + vec4(0, 11, 33, 0)));
+
+            // Raymarching 循环
+            z = 0.0; G = 9.0; d = 1.0; // 重置全局变量以支持每个像素的计算
+            for(int i = 0; i < 150; i++) { // 添加最大步数限制以防止挂起
+                if(z >= 9. || d <= M) break;
+                p = z * I;
+                p.z -= 2.;
+                z += D(p);
+            }
+            
+            p = z * I; p.z -= 2.;
+
+            if (z < 9.) {
+                // 安全的法线计算 (替代极度精简但可能在某些驱动上报错的写法)
+                vec2 e = vec2(M, 0.0);
+                O = normalize(vec3(
+                    D(p + e.xyy) - D(p - e.xyy),
+                    D(p + e.yxy) - D(p - e.yxy),
+                    D(p + e.yyx) - D(p - e.yyx)
+                ));
+
+                z = 1. + dot(O, I);
+                r_vec = reflect(I, O);
+
+                vec2 C_bg = (p + r_vec * (5. - p.y) / abs(r_vec.y)).xz;
+
+                O = z * z * (
+                    r_vec.y > 0.
+                    ? 5e2 * smoothstep(5., 4., d = sqrt(length(C_bg * C_bg)) + 1.) * d * B
+                    : exp(-2. * length(C_bg)) * (B / M - 1.)
+                ) + pow(1. + O.y, 5.) * B;
+            }
+
+            o = vec4(sqrt(O + B / G), 1.0);
+        }
+
+        void main() {
+            mainImage(fragColor, gl_FragCoord.xy);
+        }
+        `;
+
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('您的浏览器不支持 WebGL2。请使用现代浏览器。');
+            throw new Error('WebGL2 not supported');
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        const program = gl.createProgram();
+        gl.attachShader(program, vShader);
+        gl.attachShader(program, fShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        // 设置全屏 Quad
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [
+            -1.0, -1.0,
+             1.0, -1.0,
+            -1.0,  1.0,
+            -1.0,  1.0,
+             1.0, -1.0,
+             1.0,  1.0,
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        const positionLocation = gl.getAttribLocation(program, "a_position");
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        // 获取 Uniform 位置
+        const loc_iResolution = gl.getUniformLocation(program, "iResolution");
+        const loc_iTime = gl.getUniformLocation(program, "iTime");
+        
+        const loc_u_objSize = gl.getUniformLocation(program, "u_objSize");
+        const loc_u_shellSize = gl.getUniformLocation(program, "u_shellSize");
+        const loc_u_noiseScale = gl.getUniformLocation(program, "u_noiseScale");
+        const loc_u_noiseInt = gl.getUniformLocation(program, "u_noiseInt");
+        const loc_u_rotSpeed = gl.getUniformLocation(program, "u_rotSpeed");
+        const loc_u_glowColor = gl.getUniformLocation(program, "u_glowColor");
+
+        // UI 状态对象
+        const state = {
+            objSize: 0.5,
+            shellSize: 0.6,
+            noiseScale: 123.0,
+            noiseInt: 100000.0,
+            rotSpeed: 0.3,
+            colorR: 1.0,
+            colorG: 2.0,
+            colorB: 9.0
+        };
+
+        // 绑定输入框和显示文本
+        function bindControl(id, stateKey, isFloat = true) {
+            const input = document.getElementById(`in-${id}`);
+            const display = document.getElementById(`val-${id}`);
+            
+            input.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state[stateKey] = val;
+                display.innerText = isFloat ? val.toFixed(2) : Math.round(val);
+            });
+        }
+
+        bindControl('objSize', 'objSize');
+        bindControl('shellSize', 'shellSize');
+        bindControl('noiseScale', 'noiseScale', false);
+        bindControl('noiseInt', 'noiseInt', false);
+        bindControl('rotSpeed', 'rotSpeed');
+        bindControl('colorR', 'colorR');
+        bindControl('colorG', 'colorG');
+        bindControl('colorB', 'colorB');
+
+        // 拖拽逻辑
+        const uiContainer = document.getElementById('ui-container');
+        const uiHeader = document.getElementById('ui-header');
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        uiHeader.addEventListener('mousedown', (e) => {
+            if (e.target.id === 'toggle-btn') return; // 点击按钮时不触发拖拽
+            isDragging = true;
+            dragOffsetX = e.clientX - uiContainer.offsetLeft;
+            dragOffsetY = e.clientY - uiContainer.offsetTop;
+            uiContainer.style.transition = 'none'; // 拖拽时取消动画以保持顺滑
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            // 确保不拖出屏幕边界
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
+            newX = Math.max(0, Math.min(window.innerWidth - uiContainer.offsetWidth, newX));
+            newY = Math.max(0, Math.min(window.innerHeight - uiHeader.offsetHeight, newY));
+            
+            uiContainer.style.left = newX + 'px';
+            uiContainer.style.top = newY + 'px';
+            uiContainer.style.right = 'auto'; // 覆盖初始的 right 定位
+        });
+
+        window.addEventListener('mouseup', () => {
+            if(isDragging) {
+                isDragging = false;
+                uiContainer.style.transition = 'opacity 0.3s ease'; 
+            }
+        });
+
+        // 折叠/展开逻辑
+        const toggleBtn = document.getElementById('toggle-btn');
+        const uiBody = document.getElementById('ui-body');
+        let isCollapsed = false;
+
+        toggleBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            uiBody.style.display = isCollapsed ? 'none' : 'flex';
+            toggleBtn.innerText = isCollapsed ? '+' : '-';
+        });
+
+        // 【修改点2】：初始状态改为 true，与 HTML 标签上的默认隐藏保持一致
+        let isHidden = true;
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'h') {
+                isHidden = !isHidden;
+                uiContainer.style.opacity = isHidden ? '0' : '1';
+                uiContainer.style.pointerEvents = isHidden ? 'none' : 'auto';
+            }
+        });
+
+        function resizeCanvasToDisplaySize(canvas) {
+            const displayWidth  = canvas.clientWidth;
+            const displayHeight = canvas.clientHeight;
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width  = displayWidth;
+                canvas.height = displayHeight;
+                return true;
+            }
+            return false;
+        }
+
+        let startTime = performance.now();
+
+        function render(now) {
+            resizeCanvasToDisplaySize(canvas);
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            const time = (now - startTime) * 0.001;
+
+            // 传递 Uniforms
+            gl.uniform2f(loc_iResolution, canvas.width, canvas.height);
+            gl.uniform1f(loc_iTime, time);
+            
+            gl.uniform1f(loc_u_objSize, state.objSize);
+            gl.uniform1f(loc_u_shellSize, state.shellSize);
+            gl.uniform1f(loc_u_noiseScale, state.noiseScale);
+            gl.uniform1f(loc_u_noiseInt, state.noiseInt);
+            gl.uniform1f(loc_u_rotSpeed, state.rotSpeed);
+            gl.uniform3f(loc_u_glowColor, state.colorR, state.colorG, state.colorB);
+
+            // 绘制全屏矩形
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a23.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

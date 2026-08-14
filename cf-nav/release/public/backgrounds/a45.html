@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极光 Shader 交互控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.7); }
+        
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #controlPanel {
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #controlPanel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(20px) scale(0.98);
+        }
+
+        /* 🌟 极光定制发光渐变滑杆 (青-蓝-紫) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);
+            border-radius: 9999px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        input[type=range]:hover { opacity: 1; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
+        }
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(139, 92, 246, 1), 0 0 6px rgba(255, 255, 255, 1);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.9);
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden bg-black">
+
+    <canvas id="shaderCanvas"></canvas>
+
+        <!-- 【修改点1】：加上 panel-hidden 类名实现默认隐藏，移除原有的 transition-opacity 防止冲突 -->
+    <div id="controlPanel" class="fixed top-6 right-6 z-40 w-80 sm:w-96 rounded-2xl bg-slate-900/85 backdrop-blur-xl border border-slate-700/60 shadow-2xl text-slate-100 flex flex-col max-h-[90vh] panel-hidden">
+        
+        <div id="panelHeader" class="flex items-center justify-between px-5 py-3.5 border-b border-slate-700/50 cursor-move select-none bg-slate-800/40 rounded-t-2xl">
+            <div class="flex items-center gap-2.5">
+                <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                </svg>
+                <span class="font-bold text-sm tracking-wide text-cyan-300">极光控制台</span>
+                <span id="fpsBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400">60 FPS</span>
+            </div>
+            
+            <div class="flex items-center gap-1.5">
+                <button id="btnToggleCollapse" class="p-1 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-white transition-colors" title="折叠/展开">
+                    <svg id="collapseIcon" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <!-- 【新增】隐藏面板按钮 -->
+                <button id="btnHide" class="p-1 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-red-400 transition-colors" title="隐藏 (Alt+H)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="panelBody" class="p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1 transition-all duration-300">
+            
+            <div class="space-y-2">
+                <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">预设主题</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="applyPreset('default')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-cyan-500/50 transition-all">极光绿蓝 (默认)</button>
+                    <button onclick="applyPreset('emerald')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-emerald-500/50 transition-all">翡翠绿光</button>
+                    <button onclick="applyPreset('magenta')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-fuchsia-500/50 transition-all">梦幻粉紫</button>
+                    <button onclick="applyPreset('solar')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-amber-500/50 transition-all">火焰太阳</button>
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">演化与流速</label>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">色调偏移 (Hue)</span>
+                        <span id="valHue" class="font-mono text-cyan-400">0.00</span>
+                    </div>
+                    <input type="range" id="inputHue" min="0.0" max="1.0" step="0.01" value="0.0" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">演化速度 (Evolution Speed)</span>
+                        <span id="valEvolutionSpeed" class="font-mono text-cyan-400">0.050</span>
+                    </div>
+                    <input type="range" id="inputEvolutionSpeed" min="0.0" max="0.2" step="0.005" value="0.050" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">演化强度 (Evolution Amount)</span>
+                        <span id="valEvolutionAmount" class="font-mono text-cyan-400">0.65</span>
+                    </div>
+                    <input type="range" id="inputEvolutionAmount" min="0.0" max="1.5" step="0.05" value="0.65" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">光束流速 (Ray Flow Speed)</span>
+                        <span id="valRayFlowSpeed" class="font-mono text-cyan-400">2.55</span>
+                    </div>
+                    <input type="range" id="inputRayFlowSpeed" min="0.0" max="8.0" step="0.1" value="2.55" class="w-full">
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">画面与光效</label>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">曝光亮度 (Brightness)</span>
+                        <span id="valBrightness" class="font-mono text-cyan-400">1.00</span>
+                    </div>
+                    <input type="range" id="inputBrightness" min="0.2" max="2.5" step="0.05" value="1.00" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">辉光强度 (Glow Intensity)</span>
+                        <span id="valGlow" class="font-mono text-cyan-400">1.00</span>
+                    </div>
+                    <input type="range" id="inputGlow" min="0.0" max="2.5" step="0.05" value="1.00" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-300">星空亮度 (Star Density)</span>
+                        <span id="valStars" class="font-mono text-cyan-400">1.00</span>
+                    </div>
+                    <input type="range" id="inputStars" min="0.0" max="3.0" step="0.1" value="1.00" class="w-full">
+                </div>
+            </div>
+
+            <div class="space-y-3 pt-2 border-t border-slate-800">
+                <label class="text-xs font-semibold uppercase text-slate-400 tracking-wider">极光色彩自定义</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[11px] text-slate-400">高空层</span>
+                        <input type="color" id="inputColor1" value="#00A6D9" class="w-10 h-8 bg-transparent cursor-pointer">
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[11px] text-slate-400">核心层</span>
+                        <input type="color" id="inputColor2" value="#1461FF" class="w-10 h-8 bg-transparent cursor-pointer">
+                    </div>
+                    <div class="flex flex-col items-center gap-1.5">
+                        <span class="text-[11px] text-slate-400">底基层</span>
+                        <input type="color" id="inputColor3" value="#522EEB" class="w-10 h-8 bg-transparent cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2">
+                <button id="btnPause" class="px-3 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
+                    <svg id="pauseIcon" class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span id="pauseText">暂停演化</span>
+                </button>
+                <button id="btnReset" class="px-3 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    重置参数
+                </button>
+                <button id="btnScreenshot" class="px-3 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    截屏下载
+                </button>
+                <button id="btnFullscreen" class="px-3 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
+                    <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                    </svg>
+                    切换全屏
+                </button>
+            </div>
+        </div>
+
+        <div class="px-5 py-2.5 bg-slate-900/90 rounded-b-2xl border-t border-slate-800/80 text-[11px] text-slate-500 flex justify-between items-center">
+            <span>快捷键: <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300 font-mono">Alt + H</kbd> 隐藏/显示</span>
+        </div>
+    </div>
+
+    <script>
+        const fragmentShaderSource = `#version 300 es
+        precision highp float;
+
+        out vec4 fragColor;
+
+        uniform vec3 iResolution;
+        uniform float iTime;
+        uniform vec4 iMouse;
+
+        uniform float uHue;
+        uniform float uEvolutionSpeed;
+        uniform float uEvolutionAmount;
+        uniform float uRayFlowSpeed;
+        uniform float uBrightness;
+        uniform float uGlowIntensity;
+        uniform float uStarDensity;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+
+        mat2 rotate2(float angle)
+        {
+            float c = cos(angle);
+            float s = sin(angle);
+            return mat2(c, s, -s, c);
+        }
+
+        const mat2 FIELD_TURN = mat2(0.95534, 0.29552, -0.29552, 0.95534);
+
+        float triangleWave(float x)
+        {
+            return clamp(abs(fract(x) - 0.5), 0.01, 0.49);
+        }
+
+        vec2 trianglePair(vec2 p)
+        {
+            return vec2(
+                triangleWave(p.x) + triangleWave(p.y),
+                triangleWave(p.y + triangleWave(p.x))
+            );
+        }
+
+        float hash21(vec2 p)
+        {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+        }
+
+        float auroraNoise(vec2 p, float phase)
+        {
+            float scale = 1.8;
+            float warpScale = 1.5;
+            float ridgeSum = 0.0;
+            p = p * rotate2(p.x * 0.1);
+            vec2 base = p;
+
+            for (int octave = 0; octave < 4; ++octave)
+            {
+                vec2 gradient = trianglePair(base * 1.85) * 0.75;
+                gradient = gradient * rotate2(phase * 1.82);
+                p -= gradient / warpScale;
+                base *= 1.30;
+                warpScale *= 0.45;
+                scale *= 0.42;
+                p *= 1.21 + (ridgeSum - 1.0) * 0.02;
+                ridgeSum += triangleWave(p.x + triangleWave(p.y)) * scale;
+                p = p * -FIELD_TURN;
+            }
+
+            float denominator = pow(max(ridgeSum * 29.0, 0.001), 1.30);
+            return clamp(1.0 / denominator, 0.0, 0.62);
+        }
+
+        float valueNoise1(float x)
+        {
+            float cell = floor(x);
+            float local = fract(x);
+            local = local * local * (3.0 - 2.0 * local);
+            float a = hash21(vec2(cell, cell + 17.0));
+            float b = hash21(vec2(cell + 1.0, cell + 18.0));
+            return mix(a, b, local);
+        }
+
+        float rayFlow(float coordinate, float time)
+        {
+            float broad = valueNoise1(coordinate * 2.7 - time * 0.16);
+            float fine = valueNoise1(coordinate * 8.4 - time * 0.31);
+            return 0.05 + 0.95 * pow(mix(broad, fine, 0.52), 5.0);
+        }
+
+        vec4 marchAurora(vec3 rayOrigin, vec3 rayDirection, vec2 screenUv, vec2 pixel)
+        {
+            vec4 accumulated = vec4(0.0);
+            vec4 runningAverage = vec4(0.0);
+            float evolution = iTime * uEvolutionSpeed;
+            float phaseA = evolution;
+            float phaseB = evolution * 0.72 + 1.70;
+            float evolutionPulse = 0.5 + 0.5 * sin(evolution * 0.28 + 0.80);
+            float jitterSeed = hash21(pixel) - 0.5;
+
+            for (int sampleIndex = 0; sampleIndex < 26; ++sampleIndex)
+            {
+                float fi = float(sampleIndex);
+                float h = fi / 13.0;
+                float jitter = 0.01 * jitterSeed * smoothstep(0.0, 12.0, fi);
+                float sheetHeight = 0.72 + pow(fi, 1.3) * 0.0025;
+                sheetHeight += (0.001 + h * 0.001) * sin(phaseB * 1.15 + fi * 0.047 + screenUv.x * 1.30);
+                float travel = (sheetHeight - rayOrigin.y) / (rayDirection.y * 2.0 + 0.40);
+                travel -= jitter;
+
+                vec3 position = rayOrigin + travel * rayDirection;
+                vec2 fieldPosition = position.zx;
+
+                float mainWarp = mix(0.43, 0.55, evolutionPulse) * uEvolutionAmount;
+                float detailWarp = mix(0.17, 0.12, evolutionPulse) * uEvolutionAmount;
+                fieldPosition.y += mainWarp * sin(fieldPosition.x * 0.34 + phaseA * 1.45);
+                fieldPosition.y += detailWarp * sin(fieldPosition.x * 0.91 - phaseB * 1.25);
+                fieldPosition.x += 0.075 * uEvolutionAmount * sin(fieldPosition.y * 0.56 - phaseB * 0.92);
+
+                vec2 curlCenter = vec2(
+                    0.50 + 0.08 * sin(phaseB * 0.72),
+                    -0.25 + 0.06 * cos(phaseA * 0.56)
+                );
+                vec2 curl = fieldPosition - curlCenter;
+                float curlInfluence = exp(-dot(curl, curl) * 0.22);
+                float curlStrength = (0.90 + 0.18 * sin(phaseA * 0.48 + phaseB * 0.31)) * uEvolutionAmount;
+                fieldPosition = curl * rotate2(
+                    curlStrength * curlInfluence + 0.1 * sin(phaseB)
+                ) + curlCenter;
+
+                float density = auroraNoise(fieldPosition, phaseA * 1.35);
+                float rayCoordinate = screenUv.x * 4.2 + 0.18 * sin(phaseB + screenUv.x * 60.0);
+                float striation = rayFlow(rayCoordinate, iTime * uRayFlowSpeed);
+                density *= 0.72 + 0.18 * striation;
+
+                vec3 colorWeights;
+                colorWeights.r = 1.0 - smoothstep(0.20, 0.58, h);
+                colorWeights.g = smoothstep(0.04, 0.34, h) * (1.0 - smoothstep(0.66, 0.94, h));
+                colorWeights.b = smoothstep(0.48, 0.98, h);
+
+                float colorFlow = 0.5 + 0.5 * sin(position.z * 0.17 + phaseA * 1.40);
+                colorWeights.r *= mix(1.15, 0.82, colorFlow);
+                colorWeights.b *= mix(0.78, 1.18, colorFlow);
+                float palettePosition = smoothstep(0.22, 0.90, screenUv.x);
+                colorWeights.r *= mix(1.28, 0.55, palettePosition);
+                colorWeights.g *= 1.08;
+                colorWeights.b *= mix(0.78, 1.72, palettePosition);
+                colorWeights /= max(dot(colorWeights, vec3(1.0)), 0.001);
+
+                vec4 layer = vec4(colorWeights * density, density);
+                runningAverage = mix(runningAverage, layer, 0.50);
+                float depthWeight = exp2(-fi * 0.065 - 2.30) * smoothstep(0.0, 5.0, fi);
+                accumulated += runningAverage * depthWeight;
+            }
+
+            float horizonFade = clamp(rayDirection.y * 12.0 + 0.30, 0.0, 1.0);
+            return accumulated * horizonFade * 1.80;
+        }
+
+        vec3 rgbToHsv(vec3 c)
+        {
+            vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+            vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+            vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+            float d = q.x - min(q.w, q.y);
+            float e = 1.0e-10;
+            return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+        }
+
+        vec3 hsvToRgb(vec3 c)
+        {
+            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+            vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+        }
+
+        vec3 shiftHue(vec3 color, float hue)
+        {
+            vec3 hsv = rgbToHsv(max(color, vec3(0.0)));
+            hsv.x = fract(hsv.x + clamp(hue, 0.0, 1.0));
+            return hsvToRgb(hsv);
+        }
+
+        vec3 paintAurora(vec3 masks)
+        {
+            return masks.r * uColor1 + masks.g * uColor2 + masks.b * uColor3;
+        }
+
+        float ellipseGlow(vec2 uv, vec2 center, vec2 scale)
+        {
+            vec2 q = (uv - center) * scale;
+            return exp(-dot(q, q));
+        }
+
+        float sparseStars(vec2 uv, float aspect)
+        {
+            vec2 starUv = vec2(uv.x * aspect, uv.y) * 78.0;
+            vec2 cell = floor(starUv);
+            vec2 local = fract(starUv) - 0.5;
+            float randomValue = hash21(cell);
+            vec2 point = vec2(
+                hash21(cell + vec2(1.7, 9.2)),
+                hash21(cell + vec2(8.3, 2.8))
+            ) - 0.5;
+            float star = 1.0 - smoothstep(0.020, 0.054, length(local - point * 0.72));
+            star *= step(0.9991, randomValue);
+            star *= 0.84 + 0.16 * sin(iTime * 0.22 + randomValue * 24.0);
+            return star;
+        }
+
+        void main()
+        {
+            vec2 fragCoord = gl_FragCoord.xy;
+            vec2 uv = fragCoord / iResolution.xy;
+            float aspect = iResolution.x / iResolution.y;
+            float landscape = smoothstep(1.0, 1.65, aspect);
+            float horizontalScale = mix(0.76, aspect, landscape);
+
+            vec2 cameraPlane = vec2(
+                (uv.x - 0.5) * horizontalScale,
+                mix(0.02, 0.54, uv.y)
+            );
+
+            vec3 rayOrigin = vec3(0.0, 0.0, -6.7);
+            vec3 rayDirection = normalize(vec3(cameraPlane, 1.25));
+            float cameraEvolution = iTime * uEvolutionSpeed;
+            rayDirection.xz = rayDirection.xz * rotate2(0.045 * sin(cameraEvolution * 0.70));
+
+            vec4 raw = marchAurora(rayOrigin, rayDirection, uv, fragCoord);
+
+            vec3 structuredMasks = pow(max(raw.rgb, vec3(0.0)), vec3(1.48)) * 2.35 * uGlowIntensity;
+            vec3 softMasks = pow(max(raw.rgb, vec3(0.0)), vec3(1.12)) * 0.18 * uGlowIntensity;
+            vec3 glowMasks = pow(max(raw.rgb, vec3(0.0)), vec3(0.70)) * 0.085 * uGlowIntensity;
+            vec3 aurora = paintAurora(structuredMasks + softMasks + glowMasks);
+            aurora = shiftHue(aurora, uHue);
+
+            const vec3 navy = vec3(0.002, 0.005, 0.018);
+            const vec3 deepBlue = vec3(0.006, 0.030, 0.078);
+            vec3 background = mix(navy, deepBlue, smoothstep(0.0, 1.0, uv.y));
+
+            background += ellipseGlow(uv, vec2(0.04, 0.34), vec2(1.70, 1.20)) * vec3(0.000, 0.030, 0.060);
+            background += ellipseGlow(uv, vec2(0.82, 0.72), vec2(1.55, 1.28)) * vec3(0.010, 0.008, 0.040);
+            background += ellipseGlow(uv, vec2(0.76, 0.05), vec2(1.32, 1.72)) * vec3(0.028, 0.012, 0.068);
+
+            float densityHaze = pow(clamp(raw.a, 0.0, 1.0), 0.70) * 0.045;
+            background += densityHaze * vec3(0.02, 0.07, 0.13);
+
+            vec3 stars = sparseStars(uv, aspect) * vec3(0.30, 0.50, 0.78) * 0.42 * uStarDensity;
+            vec3 color = background + stars + aurora;
+
+            vec2 edge = uv * (1.0 - uv);
+            float vignette = pow(clamp(16.0 * edge.x * edge.y, 0.0, 1.0), 0.16);
+            color *= mix(0.68, 1.0, vignette);
+
+            color = 1.0 - exp(-color * uBrightness);
+            color = pow(max(color, vec3(0.0)), vec3(0.94));
+            color += (hash21(fragCoord) - 0.5) / 255.0;
+            fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+        }
+        `;
+
+        const vertexShaderSource = `#version 300 es
+        in vec2 aPosition;
+        void main() {
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+        }
+        `;
+
+        const canvas = document.getElementById('shaderCanvas');
+        const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+
+        if (!gl) {
+            document.body.innerHTML = '<div class="p-8 text-white text-center">您的浏览器不支持 WebGL 2</div>';
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertShader);
+        gl.attachShader(program, fragShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error(gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1
+        ]), gl.STATIC_DRAW);
+
+        const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
+        gl.enableVertexAttribArray(aPositionLoc);
+        gl.vertexAttribPointer(aPositionLoc, 2, gl.FLOAT, false, 0, 0);
+
+        const uLocs = {
+            iResolution: gl.getUniformLocation(program, 'iResolution'),
+            iTime: gl.getUniformLocation(program, 'iTime'),
+            iMouse: gl.getUniformLocation(program, 'iMouse'),
+            uHue: gl.getUniformLocation(program, 'uHue'),
+            uEvolutionSpeed: gl.getUniformLocation(program, 'uEvolutionSpeed'),
+            uEvolutionAmount: gl.getUniformLocation(program, 'uEvolutionAmount'),
+            uRayFlowSpeed: gl.getUniformLocation(program, 'uRayFlowSpeed'),
+            uBrightness: gl.getUniformLocation(program, 'uBrightness'),
+            uGlowIntensity: gl.getUniformLocation(program, 'uGlowIntensity'),
+            uStarDensity: gl.getUniformLocation(program, 'uStarDensity'),
+            uColor1: gl.getUniformLocation(program, 'uColor1'),
+            uColor2: gl.getUniformLocation(program, 'uColor2'),
+            uColor3: gl.getUniformLocation(program, 'uColor3')
+        };
+
+        const config = {
+            hue: 0.0,
+            evolutionSpeed: 0.050,
+            evolutionAmount: 0.65,
+            rayFlowSpeed: 2.55,
+            brightness: 1.00,
+            glow: 1.00,
+            stars: 1.00,
+            color1: '#00A6D9',
+            color2: '#1461FF',
+            color3: '#522EEB',
+            isPaused: false
+        };
+
+        const defaultConfig = { ...config };
+
+        function hexToRgb(hex) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            return [
+                ((num >> 16) & 255) / 255,
+                ((num >> 8) & 255) / 255,
+                (num & 255) / 255
+            ];
+        }
+
+        function resizeCanvas() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = window.innerHeight - e.clientY;
+        });
+
+        const inputs = {
+            hue: document.getElementById('inputHue'),
+            evolutionSpeed: document.getElementById('inputEvolutionSpeed'),
+            evolutionAmount: document.getElementById('inputEvolutionAmount'),
+            rayFlowSpeed: document.getElementById('inputRayFlowSpeed'),
+            brightness: document.getElementById('inputBrightness'),
+            glow: document.getElementById('inputGlow'),
+            stars: document.getElementById('inputStars'),
+            color1: document.getElementById('inputColor1'),
+            color2: document.getElementById('inputColor2'),
+            color3: document.getElementById('inputColor3')
+        };
+
+        const valDisplays = {
+            hue: document.getElementById('valHue'),
+            evolutionSpeed: document.getElementById('valEvolutionSpeed'),
+            evolutionAmount: document.getElementById('valEvolutionAmount'),
+            rayFlowSpeed: document.getElementById('valRayFlowSpeed'),
+            brightness: document.getElementById('valBrightness'),
+            glow: document.getElementById('valGlow'),
+            stars: document.getElementById('valStars')
+        };
+
+        function syncUI() {
+            config.hue = parseFloat(inputs.hue.value);
+            config.evolutionSpeed = parseFloat(inputs.evolutionSpeed.value);
+            config.evolutionAmount = parseFloat(inputs.evolutionAmount.value);
+            config.rayFlowSpeed = parseFloat(inputs.rayFlowSpeed.value);
+            config.brightness = parseFloat(inputs.brightness.value);
+            config.glow = parseFloat(inputs.glow.value);
+            config.stars = parseFloat(inputs.stars.value);
+            config.color1 = inputs.color1.value;
+            config.color2 = inputs.color2.value;
+            config.color3 = inputs.color3.value;
+
+            valDisplays.hue.textContent = config.hue.toFixed(2);
+            valDisplays.evolutionSpeed.textContent = config.evolutionSpeed.toFixed(3);
+            valDisplays.evolutionAmount.textContent = config.evolutionAmount.toFixed(2);
+            valDisplays.rayFlowSpeed.textContent = config.rayFlowSpeed.toFixed(2);
+            valDisplays.brightness.textContent = config.brightness.toFixed(2);
+            valDisplays.glow.textContent = config.glow.toFixed(2);
+            valDisplays.stars.textContent = config.stars.toFixed(2);
+        }
+
+        Object.values(inputs).forEach(input => input.addEventListener('input', syncUI));
+
+        function updateUIFromConfig() {
+            inputs.hue.value = config.hue;
+            inputs.evolutionSpeed.value = config.evolutionSpeed;
+            inputs.evolutionAmount.value = config.evolutionAmount;
+            inputs.rayFlowSpeed.value = config.rayFlowSpeed;
+            inputs.brightness.value = config.brightness;
+            inputs.glow.value = config.glow;
+            inputs.stars.value = config.stars;
+            inputs.color1.value = config.color1;
+            inputs.color2.value = config.color2;
+            inputs.color3.value = config.color3;
+            syncUI();
+        }
+
+        window.applyPreset = function(type) {
+            switch(type) {
+                case 'emerald':
+                    config.hue = 0.30;
+                    config.color1 = '#10B981';
+                    config.color2 = '#059669';
+                    config.color3 = '#047857';
+                    break;
+                case 'magenta':
+                    config.hue = 0.85;
+                    config.color1 = '#E11D48';
+                    config.color2 = '#C026D3';
+                    config.color3 = '#7C3AED';
+                    break;
+                case 'solar':
+                    config.hue = 0.12;
+                    config.color1 = '#F59E0B';
+                    config.color2 = '#EF4444';
+                    config.color3 = '#B91C1C';
+                    break;
+                default:
+                    Object.assign(config, defaultConfig);
+                    break;
+            }
+            updateUIFromConfig();
+            showToast('已加载预设主题');
+        };
+
+        const btnPause = document.getElementById('btnPause');
+        const pauseText = document.getElementById('pauseText');
+        btnPause.addEventListener('click', () => {
+            config.isPaused = !config.isPaused;
+            pauseText.textContent = config.isPaused ? '恢复演化' : '暂停演化';
+            showToast(config.isPaused ? '已暂停极光演化' : '已恢复极光演化');
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            Object.assign(config, defaultConfig);
+            updateUIFromConfig();
+            showToast('已重置所有参数');
+        });
+
+        document.getElementById('btnScreenshot').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `aurora-shader-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('已导出画面截图');
+        });
+
+        document.getElementById('btnFullscreen').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        });
+
+        const panel = document.getElementById('controlPanel');
+        const header = document.getElementById('panelHeader');
+        let isDragging = false;
+        let dragOffsetX = 0, dragOffsetY = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return; 
+            isDragging = true;
+            dragOffsetX = e.clientX - panel.offsetLeft;
+            dragOffsetY = e.clientY - panel.offsetTop;
+            panel.style.transition = 'none'; 
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let left = e.clientX - dragOffsetX;
+            let top = e.clientY - dragOffsetY;
+            left = Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, left));
+            top = Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, top));
+            panel.style.left = `${left}px`;
+            panel.style.top = `${top}px`;
+            panel.style.right = 'auto'; 
+        });
+
+        // 【修改点2】：鼠标松开时恢复过渡动画，确保隐藏动画能正常触发
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                panel.style.transition = ''; 
+            }
+        });
+
+        const panelBody = document.getElementById('panelBody');
+        const collapseIcon = document.getElementById('collapseIcon');
+        let isCollapsed = false;
+
+        document.getElementById('btnToggleCollapse').addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                panelBody.classList.add('hidden');
+                collapseIcon.classList.add('rotate-180');
+            } else {
+                panelBody.classList.remove('hidden');
+                collapseIcon.classList.remove('rotate-180');
+            }
+        });
+
+        // 【修改点3】：初始状态改为 false，配合 HTML 的 panel-hidden 类
+        let isPanelVisible = false; 
+        const toast = document.getElementById('toast');
+        let toastTimeout = null;
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // 【修改点4】：使用自定义的 panel-hidden 类，配合 CSS 实现丝滑显隐动画
+        function togglePanelVisibility() {
+            isPanelVisible = !isPanelVisible;
+            if (isPanelVisible) {
+                panel.classList.remove('panel-hidden');
+                showToast('已显示控制台 (Alt+H)');
+            } else {
+                panel.classList.add('panel-hidden');
+                showToast('控制台已隐藏 (Alt+H 再次显示)');
+            }
+        }
+
+        document.getElementById('btnHide').addEventListener('click', togglePanelVisibility);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                e.preventDefault();
+                togglePanelVisibility();
+            }
+        });
+
+        setTimeout(() => showToast('提示: 按 Alt+H 呼出控制台'), 1000);
+
+        let lastTime = 0;
+        let simulatedTime = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        const fpsBadge = document.getElementById('fpsBadge');
+
+        function render(currentTime) {
+            currentTime *= 0.001; 
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            if (!config.isPaused) {
+                simulatedTime += deltaTime;
+            }
+
+            frameCount++;
+            if (currentTime - lastFpsUpdate >= 0.5) {
+                const fps = Math.round((frameCount / (currentTime - lastFpsUpdate)));
+                fpsBadge.textContent = `${fps} FPS`;
+                frameCount = 0;
+                lastFpsUpdate = currentTime;
+            }
+
+            gl.uniform3f(uLocs.iResolution, canvas.width, canvas.height, 1.0);
+            gl.uniform1f(uLocs.iTime, simulatedTime);
+            gl.uniform4f(uLocs.iMouse, mouseX, mouseY, 0.0, 0.0);
+
+            gl.uniform1f(uLocs.uHue, config.hue);
+            gl.uniform1f(uLocs.uEvolutionSpeed, config.evolutionSpeed);
+            gl.uniform1f(uLocs.uEvolutionAmount, config.evolutionAmount);
+            gl.uniform1f(uLocs.uRayFlowSpeed, config.rayFlowSpeed);
+            gl.uniform1f(uLocs.uBrightness, config.brightness);
+            gl.uniform1f(uLocs.uGlowIntensity, config.glow);
+            gl.uniform1f(uLocs.uStarDensity, config.stars);
+
+            const c1 = hexToRgb(config.color1);
+            const c2 = hexToRgb(config.color2);
+            const c3 = hexToRgb(config.color3);
+            gl.uniform3f(uLocs.uColor1, c1[0], c1[1], c1[2]);
+            gl.uniform3f(uLocs.uColor2, c2[0], c2[1], c2[2]);
+            gl.uniform3f(uLocs.uColor3, c3[0], c3[1], c3[2]);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(render);
+        }
+
+        updateUIFromConfig();
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a45.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

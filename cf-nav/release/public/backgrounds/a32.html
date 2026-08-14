@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音律水波视觉合成器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050b14;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        #webgl-canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* 自定义玻璃拟态控制台样式 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        /* 自定义滑块样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            height: 6px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #7dd3fc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 3px; }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #control-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-15px) scale(0.98);
+        }
+
+        #show-panel-btn.btn-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px) scale(0.95);
+        }
+    </style>
+</head>
+<body class="relative">
+
+    <!-- WebGL 画布 -->
+    <canvas id="webgl-canvas"></canvas>
+ <div id="control-panel" class="glass-panel absolute top-6 left-6 w-80 md:w-96 rounded-2xl text-white z-50 transition-all duration-300 shadow-2xl panel-hidden">
+        <!-- 面板头部 (拖拽区域) -->
+        <div id="panel-header" class="flex items-center justify-between p-4 border-b border-white/10 cursor-move rounded-t-2xl bg-white/5 hover:bg-white/10 transition-colors">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-sliders text-sky-400 text-lg"></i>
+                
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">Alt + H 隐/显</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="toggle-audio-btn" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 hover:text-sky-400 transition-colors" title="开启/关闭音效">
+                    <i class="fa-solid fa-volume-xmark text-sm" id="audio-icon"></i>
+                </button>
+                <button id="collapse-btn" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="折叠面板">
+                    <i class="fa-solid fa-chevron-up text-sm transition-transform duration-300" id="collapse-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 面板主内容区 (可折叠) -->
+        <div id="panel-body" class="p-4 space-y-4 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar transition-all duration-300">
+            
+            <!-- 节拍与速度 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-music mr-1.5 text-sky-400"></i>音乐节奏 (BPS)</span>
+                    <span id="val-bps" class="font-mono text-sky-400">3.5</span>
+                </div>
+                <input type="range" id="param-bps" min="1.0" max="8.0" step="0.1" value="3.5" class="w-full">
+            </div>
+
+            <!-- 水波振幅 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-water mr-1.5 text-cyan-400"></i>波纹振幅强度</span>
+                    <span id="val-ripple" class="font-mono text-cyan-400">1.0</span>
+                </div>
+                <input type="range" id="param-ripple" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full">
+            </div>
+
+            <!-- 水面折射力度 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-glasses mr-1.5 text-teal-400"></i>折射弯曲力度</span>
+                    <span id="val-refract" class="font-mono text-teal-400">0.15</span>
+                </div>
+                <input type="range" id="param-refract" min="0.0" max="0.5" step="0.01" value="0.15" class="w-full">
+            </div>
+
+            <!-- 水底焦散 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-sun mr-1.5 text-amber-400"></i>焦散光影强度</span>
+                    <span id="val-caustics" class="font-mono text-amber-400">0.60</span>
+                </div>
+                <input type="range" id="param-caustics" min="0.0" max="2.0" step="0.05" value="0.60" class="w-full">
+            </div>
+
+            <!-- 高光反射 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-indigo-400"></i>镜面高光亮度</span>
+                    <span id="val-specular" class="font-mono text-indigo-400">2.50</span>
+                </div>
+                <input type="range" id="param-specular" min="0.0" max="5.0" step="0.1" value="2.50" class="w-full">
+            </div>
+
+            <!-- 水底瓷砖密度 -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-300 font-medium"><i class="fa-solid fa-border-all mr-1.5 text-emerald-400"></i>水底瓷砖密度</span>
+                    <span id="val-grid" class="font-mono text-emerald-400">8.0</span>
+                </div>
+                <input type="range" id="param-grid" min="2.0" max="20.0" step="1.0" value="8.0" class="w-full">
+            </div>
+
+            <!-- 色彩模式选择 -->
+            <div class="space-y-2 pt-1 border-t border-white/10">
+                <label class="text-xs text-slate-300 font-medium block"><i class="fa-solid fa-palette mr-1.5 text-pink-400"></i>池水色彩主题</label>
+                <div class="grid grid-cols-2 gap-1.5 text-xs">
+                    <button class="color-theme-btn active px-2.5 py-1.5 rounded-lg bg-sky-500/30 border border-sky-400/50 text-white hover:bg-sky-500/40 transition text-left" data-theme="0">
+                        <i class="fa-solid fa-arrows-rotate mr-1 text-[10px]"></i>动态和弦 (默认)
+                    </button>
+                    <button class="color-theme-btn px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition text-left" data-theme="1">
+                        <i class="fa-solid fa-circle mr-1 text-[10px] text-blue-900"></i>极深深海
+                    </button>
+                    <button class="color-theme-btn px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition text-left" data-theme="2">
+                        <i class="fa-solid fa-circle mr-1 text-[10px] text-emerald-600"></i>翡翠湖绿
+                    </button>
+                    <button class="color-theme-btn px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition text-left" data-theme="3">
+                        <i class="fa-solid fa-circle mr-1 text-[10px] text-purple-500"></i>梦幻晚霞
+                    </button>
+                </div>
+            </div>
+
+            <!-- 重置按钮 -->
+            <div class="pt-2">
+                <button id="reset-btn" class="w-full py-2 bg-white/5 hover:bg-white/10 active:bg-white/20 border border-white/10 rounded-xl text-xs font-medium text-slate-300 hover:text-white transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i> 恢复默认设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 【修改点2】：移除原本的 hidden 类，让它默认显示，并加上 transition-all 支持丝滑动画 -->
+    <button id="show-panel-btn" class="fixed top-6 left-6 z-40 px-3 py-2 rounded-xl glass-panel text-xs text-sky-300 hover:text-white flex items-center gap-2 shadow-lg border border-white/10 transition-all duration-300 hover:scale-105">
+        <i class="fa-solid fa-sliders"></i>
+            </button>
+
+    <!-- 交互提示 Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full glass-panel text-xs text-slate-200 pointer-events-none transition-opacity duration-500 opacity-0 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-sky-400"></i>
+        <span id="toast-msg">已播放音频，画音同步进行中...</span>
+    </div>
+
+    <script>
+        // WebGL 上下文初始化与片元着色器定义
+        const canvas = document.getElementById('webgl-canvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            alert('您的浏览器不支持 WebGL2，请更换现代浏览器体验！');
+        }
+
+        const vsSource = `#version 300 es
+        in vec2 position;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+        }`;
+
+        const fsSource = `#version 300 es
+        precision highp float;
+
+        out vec4 fragColor;
+        uniform vec3 iResolution;
+        uniform float iTime;
+        
+        uniform float uBps;
+        uniform float uRippleIntensity;
+        uniform float uRefraction;
+        uniform float uCaustics;
+        uniform float uSpecular;
+        uniform float uGridScale;
+        uniform int uColorTheme;
+
+        vec2 hash12(float t) {
+            float x = fract(sin(t * 12.9898) * 43758.5453);
+            float y = fract(sin(t * 78.233) * 43758.5453);
+            return vec2(x, y) * 2.0 - 1.0;
+        }
+
+        float getMelody(int s) {
+            int m = (s / 8) % 4;
+            int step = s % 8;
+            if((m==0 && step==0) || (m==0 && step==6) || 
+               (m==1 && step==0) || (m==1 && step==5) || 
+               (m==2 && step==0) || 
+               (m==3 && step==0) || (m==3 && step==4)) return 1.0;
+            return 0.0;
+        }
+
+        float getWaterHeight(vec2 p, float time) {
+            float height = 0.0;
+            float bps = uBps;
+            float stepF = time * bps;
+            int currentStep = int(floor(stepF));
+
+            for(int i = 0; i < 12; i++) {
+                int s = currentStep - i;
+                if(s < 0) continue;
+                
+                float age = float(i) / bps + fract(stepF) / bps;
+                int beat = s % 8;
+
+                float intensity = 0.0;
+                float baseRadius = 0.0;
+                
+                float isMelody = getMelody(s);
+                if (isMelody > 0.5) {
+                    intensity = 1.2;
+                    baseRadius = age * 0.5;
+                } else if (beat == 3 || beat == 6) {
+                    intensity = 0.6;
+                    baseRadius = age * 0.4;
+                } else {
+                    intensity = 0.15;
+                    baseRadius = age * 0.3;
+                }
+
+                intensity *= uRippleIntensity;
+
+                vec2 pos = hash12(float(s));
+                pos.x *= iResolution.x / iResolution.y;
+
+                float dist = length(p - pos);
+                float wave = sin((dist - baseRadius) * (40.0 + intensity * 10.0));
+                float envelope = smoothstep(0.1, 0.0, abs(dist - baseRadius)) * exp(-age * (2.0 - intensity*0.5));
+
+                height += wave * envelope * intensity;
+            }
+
+            height += sin(p.x * 2.0 + time * 0.5) * cos(p.y * 2.0 + time * 0.3) * 0.005 * uRippleIntensity;
+            return height;
+        }
+
+        void main() {
+            vec2 fragCoord = gl_FragCoord.xy;
+            vec2 uv = fragCoord / iResolution.xy;
+            vec2 p = -1.0 + 2.0 * uv;
+            p.x *= iResolution.x / iResolution.y;
+            float time = iTime;
+
+            vec2 eps = vec2(0.015, 0.0);
+            float h0 = getWaterHeight(p, time);
+            float hX = getWaterHeight(p + eps.xy, time);
+            float hY = getWaterHeight(p + eps.yx, time);
+            vec3 normal = normalize(vec3(h0 - hX, h0 - hY, 0.06));
+
+            vec2 refUv = uv + normal.xy * uRefraction;
+
+            float bps = uBps;
+            int currentStep = int(floor(time * bps));
+            int m = (currentStep / 8) % 4;
+            
+            vec3 colA, colB;
+            if(uColorTheme == 0) {
+                if(m == 0)      { colA = vec3(0.0, 0.4, 0.55); colB = vec3(0.3, 0.8, 0.9); } 
+                else if(m == 1) { colA = vec3(0.05, 0.45, 0.5); colB = vec3(0.4, 0.9, 0.8); } 
+                else if(m == 2) { colA = vec3(0.0, 0.3, 0.6);  colB = vec3(0.2, 0.7, 0.95); } 
+                else            { colA = vec3(0.1, 0.25, 0.6); colB = vec3(0.4, 0.6, 0.95); } 
+            } else if(uColorTheme == 1) {
+                colA = vec3(0.01, 0.08, 0.22); colB = vec3(0.05, 0.35, 0.65); 
+            } else if(uColorTheme == 2) {
+                colA = vec3(0.02, 0.35, 0.25); colB = vec3(0.2, 0.85, 0.6); 
+            } else if(uColorTheme == 3) {
+                colA = vec3(0.3, 0.1, 0.4); colB = vec3(0.9, 0.4, 0.6); 
+            }
+            
+            vec3 bgCol = mix(colA, colB, refUv.y);
+            
+            vec2 grid = fract(refUv * uGridScale);
+            float lines = smoothstep(0.95, 1.0, grid.x) + smoothstep(0.95, 1.0, grid.y);
+            bgCol = mix(bgCol, vec3(0.8, 1.0, 1.0), lines * 0.15);
+
+            vec2 cp = refUv * 6.0;
+            float c = 0.0;
+            for(int i = 0; i < 3; i++) {
+                cp += sin(cp.yx * 1.2 + time * 0.4);
+                c += sin(cp.x) * cos(cp.y);
+                cp *= 1.3;
+            }
+            bgCol += vec3(0.3, 0.8, 0.9) * smoothstep(0.0, 1.5, c) * uCaustics;
+
+            vec3 lightDir = normalize(vec3(1.0, 2.0, 1.5));
+            vec3 viewDir = vec3(0.0, 0.0, 1.0);
+            vec3 halfVec = normalize(lightDir + viewDir);
+
+            float spec = pow(max(dot(normal, halfVec), 0.0), 300.0);
+            float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 4.0);
+
+            vec3 finalCol = mix(bgCol, vec3(0.9, 0.95, 1.0), fresnel * 0.6) + spec * uSpecular;
+            finalCol *= 1.0 - 0.25 * length(p); 
+            finalCol = pow(finalCol, vec3(0.85)); 
+
+            fragColor = vec4(finalCol, 1.0);
+        }`;
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,  1, -1, -1,  1,
+            -1,  1,  1, -1,  1,  1,
+        ]), gl.STATIC_DRAW);
+
+        const positionLocation = gl.getAttribLocation(program, 'position');
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        const uniforms = {
+            iResolution: gl.getUniformLocation(program, 'iResolution'),
+            iTime: gl.getUniformLocation(program, 'iTime'),
+            uBps: gl.getUniformLocation(program, 'uBps'),
+            uRippleIntensity: gl.getUniformLocation(program, 'uRippleIntensity'),
+            uRefraction: gl.getUniformLocation(program, 'uRefraction'),
+            uCaustics: gl.getUniformLocation(program, 'uCaustics'),
+            uSpecular: gl.getUniformLocation(program, 'uSpecular'),
+            uGridScale: gl.getUniformLocation(program, 'uGridScale'),
+            uColorTheme: gl.getUniformLocation(program, 'uColorTheme'),
+        };
+
+        const params = {
+            bps: 3.5, ripple: 1.0, refract: 0.15, caustics: 0.60,
+            specular: 2.50, grid: 8.0, colorTheme: 0
+        };
+
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+                this.isPlaying = false;
+                this.lastStep = -1;
+                this.chords = [
+                    [174.61, 220.00, 261.63, 329.63], 
+                    [196.00, 246.94, 293.66, 329.63], 
+                    [164.81, 196.00, 246.94, 293.66], 
+                    [220.00, 261.63, 329.63, 392.00]  
+                ];
+            }
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+            toggle() {
+                this.init();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                this.isPlaying = !this.isPlaying;
+                return this.isPlaying;
+            }
+            playTone(freq, type = 'sine', duration = 0.5, gainVal = 0.1) {
+                if (!this.isPlaying || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            }
+            update(time, bps) {
+                if (!this.isPlaying) return;
+                const stepF = time * bps;
+                const currentStep = Math.floor(stepF);
+                if (currentStep !== this.lastStep) {
+                    this.lastStep = currentStep;
+                    const m = Math.floor(currentStep / 8) % 4;
+                    const step = currentStep % 8;
+                    const isMelody = ((m===0 && step===0) || (m===0 && step===6) || 
+                                      (m===1 && step===0) || (m===1 && step===5) || 
+                                      (m===2 && step===0) || 
+                                      (m===3 && step===0) || (m===3 && step===4));
+                    if (isMelody) {
+                        const chord = this.chords[m];
+                        this.playTone(chord[step % chord.length] * 2.0, 'sine', 1.2, 0.25);
+                    } else if (step === 3 || step === 6) {
+                        const chord = this.chords[m];
+                        this.playTone(chord[(step + 1) % chord.length] * 1.5, 'triangle', 0.6, 0.12);
+                    } else {
+                        const chord = this.chords[m];
+                        this.playTone(chord[step % chord.length], 'sine', 0.4, 0.04);
+                    }
+                }
+            }
+        }
+
+        const audioSynth = new SoundSynth();
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let startTime = performance.now();
+
+        function render() {
+            const currentTime = (performance.now() - startTime) * 0.001;
+            audioSynth.update(currentTime, params.bps);
+            gl.useProgram(program);
+            gl.uniform3f(uniforms.iResolution, canvas.width, canvas.height, 1.0);
+            gl.uniform1f(uniforms.iTime, currentTime);
+            gl.uniform1f(uniforms.uBps, params.bps);
+            gl.uniform1f(uniforms.uRippleIntensity, params.ripple);
+            gl.uniform1f(uniforms.uRefraction, params.refract);
+            gl.uniform1f(uniforms.uCaustics, params.caustics);
+            gl.uniform1f(uniforms.uSpecular, params.specular);
+            gl.uniform1f(uniforms.uGridScale, params.grid);
+            gl.uniform1i(uniforms.uColorTheme, params.colorTheme);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+
+        const panel = document.getElementById('control-panel');
+        const panelHeader = document.getElementById('panel-header');
+        const panelBody = document.getElementById('panel-body');
+        const collapseBtn = document.getElementById('collapse-btn');
+        const collapseIcon = document.getElementById('collapse-icon');
+        const showPanelBtn = document.getElementById('show-panel-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const toggleAudioBtn = document.getElementById('toggle-audio-btn');
+        const audioIcon = document.getElementById('audio-icon');
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+
+        function showToast(msg) {
+            toastMsg.textContent = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+
+        function bindSlider(id, paramKey, valId, formatFn = (v) => v) {
+            const slider = document.getElementById(id);
+            const valSpan = document.getElementById(valId);
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                params[paramKey] = val;
+                valSpan.textContent = formatFn(val);
+            });
+        }
+
+        bindSlider('param-bps', 'bps', 'val-bps', v => v.toFixed(1));
+        bindSlider('param-ripple', 'ripple', 'val-ripple', v => v.toFixed(1));
+        bindSlider('param-refract', 'refract', 'val-refract', v => v.toFixed(2));
+        bindSlider('param-caustics', 'caustics', 'val-caustics', v => v.toFixed(2));
+        bindSlider('param-specular', 'specular', 'val-specular', v => v.toFixed(2));
+        bindSlider('param-grid', 'grid', 'val-grid', v => v.toFixed(1));
+
+        const themeBtns = document.querySelectorAll('.color-theme-btn');
+        themeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                themeBtns.forEach(b => {
+                    b.classList.remove('bg-sky-500/30', 'border-sky-400/50', 'text-white');
+                    b.classList.add('bg-white/5', 'border-white/10', 'text-slate-300');
+                });
+                btn.classList.remove('bg-white/5', 'border-white/10', 'text-slate-300');
+                btn.classList.add('bg-sky-500/30', 'border-sky-400/50', 'text-white');
+                params.colorTheme = parseInt(btn.dataset.theme);
+            });
+        });
+
+        resetBtn.addEventListener('click', () => {
+            params.bps = 3.5; params.ripple = 1.0; params.refract = 0.15;
+            params.caustics = 0.60; params.specular = 2.50; params.grid = 8.0; params.colorTheme = 0;
+            document.getElementById('param-bps').value = 3.5; document.getElementById('val-bps').textContent = '3.5';
+            document.getElementById('param-ripple').value = 1.0; document.getElementById('val-ripple').textContent = '1.0';
+            document.getElementById('param-refract').value = 0.15; document.getElementById('val-refract').textContent = '0.15';
+            document.getElementById('param-caustics').value = 0.60; document.getElementById('val-caustics').textContent = '0.60';
+            document.getElementById('param-specular').value = 2.50; document.getElementById('val-specular').textContent = '2.50';
+            document.getElementById('param-grid').value = 8.0; document.getElementById('val-grid').textContent = '8.0';
+            themeBtns[0].click();
+            showToast('参数已恢复为默认状态');
+        });
+
+        let isCollapsed = false;
+        collapseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                panelBody.classList.add('hidden');
+                collapseIcon.classList.remove('fa-chevron-up');
+                collapseIcon.classList.add('fa-chevron-down');
+            } else {
+                panelBody.classList.remove('hidden');
+                collapseIcon.classList.remove('fa-chevron-down');
+                collapseIcon.classList.add('fa-chevron-up');
+            }
+        });
+
+        toggleAudioBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const playing = audioSynth.toggle();
+            if (playing) {
+                audioIcon.classList.remove('fa-volume-xmark');
+                audioIcon.classList.add('fa-volume-high', 'text-sky-400');
+                showToast('已开启音效逻辑');
+            } else {
+                audioIcon.classList.remove('fa-volume-high', 'text-sky-400');
+                audioIcon.classList.add('fa-volume-xmark');
+                showToast('音效已关闭');
+            }
+        });
+
+        // 【修改点3】：使用自定义的 panel-hidden 和 btn-hidden 类，配合 CSS 实现丝滑显隐动画
+        function togglePanelVisibility() {
+            if (panel.classList.contains('panel-hidden')) {
+                panel.classList.remove('panel-hidden');
+                showPanelBtn.classList.add('btn-hidden');
+                showToast('已显示控制面板');
+            } else {
+                panel.classList.add('panel-hidden');
+                showPanelBtn.classList.remove('btn-hidden');
+                showToast('已隐藏控制面板 (按下 Alt+H 恢复)');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key.toLowerCase() === 'h' || e.code === 'KeyH')) {
+                e.preventDefault();
+                togglePanelVisibility();
+            }
+        });
+
+        showPanelBtn.addEventListener('click', togglePanelVisibility);
+
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        function startDrag(e) {
+            if (e.target.closest('button') || e.target.closest('input')) return;
+            isDragging = true;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const rect = panel.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+            panel.style.bottom = 'auto';
+            panel.style.right = 'auto';
+        }
+
+        function onDrag(e) {
+            if (!isDragging) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            let left = clientX - dragOffsetX;
+            let top = clientY - dragOffsetY;
+            const maxLeft = window.innerWidth - panel.offsetWidth;
+            const maxTop = window.innerHeight - panel.offsetHeight;
+            left = Math.max(10, Math.min(left, maxLeft - 10));
+            top = Math.max(10, Math.min(top, maxTop - 10));
+            panel.style.left = `${left}px`;
+            panel.style.top = `${top}px`;
+        }
+
+        function stopDrag() { isDragging = false; }
+
+        panelHeader.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('mouseup', stopDrag);
+        panelHeader.addEventListener('touchstart', startDrag, { passive: true });
+        window.addEventListener('touchmove', onDrag, { passive: true });
+        window.addEventListener('touchend', stopDrag);
+
+        window.addEventListener('click', () => {
+            if (audioSynth.ctx && audioSynth.ctx.state === 'suspended') audioSynth.ctx.resume();
+        }, { once: true });
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a32.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

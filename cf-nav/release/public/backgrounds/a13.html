@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星空旋律 Shader 预览 (彻底无接缝版)</title>
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入 Tailwind CSS 带来现代高颜值 UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        /* 底部提示文字 */
+        #ui-hint {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            pointer-events: none;
+            letter-spacing: 1px;
+            transition: opacity 0.3s ease;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.45);
+            padding: 8px 18px;
+            border-radius: 20px;
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none !important;
+        }
+
+        /* 极简发光现代滑杆样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 10px #0284c7, 0 0 20px rgba(56, 189, 248, 0.6);
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+            background: #7dd3fc;
+            box-shadow: 0 0 14px #0284c7, 0 0 24px rgba(125, 211, 252, 0.9);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border: none;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 10px #0284c7, 0 0 20px rgba(56, 189, 248, 0.6);
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        /* 自定义 Color Input */
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="ui-hint">💡 提示：按 <b>Alt + H</b> 显示/隐藏中文控制台</div>
+
+    <!-- 可拖拽现代化控制台面板 -->
+    <div id="gui-container" class="hidden fixed top-6 right-6 w-80 bg-slate-950/75 backdrop-blur-xl text-slate-100 rounded-2xl border border-white/15 shadow-2xl z-50 select-none overflow-hidden transition-opacity duration-200">
+        <!-- 抓取拖拽头 -->
+        <div id="gui-header" class="px-4 py-3 bg-white/5 border-b border-white/10 flex items-center justify-between cursor-grab active:cursor-grabbing">
+            <div class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-sky-400 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                <span class="text-sm font-semibold tracking-wide text-slate-100">星空旋律 控制台</span>
+            </div>
+            <button id="gui-close-btn" class="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- 面板参数内容 -->
+        <div class="p-4 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+            <!-- 音乐与旋律 -->
+            <div class="space-y-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-sky-400/90">🎵 音乐与旋律</div>
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">BPM (节拍速度)</span>
+                        <span id="val-bpm" class="font-mono text-sky-300 bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/50">72</span>
+                    </div>
+                    <input type="range" id="input-bpm" min="30" max="150" step="1" value="72">
+                </div>
+            </div>
+
+            <hr class="border-white/10">
+
+            <!-- 天空颜色 -->
+            <div class="space-y-2.5">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-purple-400/90">🌌 天空渐变颜色</div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-300">底部天空颜色</span>
+                    <input type="color" id="input-skyLower" value="#05020f" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent">
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-300">顶部天空颜色</span>
+                    <input type="color" id="input-skyUpper" value="#010207" class="w-7 h-7 rounded-lg cursor-pointer bg-transparent">
+                </div>
+            </div>
+
+            <hr class="border-white/10">
+
+            <!-- 星空与星云 -->
+            <div class="space-y-3">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-amber-400/90">✨ 星空与星云密度</div>
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">星云强度</span>
+                        <span id="val-nebulaDensity" class="font-mono text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">0.70</span>
+                    </div>
+                    <input type="range" id="input-nebulaDensity" min="0.0" max="2.0" step="0.01" value="0.70">
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">近景繁星密度</span>
+                        <span id="val-starDensity1" class="font-mono text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">0.895</span>
+                    </div>
+                    <input type="range" id="input-starDensity1" min="0.0" max="1.0" step="0.005" value="0.895">
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">远景繁星密度</span>
+                        <span id="val-starDensity2" class="font-mono text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">0.967</span>
+                    </div>
+                    <input type="range" id="input-starDensity2" min="0.0" max="1.0" step="0.005" value="0.967">
+                </div>
+            </div>
+
+            <hr class="border-white/10">
+
+            <!-- 后期处理 -->
+            <div class="space-y-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-400/90">🎬 后期特效</div>
+                <div class="space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-300">边缘暗角强度</span>
+                        <span id="val-vignette" class="font-mono text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/50">0.60</span>
+                    </div>
+                    <input type="range" id="input-vignette" min="0.0" max="1.0" step="0.01" value="0.60">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        
+        // 设置屏幕像素比
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        const geometry = new THREE.PlaneGeometry(2, 2);
+
+        const vertexShader = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        const fragmentShader = `
+            uniform vec3 iResolution;
+            uniform float iTime;
+            
+            // GUI 动态控制变量
+            uniform float u_bpm;
+            uniform vec3 u_skyLower;
+            uniform vec3 u_skyUpper;
+            uniform float u_nebulaDensity;
+            uniform float u_starDensity1;
+            uniform float u_starDensity2;
+            uniform float u_vignette;
+
+            #define TAU 6.28318530718
+
+            // 基于 GLSL 3.0 位运算的高阶 32 位整数 Hash (彻底消除斜向虚线/黑点接缝)
+            float hash21(vec2 p)
+            {
+                ivec2 ip = ivec2(floor(p + 100000.0));
+                uvec2 q = uvec2(ip) * uvec2(1597334677u, 3812015801u);
+                uint n = (q.x ^ q.y) * 1597334677u;
+                return float(n) * (1.0 / 4294967296.0);
+            }
+
+            // 2D 噪声函数
+            float noise21(vec2 p)
+            {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(
+                    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+                    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x),
+                    f.y
+                );
+            }
+
+            // 分形分形布朗运动 (FBM)
+            float fbm(vec2 p)
+            {
+                float value = 0.0;
+                float amplitude = 0.52;
+                mat2 octave = mat2(1.72, 1.18, -1.18, 1.72);
+                for(int i = 0; i < 5; i++)
+                {
+                    value += amplitude * noise21(p);
+                    p = octave * p + vec2(5.7, 5.7);
+                    amplitude *= 0.48;
+                }
+                return value;
+            }
+
+            mat2 rotate2D(float a)
+            {
+                float c = cos(a);
+                float s = sin(a);
+                return mat2(c, -s, s, c);
+            }
+
+            float melodyCell(int index)
+            {
+                const float R = -1.0;
+                const float H = -2.0;
+                float notes[48] = float[48](
+                    62.0,H,H, 64.0,H,66.0,
+                    69.0,H,H, 66.0,H,R,
+                    64.0,H,66.0, 69.0,H,71.0,
+                    69.0,H,H, 66.0,H,H,
+                    74.0,H,H, 71.0,H,69.0,
+                    66.0,H,69.0, 71.0,H,74.0,
+                    76.0,H,74.0, 71.0,H,69.0,
+                    66.0,H,64.0, 62.0,H,R
+                );
+                return notes[index];
+            }
+
+            vec3 ACESFilm(vec3 x)
+            {
+                float a = 2.51;
+                float b = 0.03;
+                float c = 2.43;
+                float d = 0.59;
+                float e = 0.14;
+                return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+            }
+
+            // 3x3 邻域采样繁星层 (结合物理屏幕像素尺寸与坐标正平移)
+            vec3 starLayer(
+                vec2 p,
+                float scale,
+                float seed,
+                float density,
+                float time
+            )
+            {
+                vec2 grid = (p + vec2(1000.0, 1000.0)) * scale;
+                vec2 baseCell = floor(grid);
+                vec3 acc = vec3(0.0);
+                
+                float pixelSize = (2.0 / iResolution.y) * scale;
+
+                for (int y = -1; y <= 1; y++) {
+                    for (int x = -1; x <= 1; x++) {
+                        vec2 offset = vec2(float(x), float(y));
+                        vec2 cell = baseCell + offset;
+                        vec2 local = (grid - cell) - 0.5;
+
+                        float starHash = hash21(cell + vec2(seed, seed));
+                        vec2 jitter = (vec2(
+                            hash21(cell + vec2(7.1 + seed, 3.7 + seed)),
+                            hash21(cell + vec2(2.4 + seed, 9.3 + seed))
+                        ) - 0.5) * 0.66;
+                        local -= jitter;
+
+                        float exists = step(density, starHash);
+                        float size = mix(0.018, 0.055, pow(starHash, 10.0));
+                        float distanceToStar = length(local);
+                        
+                        float aa = max(pixelSize * 1.25, 0.003);
+                        float core = 1.0 - smoothstep(size, size + aa, distanceToStar);
+                        float glow = exp(-52.0 * distanceToStar * distanceToStar) * pow(starHash, 18.0);
+
+                        float twinkle = pow(
+                            0.5 + 0.5 * sin(
+                                time * (0.48 + 1.21 * starHash) + starHash * TAU + seed
+                            ),
+                            22.0
+                        );
+
+                        vec3 idleColor = mix(
+                            vec3(0.72, 0.82, 1.0),
+                            vec3(1.0, 0.78, 0.55),
+                            hash21(cell + vec2(41.0 + seed, 13.0 + seed))
+                        );
+
+                        float hero = pow(starHash, 42.0);
+                        float rays = (
+                            exp(-90.0 * abs(local.x)) +
+                            exp(-90.0 * abs(local.y))
+                        ) * exp(-10.0 * distanceToStar) * hero;
+
+                        acc += exists * idleColor * (
+                            core * (0.15 + 0.43 * twinkle) +
+                            glow * (0.018 + 0.035 * twinkle) +
+                            rays * 0.030
+                        );
+                    }
+                }
+                return acc;
+            }
+
+            // 微观星尘层 (3x3 邻域无缝渲染)
+            vec3 stellarDustLayer(vec2 p, float band, float time)
+            {
+                vec2 st = (p + vec2(1000.0, 1000.0) + vec2(0.003 * time, 0.003 * time)) * 200.0;
+                vec2 id = floor(st);
+                float dustAcc = 0.0;
+
+                for (int y = -1; y <= 1; y++) {
+                    for (int x = -1; x <= 1; x++) {
+                        vec2 g = id + vec2(float(x), float(y));
+                        float h = hash21(g + vec2(63.0, 63.0));
+                        if (h > 0.991) {
+                            vec2 jitter = (vec2(
+                                hash21(g + vec2(71.0, 71.0)),
+                                hash21(g + vec2(83.0, 83.0))
+                            ) - 0.5) * 0.7;
+                            vec2 pos = g + 0.5 + jitter;
+                            float d = length(st - pos);
+                            float particle = smoothstep(0.38, 0.0, d);
+                            dustAcc += particle * (0.35 + 0.65 * pow(h, 24.0));
+                        }
+                    }
+                }
+                return vec3(0.50, 0.66, 1.0) * dustAcc * band * 0.38;
+            }
+
+            vec3 evalSingleSparkle(
+                vec2 p,
+                int index,
+                float phase
+            )
+            {
+                float currentCell = melodyCell(index);
+                if (currentCell < 0.0) return vec3(0.0);
+
+                float noteOnset = step(0.0, currentCell);
+                float pitchT = clamp((currentCell - 62.0) / 14.0, 0.0, 1.0);
+                float seed = float(index) * 19.17;
+
+                vec2 randomPosition = vec2(
+                    hash21(vec2(seed, 1.7)),
+                    hash21(vec2(seed, 8.3))
+                );
+                vec2 center = vec2(
+                    mix(-0.55, 0.55, pitchT) + (randomPosition.x - 0.5) * 0.28,
+                    mix(-0.38, 0.38, randomPosition.y)
+                );
+
+                vec2 delta = p - center;
+                float distanceToStar = length(delta);
+
+                float radius = mix(0.0008, 0.0017, hash21(vec2(seed, 15.4)));
+                float pixelSize = 2.0 / iResolution.y;
+                float aa = max(pixelSize * 1.1, 0.00055);
+                float core = 1.0 - smoothstep(radius, radius + aa, distanceToStar);
+                float glow = exp(-14000.0 * distanceToStar * distanceToStar);
+
+                float envelope = noteOnset
+                    * smoothstep(0.0, 0.070, phase)
+                    * exp(-4.2 * phase);
+
+                vec3 noteColor = mix(
+                    vec3(1.10, 0.58, 0.28),
+                    vec3(0.45, 0.78, 1.20),
+                    pitchT
+                );
+
+                return noteColor * envelope * (
+                    core * 1.05 + glow * 0.11
+                );
+            }
+
+            vec3 melodySparkle(
+                vec2 p,
+                int stepIndex,
+                float notePhase
+            )
+            {
+                vec3 col = evalSingleSparkle(p, stepIndex, notePhase);
+                int prevIndex = (stepIndex + 47) % 48;
+                col += evalSingleSparkle(p, prevIndex, notePhase + 1.0);
+                return col;
+            }
+
+            void mainImage(out vec4 fragColor, in vec2 fragCoord)
+            {
+                // 此时 iResolution 匹配 WebGL 渲染缓冲区的真实像素大小
+                vec2 uv = fragCoord / iResolution.xy;
+                float aspect = iResolution.x / iResolution.y;
+                vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
+
+                // 节拍时间计算
+                float bps = u_bpm / 60.0;
+                float loop_beats = 24.0;
+                float loop_seconds = loop_beats / bps;
+
+                float loopT = mod(iTime, loop_seconds);
+                float eighth = loopT * bps * 2.0;
+                int stepIndex = int(floor(eighth)) % 48;
+                float notePhase = fract(eighth);
+
+                // 天空渐变 (uv.y 精确落在 [0, 1] 区间)
+                vec3 col = mix(u_skyLower, u_skyUpper, smoothstep(0.0, 1.0, uv.y));
+
+                // 星云运算
+                vec2 nebulaP = rotate2D(-0.47) * p;
+                nebulaP += vec2(iTime * 0.003, -iTime * 0.001);
+                float bend = 0.10 * sin(nebulaP.x * 1.35 - 0.7);
+                float bandDistance = abs(nebulaP.y + bend);
+                float band = exp(-3.6 * bandDistance * bandDistance);
+                float largeCloud = fbm(nebulaP * 1.55 + vec2(4.1, 4.1));
+                float fineCloud = fbm(nebulaP * 3.8 - vec2(7.3, 7.3));
+                float nebula = band * smoothstep(0.29, 0.82, largeCloud * 0.68 + fineCloud * 0.42);
+
+                float colorNoise = fbm(nebulaP * 1.18 + vec2(12.0, 12.0));
+                vec3 nebulaColor = mix(
+                    vec3(0.18, 0.07, 0.34),
+                    vec3(0.05, 0.24, 0.46),
+                    colorNoise
+                );
+                
+                col += nebulaColor * nebula * u_nebulaDensity;
+
+                // 遮罩尘埃
+                float dust = band * smoothstep(0.52, 0.78, fbm(nebulaP * 5.2 + vec2(2.0, 2.0)));
+                col *= 1.0 - 0.34 * dust;
+
+                // 繁星层
+                col += starLayer(p, 43.0, 3.7, u_starDensity1, iTime);
+                col += starLayer(p, 91.0, 17.2, u_starDensity2, iTime * 1.07) * 0.72;
+
+                // 旋律闪光
+                col += melodySparkle(p, stepIndex, notePhase);
+
+                // 微观星空尘埃
+                col += stellarDustLayer(p, band, iTime);
+
+                // 胶片颗粒
+                float grain = hash21(fragCoord + vec2(fract(iTime) * 173.1, fract(iTime) * 173.1)) - 0.5;
+                col += grain * 0.010;
+
+                // 边缘暗角（此时 uv.y 在全屏均严格 ≤ 1.0，不会发生截断）
+                float vignette = uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y);
+                vignette = pow(clamp(16.0 * vignette, 0.0, 1.0), 0.18);
+                col *= mix(u_vignette, 1.0, vignette);
+
+                col = ACESFilm(max(col, 0.0));
+                col = pow(col, vec3(1.0 / 2.2));
+                fragColor = vec4(col, 1.0);
+            }
+
+            out vec4 finalColor;
+            void main() {
+                mainImage(finalColor, gl_FragCoord.xy);
+            }
+        `;
+
+        // 使用 drawingBufferSize 准确初始化 iResolution Uniform
+        const drawingSize = new THREE.Vector2();
+        renderer.getDrawingBufferSize(drawingSize);
+
+        const uniforms = {
+            iResolution: { value: new THREE.Vector3(drawingSize.x, drawingSize.y, 1) },
+            iTime: { value: 0.0 },
+            u_bpm: { value: 72.0 },
+            u_skyLower: { value: new THREE.Vector3(0.018, 0.008, 0.060) },
+            u_skyUpper: { value: new THREE.Vector3(0.002, 0.006, 0.028) },
+            u_nebulaDensity: { value: 0.70 },
+            u_starDensity1: { value: 0.895 },
+            u_starDensity2: { value: 0.967 },
+            u_vignette: { value: 0.60 }
+        };
+
+        const material = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: uniforms,
+            glslVersion: THREE.GLSL3
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        const guiContainer = document.getElementById('gui-container');
+        const guiHeader = document.getElementById('gui-header');
+        const guiCloseBtn = document.getElementById('gui-close-btn');
+        const uiHint = document.getElementById('ui-hint');
+
+        let isGuiVisible = false;
+
+        // 绑定所有全新滑杆与颜色输入框
+        function bindControl(inputId, valId, callback, isColor = false) {
+            const inputEl = document.getElementById(inputId);
+            const valEl = valId ? document.getElementById(valId) : null;
+
+            inputEl.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (valEl) valEl.textContent = val;
+                if (isColor) {
+                    const color = new THREE.Color(val);
+                    callback(color);
+                } else {
+                    callback(parseFloat(val));
+                }
+            });
+        }
+
+        bindControl('input-bpm', 'val-bpm', v => uniforms.u_bpm.value = v);
+        bindControl('input-skyLower', null, col => uniforms.u_skyLower.value.set(col.r, col.g, col.b), true);
+        bindControl('input-skyUpper', null, col => uniforms.u_skyUpper.value.set(col.r, col.g, col.b), true);
+        bindControl('input-nebulaDensity', 'val-nebulaDensity', v => uniforms.u_nebulaDensity.value = v);
+        bindControl('input-starDensity1', 'val-starDensity1', v => uniforms.u_starDensity1.value = v);
+        bindControl('input-starDensity2', 'val-starDensity2', v => uniforms.u_starDensity2.value = v);
+        bindControl('input-vignette', 'val-vignette', v => uniforms.u_vignette.value = v);
+
+        // 控制台开启/隐藏逻辑
+        function toggleGui() {
+            isGuiVisible = !isGuiVisible;
+            if (isGuiVisible) {
+                guiContainer.classList.remove('hidden');
+                uiHint.classList.add('hidden');
+            } else {
+                guiContainer.classList.add('hidden');
+                uiHint.classList.remove('hidden');
+            }
+        }
+
+        guiCloseBtn.addEventListener('click', toggleGui);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+                toggleGui();
+                e.preventDefault();
+            }
+        });
+
+        // 顺畅的控制台面板拖拽逻辑 (支持 Mouse 与 Touch)
+        let isDragging = false;
+        let dragStartX = 0, dragStartY = 0;
+        let initialLeft = 0, initialTop = 0;
+
+        guiHeader.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#gui-close-btn')) return;
+            isDragging = true;
+            guiHeader.setPointerCapture(e.pointerId);
+
+            const rect = guiContainer.getBoundingClientRect();
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            // 清理 right 定位以启用精确的 left/top 绝对拖拽
+            guiContainer.style.right = 'auto';
+            guiContainer.style.left = `${initialLeft}px`;
+            guiContainer.style.top = `${initialTop}px`;
+        });
+
+        guiHeader.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            let newLeft = initialLeft + dx;
+            let newTop = initialTop + dy;
+
+            // 屏幕边缘碰撞锁止，防止拖出屏幕
+            const maxLeft = window.innerWidth - guiContainer.offsetWidth;
+            const maxTop = window.innerHeight - guiContainer.offsetHeight;
+
+            newLeft = Math.max(12, Math.min(newLeft, maxLeft - 12));
+            newTop = Math.max(12, Math.min(newTop, maxTop - 12));
+
+            guiContainer.style.left = `${newLeft}px`;
+            guiContainer.style.top = `${newTop}px`;
+        });
+
+        const stopDragging = (e) => {
+            if (isDragging) {
+                isDragging = false;
+                try { guiHeader.releasePointerCapture(e.pointerId); } catch(err) {}
+            }
+        };
+
+        guiHeader.addEventListener('pointerup', stopDragging);
+        guiHeader.addEventListener('pointercancel', stopDragging);
+
+        // 窗口大小调整时更新 Render Buffer 物理像素尺寸
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            
+            renderer.getDrawingBufferSize(drawingSize);
+            uniforms.iResolution.value.set(drawingSize.x, drawingSize.y, 1);
+        });
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            uniforms.iTime.value = clock.getElapsedTime();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流体艺术 · WebGL Shader</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  }
+  #glcanvas {
+    display: block;
+    width: 100vw; height: 100vh;
+    cursor: crosshair;
+  }
+
+  /* ============ 控制台 ============ */
+  #console {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 300px;
+    background: rgba(18, 20, 30, 0.86);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #e8e8e8;
+    z-index: 1000;
+    user-select: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  #console.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-20px);
+  }
+  #console-header {
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.05);
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  #console-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  #console-toggle {
+    cursor: pointer;
+    color: #aaa;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: color 0.2s, background 0.2s;
+  }
+  #console-toggle:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  #console-body {
+    padding: 14px;
+    max-height: 70vh;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  #console-body.collapsed {
+    max-height: 0;
+    padding: 0 14px;
+    overflow: hidden;
+  }
+  #console-body::-webkit-scrollbar { width: 4px; }
+  #console-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  #console-body::-webkit-scrollbar-track { background: transparent; }
+
+  .group { margin-bottom: 14px; }
+  .group:last-child { margin-bottom: 0; }
+  .group-title {
+    font-size: 10px;
+    color: #6cf;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed rgba(102,204,255,0.2);
+  }
+  .control { margin-bottom: 10px; }
+  .control:last-child { margin-bottom: 0; }
+  .control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #ccc;
+  }
+  .control-value {
+    color: #6cf;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    background: rgba(102,204,255,0.1);
+    padding: 1px 6px;
+    border-radius: 3px;
+    min-width: 42px;
+    text-align: right;
+  }
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #6cf, #39c);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(102,204,255,0.4);
+    border: none;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #6cf, #39c);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(102,204,255,0.4);
+  }
+
+  /* ============ 提示条 ============ */
+  #hint {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    color: rgba(255,255,255,0.78);
+    font-size: 12px;
+    z-index: 999;
+    background: rgba(0,0,0,0.5);
+    padding: 7px 13px;
+    border-radius: 6px;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: opacity 0.4s ease;
+    user-select: none;
+  }
+  #hint.fade { opacity: 0; pointer-events: none; }
+  kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    color: #fff;
+    margin: 0 2px;
+  }
+
+  /* ============ 按钮 ============ */
+  .btn-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .btn {
+    flex: 1;
+    background: rgba(102,204,255,0.1);
+    border: 1px solid rgba(102,204,255,0.25);
+    color: #6cf;
+    font-size: 11px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    font-family: inherit;
+  }
+  .btn:hover { background: rgba(102,204,255,0.22); color: #fff; }
+  .btn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+<canvas id="glcanvas"></canvas>
+
+<!-- 【修改点】：加上 class="hidden" 实现默认隐藏，并保留丝滑侧滑淡入动画 -->
+<div id="console" class="hidden">
+  <div id="console-header">
+    <span id="console-title">⚡ 流体艺术控制台</span>
+    <span id="console-toggle" title="折叠 / 展开">▼</span>
+  </div>
+  <div id="console-body"></div>
+</div>
+
+<script>
+"use strict";
+
+// ======================================================
+//  WebGL 初始化
+// ======================================================
+const canvas = document.getElementById('glcanvas');
+const gl = canvas.getContext('webgl', {
+  antialias: true,
+  premultipliedAlpha: false,
+  preserveDrawingBuffer: false
+});
+if (!gl) {
+  document.body.innerHTML = '<div style="color:#fff;padding:40px;font-size:18px;">抱歉，您的浏览器不支持 WebGL。</div>';
+  throw new Error('WebGL not supported');
+}
+
+// 半浮点纹理扩展 —— 必须用 float/half-float 才能把 alpha=-1 正确存下来
+const halfFloatExt      = gl.getExtension('OES_texture_half_float');
+const halfFloatLinExt   = gl.getExtension('OES_texture_half_float_linear');
+const floatExt          = gl.getExtension('OES_texture_float');
+const floatLinExt       = gl.getExtension('OES_texture_float_linear');
+
+let FBO_INTERNAL  = gl.RGBA;
+let FBO_FORMAT    = gl.RGBA;
+let FBO_TYPE      = gl.UNSIGNED_BYTE;
+let FBO_FILTER    = gl.LINEAR;
+
+if (floatExt) {
+  // 优先用 32-bit float —— packed 范围 [1, 1,048,576] 需要 20+ bit 精度
+  FBO_TYPE    = gl.FLOAT;
+  FBO_FILTER  = floatLinExt ? gl.LINEAR : gl.NEAREST;
+  console.log('[fluid] 使用 FLOAT 纹理, 过滤:', floatLinExt ? 'LINEAR' : 'NEAREST');
+} else if (halfFloatExt) {
+  FBO_TYPE    = halfFloatExt.HALF_FLOAT_OES;
+  FBO_FILTER  = halfFloatLinExt ? gl.LINEAR : gl.NEAREST;
+  console.log('[fluid] 使用 HALF_FLOAT 纹理, 过滤:', halfFloatLinExt ? 'LINEAR' : 'NEAREST');
+} else {
+  // fallback：用 8-bit 纹理 + 重写协议（data.w < 0.5 表示普通，否则是火花）
+  console.warn('[fluid] 没有 float 扩展，回退到 8-bit 模式');
+  window.__FLUID_FALLBACK__ = true;
+}
+
+// ======================================================
+//  参数状态
+// ======================================================
+const DEFAULTS = {
+  speed: 1.0,           // 流动速度
+  density: 3.0,         // 流体密度
+  hueShift: 0.0,        // 色调偏移
+  contrast: 1.0,        // 对比度
+  sparkIntensity: 0.35, // 火花强度（默认值，0.6+ 会让火花覆盖大面积）
+  blurLength: 0.5,      // 模糊长度
+  samples: 32,          // 采样数
+  vignette: 0.1,        // 暗角强度
+  blueShift: 0.04,      // 蓝色偏移
+  glow: 0.4,            // 辉光
+  pixelate: 1.0,        // 像素化
+};
+const state = Object.assign({}, DEFAULTS);
+state.paused = false;
+state.fallback = !!window.__FLUID_FALLBACK__;
+state.time = 0;
+
+// ======================================================
+//  Shader 源码
+// ======================================================
+const vertSrc = `
+attribute vec2 position;
+void main() { gl_Position = vec4(position, 0.0, 1.0); }
+`;
+
+// ---------- 第一遍：生成流场纹理（作为 iChannel0） ----------
+const fs1Src = `
+precision highp float;
+precision highp sampler2D;
+uniform float iTime;
+uniform vec2  iResolution;
+uniform float u_speed;
+uniform float u_density;
+uniform float u_sparkIntensity;
+uniform float u_contrast;
+uniform float u_hueShift;
+
+float hash(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
+    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+    u.y
+  );
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p *= 2.02;
+    a *= 0.5;
+  }
+  return v;
+}
+
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / iResolution.xy;
+  vec2 p  = (uv - 0.5) * u_density;
+
+  float t = iTime * 0.18 * u_speed;
+
+  // 速度场
+  vec2 flow = vec2(
+    fbm(p + vec2(t, t * 0.7)),
+    fbm(p + vec2(5.2 - t * 0.5, 1.3 + t))
+  );
+  flow = (flow - 0.5) * 2.0;
+
+  // 流体颜色
+  float n = fbm(p + flow * 0.6 + vec2(t * 0.3, -t * 0.2));
+  float hue = fract(n * 0.6 + 0.55 + u_hueShift);
+  vec3 col = hsv2rgb(vec3(hue, 0.75, 0.35 + 0.55 * n));
+  col = pow(col, vec3(u_contrast));
+
+  // 火花：anisotropic 噪声 —— 让 spark 区域沿 flow 方向拉长成短线/椭圆
+  // 这样 Pass 2 沿方向 32 次平均时，采样都落在 spark 区域内，拖尾才明显
+  vec2 flowN = flow / (length(flow) + 0.0001);
+  vec2 perpN = vec2(-flowN.y, flowN.x);
+  // 把 p 投影到 flow 局部坐标系
+  float pFlow = dot(p, flowN);
+  float pPerp = dot(p, perpN);
+  // 沿 flow 方向拉伸（fbm 输入值大 = 频率低 = 斑块大 = spark 沿 flow 拉长）
+  // 沿 perp 方向压缩（fbm 输入值小 = 频率高 = 斑块小 = spark 在 perp 方向细）
+  pFlow *= 0.35;
+  pPerp *= 1.8;
+  vec2 pAniso = flowN * pFlow + perpN * pPerp;
+
+  float sparkNoise = fbm(pAniso * 2.5 + vec2(t * 0.6, -t * 0.4));
+  float threshold = 1.0 - u_sparkIntensity;
+  float sparkMask = smoothstep(threshold, threshold + 0.12, sparkNoise);
+
+  if (sparkMask > 0.01) {
+    // HDR 亮色（火花 > 1.0，clamp 之前会保留亮度，模糊平均后仍然可见）
+    vec3 sparkCol = mix(vec3(2.2, 1.7, 0.7), vec3(2.4, 1.0, 0.3), fbm(p * 6.0 + t));
+    col = mix(col, sparkCol, sparkMask);
+
+    // 编码速度方向到 alpha
+    float vx = clamp(flow.x, -1.0, 1.0);
+    float vy = clamp(flow.y, -1.0, 1.0);
+    float ss = vx * 0.5 + 0.5;
+    float st = vy * 0.5 + 0.5;
+    float packedVal = floor(st * 1023.0) * 1024.0 + floor(ss * 1023.0) + 1.0;
+    gl_FragColor = vec4(col, packedVal);
+  } else {
+    gl_FragColor = vec4(col, -1.0);
+  }
+}
+`;
+
+// ---------- 第二遍：用户提供的 mainImage（参数化版本） ----------
+const fs2Src = `
+precision highp float;
+precision highp sampler2D;
+uniform float     iTime;
+uniform vec2      iResolution;
+uniform sampler2D iChannel0;
+uniform float u_blurLength;
+uniform float u_samples;
+uniform float u_vignette;
+uniform float u_blueShift;
+uniform float u_glow;
+uniform float u_pixelate;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+  // 像素化（把采样拉回到块中心）
+  vec2 puv = uv;
+  if (u_pixelate > 1.0) {
+    vec2 block = floor(uv * iResolution.xy / u_pixelate) * u_pixelate / iResolution.xy;
+    puv = block + 0.5 / iResolution.xy * u_pixelate;
+  }
+
+  vec4 data = texture2D(iChannel0, puv);
+  vec3 col = vec3(0.0);
+
+  if (data.w < 0.0) {
+    col = data.xyz;
+  } else {
+    // 解压速度向量
+    float ss = mod(data.w, 1024.0) / 1023.0;
+    float st = floor(data.w / 1024.0) / 1023.0;
+    // 沿速度方向做线性运动模糊
+    vec2 dir = (-1.0 + 2.0 * vec2(ss, st)) * u_blurLength;
+
+    col = vec3(0.0);
+    // WebGL1 循环边界需为常量，这里用 64 作为上限
+    for (int i = 0; i < 64; i++) {
+      if (float(i) >= u_samples) break;
+      float h = float(i) / max(1.0, u_samples - 1.0);
+      vec2 pos = puv + dir * h;
+      col += texture2D(iChannel0, pos).xyz;
+    }
+    col /= u_samples;
+  }
+
+  // 辉光
+  col = col + col * col * u_glow;
+
+  // 暗角
+  col *= 0.5 + 0.5 * pow(16.0 * uv.x * uv.y * (1.0 - uv.x) * (1.0 - uv.y), u_vignette);
+
+  col = clamp(col, 0.0, 1.0);
+  // 色调映射 + 蓝色偏移（保留原 mainImage 的味道）
+  col = col * 0.6 + 0.4 * col * col * (3.0 - 2.0 * col) + vec3(0.0, 0.0, u_blueShift);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// ======================================================
+//  编译 / 链接
+// ======================================================
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error('Shader 编译失败:\n' + gl.getShaderInfoLog(s));
+    console.error(src);
+    return null;
+  }
+  return s;
+}
+function makeProgram(vsSrc, fsSrc) {
+  const vs = compile(gl.VERTEX_SHADER, vsSrc);
+  const fs = compile(gl.FRAGMENT_SHADER, fsSrc);
+  const p = gl.createProgram();
+  gl.attachShader(p, vs);
+  gl.attachShader(p, fs);
+  gl.bindAttribLocation(p, 0, 'position');
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    console.error('Program 链接失败:\n' + gl.getProgramInfoLog(p));
+    return null;
+  }
+  return p;
+}
+const prog1 = makeProgram(vertSrc, fs1Src);
+const prog2 = makeProgram(vertSrc, fs2Src);
+
+// ======================================================
+//  全屏 quad
+// ======================================================
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+  -1, -1,  1, -1,  -1, 1,
+   1, -1,  1,  1,  -1, 1
+]), gl.STATIC_DRAW);
+
+// ======================================================
+//  FBO（流场纹理）
+// ======================================================
+let fbo = null, fboTex = null;
+function makeFBO() {
+  if (fboTex) gl.deleteTexture(fboTex);
+  if (fbo) gl.deleteFramebuffer(fbo);
+  fboTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, fboTex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, FBO_FILTER);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, FBO_FILTER);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, FBO_INTERNAL, canvas.width, canvas.height, 0, FBO_FORMAT, FBO_TYPE, null);
+  fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fboTex, 0);
+  const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+  if (status !== gl.FRAMEBUFFER_COMPLETE) {
+    console.error('[fluid] FBO 不完整: 0x' + status.toString(16));
+  } else {
+    console.log('[fluid] FBO OK:', canvas.width + 'x' + canvas.height, 'type=0x' + FBO_TYPE.toString(16));
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+// ======================================================
+//  Canvas 尺寸
+// ======================================================
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width  = Math.floor(window.innerWidth  * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  makeFBO();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ======================================================
+//  渲染循环
+// ======================================================
+let lastT = performance.now();
+function frame() {
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - lastT) / 1000);
+  lastT = now;
+  if (!state.paused) state.time += dt;
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+
+  // Pass 1：生成流场
+  gl.useProgram(prog1);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'iTime'), state.time);
+  gl.uniform2f(gl.getUniformLocation(prog1, 'iResolution'), canvas.width, canvas.height);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'u_speed'), state.speed);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'u_density'), state.density);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'u_sparkIntensity'), state.sparkIntensity);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'u_contrast'), state.contrast);
+  gl.uniform1f(gl.getUniformLocation(prog1, 'u_hueShift'), state.hueShift);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  // Pass 2：合成（用户的 mainImage）
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.useProgram(prog2);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, fboTex);
+  gl.uniform1i(gl.getUniformLocation(prog2, 'iChannel0'), 0);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'iTime'), state.time);
+  gl.uniform2f(gl.getUniformLocation(prog2, 'iResolution'), canvas.width, canvas.height);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_blurLength'), state.blurLength);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_samples'), state.samples);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_vignette'), state.vignette);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_blueShift'), state.blueShift);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_glow'), state.glow);
+  gl.uniform1f(gl.getUniformLocation(prog2, 'u_pixelate'), state.pixelate);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ======================================================
+//  控制台：拖动 / 折叠 / 滑杆
+// ======================================================
+const consoleEl = document.getElementById('console');
+const header    = document.getElementById('console-header');
+const toggleBtn = document.getElementById('console-toggle');
+const bodyEl    = document.getElementById('console-body');
+
+const controls = [
+  { group: '流动场', items: [
+    { key: 'speed',  label: '流动速度', min: 0,    max: 3,   step: 0.01, fmt: v => v.toFixed(2) },
+    { key: 'density', label: '流体密度', min: 0.5,  max: 8,   step: 0.1,  fmt: v => v.toFixed(2) },
+    { key: 'hueShift', label: '色调偏移', min: -0.3, max: 0.3, step: 0.005, fmt: v => v.toFixed(3) },
+    { key: 'contrast', label: '对比度',   min: 0.5,  max: 2,   step: 0.01, fmt: v => v.toFixed(2) },
+  ]},
+  { group: '火花 / 运动模糊', items: [
+    { key: 'sparkIntensity', label: '火花强度', min: 0,   max: 1,   step: 0.01, fmt: v => v.toFixed(2) },
+    { key: 'blurLength',     label: '模糊长度', min: 0,   max: 1,   step: 0.01, fmt: v => v.toFixed(2) },
+    { key: 'samples',        label: '采样数',   min: 4,   max: 64,  step: 1,    fmt: v => v.toFixed(0) },
+  ]},
+  { group: '画面', items: [
+    { key: 'vignette',  label: '暗角强度', min: 0.01, max: 0.5,  step: 0.005, fmt: v => v.toFixed(3) },
+    { key: 'blueShift', label: '蓝色偏移', min: 0,    max: 0.2,  step: 0.005, fmt: v => v.toFixed(3) },
+    { key: 'glow',      label: '辉光',     min: 0,    max: 1,    step: 0.01,  fmt: v => v.toFixed(2) },
+    { key: 'pixelate',  label: '像素化',   min: 1,    max: 12,   step: 1,     fmt: v => v.toFixed(0) + 'px' },
+  ]}
+];
+
+function buildConsole() {
+  for (const g of controls) {
+    const gDiv = document.createElement('div');
+    gDiv.className = 'group';
+    const title = document.createElement('div');
+    title.className = 'group-title';
+    title.textContent = g.group;
+    gDiv.appendChild(title);
+    for (const c of g.items) {
+      const cDiv = document.createElement('div');
+      cDiv.className = 'control';
+      const row = document.createElement('div');
+      row.className = 'control-row';
+      const lbl = document.createElement('span');
+      lbl.textContent = c.label;
+      const val = document.createElement('span');
+      val.className = 'control-value';
+      val.id = 'val-' + c.key;
+      val.textContent = c.fmt(state[c.key]);
+      row.appendChild(lbl);
+      row.appendChild(val);
+      const inp = document.createElement('input');
+      inp.type = 'range';
+      inp.id = 'r-' + c.key;
+      inp.min = c.min; inp.max = c.max; inp.step = c.step;
+      inp.value = state[c.key];
+      inp.addEventListener('input', () => {
+        state[c.key] = parseFloat(inp.value);
+        val.textContent = c.fmt(state[c.key]);
+      });
+      cDiv.appendChild(row);
+      cDiv.appendChild(inp);
+      gDiv.appendChild(cDiv);
+    }
+    // 按钮组
+    if (g === controls[0]) {
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row';
+      const btnReset = document.createElement('button');
+      btnReset.className = 'btn';
+      btnReset.textContent = '↺ 重置参数';
+      btnReset.addEventListener('click', resetParams);
+      const btnPause = document.createElement('button');
+      btnPause.className = 'btn';
+      btnPause.id = 'btn-pause';
+      btnPause.textContent = state.paused ? '▶ 继续' : '❚❚ 暂停';
+      btnPause.addEventListener('click', togglePause);
+      btnRow.appendChild(btnReset);
+      btnRow.appendChild(btnPause);
+      gDiv.appendChild(btnRow);
+    }
+    bodyEl.appendChild(gDiv);
+  }
+}
+buildConsole();
+
+function setSliderUI() {
+  for (const g of controls) {
+    for (const c of g.items) {
+      const inp = document.getElementById('r-' + c.key);
+      const val = document.getElementById('val-' + c.key);
+      if (inp) inp.value = state[c.key];
+      if (val) val.textContent = c.fmt(state[c.key]);
+    }
+  }
+}
+function resetParams() {
+  Object.assign(state, DEFAULTS);
+  setSliderUI();
+}
+function togglePause() {
+  state.paused = !state.paused;
+  const b = document.getElementById('btn-pause');
+  if (b) b.textContent = state.paused ? '▶ 继续' : '❚❚ 暂停';
+}
+
+// 折叠
+toggleBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  bodyEl.classList.toggle('collapsed');
+  toggleBtn.textContent = bodyEl.classList.contains('collapsed') ? '▶' : '▼';
+});
+// 防止点 header 文字意外触发折叠
+header.addEventListener('click', (e) => {
+  if (e.target === toggleBtn) return;
+});
+
+// 拖动
+let dragging = false, offX = 0, offY = 0;
+header.addEventListener('mousedown', (e) => {
+  if (e.target === toggleBtn) return;
+  dragging = true;
+  const rect = consoleEl.getBoundingClientRect();
+  offX = e.clientX - rect.left;
+  offY = e.clientY - rect.top;
+  document.body.style.userSelect = 'none';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  let x = e.clientX - offX;
+  let y = e.clientY - offY;
+  x = Math.max(0, Math.min(window.innerWidth  - consoleEl.offsetWidth,  x));
+  y = Math.max(0, Math.min(window.innerHeight - consoleEl.offsetHeight, y));
+  consoleEl.style.left = x + 'px';
+  consoleEl.style.top  = y + 'px';
+  consoleEl.style.right = 'auto';
+});
+document.addEventListener('mouseup', () => {
+  if (dragging) {
+    dragging = false;
+    document.body.style.userSelect = '';
+  }
+});
+
+// 触屏拖动
+header.addEventListener('touchstart', (e) => {
+  if (e.target === toggleBtn) return;
+  dragging = true;
+  const t = e.touches[0];
+  const rect = consoleEl.getBoundingClientRect();
+  offX = t.clientX - rect.left;
+  offY = t.clientY - rect.top;
+}, { passive: true });
+header.addEventListener('touchmove', (e) => {
+  if (!dragging) return;
+  const t = e.touches[0];
+  let x = t.clientX - offX;
+  let y = t.clientY - offY;
+  x = Math.max(0, Math.min(window.innerWidth  - consoleEl.offsetWidth,  x));
+  y = Math.max(0, Math.min(window.innerHeight - consoleEl.offsetHeight, y));
+  consoleEl.style.left = x + 'px';
+  consoleEl.style.top  = y + 'px';
+  consoleEl.style.right = 'auto';
+}, { passive: true });
+header.addEventListener('touchend', () => { dragging = false; });
+
+// ======================================================
+//  键盘：Alt+H 显示/隐藏控制台，空格 暂停，R 重置
+// ======================================================
+const hintEl = document.getElementById('hint');
+let hintTimer = setTimeout(() => hintEl.classList.add('fade'), 6000);
+
+document.addEventListener('keydown', (e) => {
+  // Alt + H
+  if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+    e.preventDefault();
+    consoleEl.classList.toggle('hidden');
+    // 重新显示提示
+    hintEl.classList.remove('fade');
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => hintEl.classList.add('fade'), 4000);
+    return;
+  }
+  // 空格 暂停/继续
+  if (e.code === 'Space' && !isFormFocused()) {
+    e.preventDefault();
+    togglePause();
+    return;
+  }
+  // R 重置
+  if ((e.key === 'r' || e.key === 'R') && !isFormFocused() && (e.ctrlKey || e.metaKey || !e.altKey)) {
+    if (!(e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      resetParams();
+    }
+  }
+});
+function isFormFocused() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = (el.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select';
+}
+
+// 鼠标进入 canvas 显示提示
+canvas.addEventListener('mouseenter', () => {
+  hintEl.classList.remove('fade');
+  clearTimeout(hintTimer);
+});
+canvas.addEventListener('mouseleave', () => {
+  hintTimer = setTimeout(() => hintEl.classList.add('fade'), 3000);
+});
+</script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a27.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

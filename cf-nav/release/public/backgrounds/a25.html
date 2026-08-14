@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Singularity - WebGL Shader</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #e2e8f0;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(15, 18, 25, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.05);
+            user-select: none;
+            z-index: 50;
+        }
+        #info kbd {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        /* 高级毛玻璃面板 */
+        .glass-panel {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            width: 300px;
+            background: rgba(15, 18, 25, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(139, 92, 246, 0.05);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        .panel-header {
+            padding: 14px 18px;
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px 16px 0 0;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-header:active { cursor: grabbing; }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .collapse-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+        .panel-body {
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 600px;
+            overflow-y: auto;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+        }
+        
+        .panel-body::-webkit-scrollbar { width: 4px; }
+        .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .group-title {
+            font-size: 11px;
+            color: #8b5cf6;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .group-title::before {
+            content: "";
+            width: 3px;
+            height: 12px;
+            background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+            border-radius: 2px;
+        }
+
+        .slider-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+
+        .slider-row { display: flex; flex-direction: column; gap: 6px; }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+        .slider-val {
+            font-family: 'Fira Code', monospace;
+            color: #a78bfa;
+            font-weight: 600;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* 🌟 全新定制发光渐变滑杆 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #d946ef);
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        input[type=range]:hover { opacity: 1; }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(255,255,255,0.9);
+        }
+        input[type=range]::-webkit-slider-thumb:hover { 
+            transform: scale(1.25); 
+            box-shadow: 0 0 16px rgba(217, 70, 239, 1), 0 0 6px rgba(255, 255, 255, 1);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.9);
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .reset-btn:hover {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #fff;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+
+    <!-- 自定义高级控制台 (默认隐藏) -->
+    <div id="control-panel" class="glass-panel" style="opacity: 0; pointer-events: none; transform: translateX(20px);">
+        <div class="panel-header" id="panel-header">
+            <div class="panel-title">
+                <span>🌀</span>
+                <span>奇点参数控制台</span>
+            </div>
+            <button class="collapse-btn" id="collapse-btn" title="折叠/展开">−</button>
+        </div>
+        
+        <div class="panel-body" id="panel-body">
+            <!-- 分组 1 -->
+            <div>
+                <div class="group-title">视图控制</div>
+                <div class="slider-group">
+                    <div class="slider-row">
+                        <div class="slider-label"><span>缩放 (Zoom)</span><span class="slider-val" id="val-zoom">0.70</span></div>
+                        <input type="range" id="sl-zoom" min="0.1" max="2.0" step="0.01" value="0.7">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>时间流速 (Speed)</span><span class="slider-val" id="val-timeScale">1.00</span></div>
+                        <input type="range" id="sl-timeScale" min="-2.0" max="5.0" step="0.1" value="1.0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分组 2 -->
+            <div>
+                <div class="group-title">形状与扭曲</div>
+                <div class="slider-group">
+                    <div class="slider-row">
+                        <div class="slider-label"><span>波纹扭曲 (Distortion)</span><span class="slider-val" id="val-distortionFactor">0.70</span></div>
+                        <input type="range" id="sl-distortionFactor" min="0.0" max="2.0" step="0.01" value="0.7">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>吸积盘亮度</span><span class="slider-val" id="val-accretionDiskBrightness">2.00</span></div>
+                        <input type="range" id="sl-accretionDiskBrightness" min="0.1" max="5.0" step="0.1" value="2.0">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>中心暗度</span><span class="slider-val" id="val-centerDarkness">0.50</span></div>
+                        <input type="range" id="sl-centerDarkness" min="0.0" max="2.0" step="0.01" value="0.5">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分组 3 -->
+            <div>
+                <div class="group-title">颜色偏移</div>
+                <div class="slider-group">
+                    <div class="slider-row">
+                        <div class="slider-label"><span>颜色强度</span><span class="slider-val" id="val-colorIntensity">1.00</span></div>
+                        <input type="range" id="sl-colorIntensity" min="0.1" max="3.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>偏红 (Red Shift)</span><span class="slider-val" id="val-colorShiftR">0.60</span></div>
+                        <input type="range" id="sl-colorShiftR" min="-2.0" max="2.0" step="0.1" value="0.6">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>偏绿 (Green Shift)</span><span class="slider-val" id="val-colorShiftG">-0.40</span></div>
+                        <input type="range" id="sl-colorShiftG" min="-2.0" max="2.0" step="0.1" value="-0.4">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-label"><span>偏蓝 (Blue Shift)</span><span class="slider-val" id="val-colorShiftB">-1.00</span></div>
+                        <input type="range" id="sl-colorShiftB" min="-2.0" max="2.0" step="0.1" value="-1.0">
+                    </div>
+                </div>
+            </div>
+
+            <button class="reset-btn" id="reset-btn">↺ 重置默认值</button>
+        </div>
+    </div>
+
+    <script>
+        const fragmentShaderSource = `
+            uniform vec3 iResolution;
+            uniform float iTime;
+            
+            uniform float u_zoom;
+            uniform float u_timeScale;
+            uniform float u_distortionFactor;
+            uniform float u_colorIntensity;
+            uniform vec3 u_colorShift;
+            uniform float u_accretionDiskBrightness;
+            uniform float u_centerDarkness;
+
+            void mainImage(out vec4 O, vec2 F)
+            {
+                float i = .2, a;
+                vec2 r = iResolution.xy;
+                vec2 p = ( F+F - r ) / r.y / u_zoom;
+                vec2 d = vec2(-1,1);
+                vec2 b = p - i*d;
+                vec2 c = p * mat2(1, 1, d/(.1 + i/dot(b,b)));
+                float t = iTime * u_timeScale;
+                vec2 v = c * mat2(cos(.5*log(a=dot(c,c)) + t*i + vec4(0,33,11,0)))/i;
+                vec4 w = vec4(0.0);
+                for(; i++<9.; w += 1.+sin(v.xyyx) ) {
+                    v += u_distortionFactor * sin(v.yx*i+t) / i + .5;
+                }
+                i = length( sin(v/.3)*.4 + c*(3.+d) );
+                vec4 colorGradient = vec4(u_colorShift.x, u_colorShift.y, u_colorShift.z, 0.0) * u_colorIntensity;
+                O = 1. - exp( -exp( c.x * colorGradient )
+                               / w.xyyx
+                               / ( u_accretionDiskBrightness + i*i/4. - i )
+                               / ( u_centerDarkness + 1. / a )
+                               / ( .03 + abs( length(p)-.7 ) )
+                             );
+            }
+
+            void main() {
+                mainImage(gl_FragColor, gl_FragCoord.xy);
+                gl_FragColor.a = 1.0;
+            }
+        `;
+
+        const vertexShaderSource = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `;
+
+        let camera, scene, renderer, uniforms;
+
+        function init() {
+            const container = document.getElementById('container');
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            scene = new THREE.Scene();
+            const geometry = new THREE.PlaneGeometry(2, 2);
+
+            uniforms = {
+                iTime: { value: 1.0 },
+                iResolution: { value: new THREE.Vector3() },
+                u_zoom: { value: 0.7 },
+                u_timeScale: { value: 1.0 },
+                u_distortionFactor: { value: 0.7 },
+                u_colorIntensity: { value: 1.0 },
+                u_colorShift: { value: new THREE.Vector3(0.6, -0.4, -1.0) },
+                u_accretionDiskBrightness: { value: 2.0 },
+                u_centerDarkness: { value: 0.5 }
+            };
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: vertexShaderSource,
+                fragmentShader: fragmentShaderSource
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            onWindowResize();
+            window.addEventListener('resize', onWindowResize);
+            setupUI();
+        }
+
+        function setupUI() {
+            const panel = document.getElementById('control-panel');
+            const header = document.getElementById('panel-header');
+            const body = document.getElementById('panel-body');
+            const colBtn = document.getElementById('collapse-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            const sliders = [
+                { id: 'sl-zoom', uniform: 'u_zoom', valId: 'val-zoom', fixed: 2, def: 0.7 },
+                { id: 'sl-timeScale', uniform: 'u_timeScale', valId: 'val-timeScale', fixed: 2, def: 1.0 },
+                { id: 'sl-distortionFactor', uniform: 'u_distortionFactor', valId: 'val-distortionFactor', fixed: 2, def: 0.7 },
+                { id: 'sl-accretionDiskBrightness', uniform: 'u_accretionDiskBrightness', valId: 'val-accretionDiskBrightness', fixed: 2, def: 2.0 },
+                { id: 'sl-centerDarkness', uniform: 'u_centerDarkness', valId: 'val-centerDarkness', fixed: 2, def: 0.5 },
+                { id: 'sl-colorIntensity', uniform: 'u_colorIntensity', valId: 'val-colorIntensity', fixed: 2, def: 1.0 },
+                { id: 'sl-colorShiftR', uniform: 'u_colorShiftR', valId: 'val-colorShiftR', fixed: 2, def: 0.6 },
+                { id: 'sl-colorShiftG', uniform: 'u_colorShiftG', valId: 'val-colorShiftG', fixed: 2, def: -0.4 },
+                { id: 'sl-colorShiftB', uniform: 'u_colorShiftB', valId: 'val-colorShiftB', fixed: 2, def: -1.0 }
+            ];
+
+            const updateColorShift = () => {
+                const r = parseFloat(document.getElementById('sl-colorShiftR').value);
+                const g = parseFloat(document.getElementById('sl-colorShiftG').value);
+                const b = parseFloat(document.getElementById('sl-colorShiftB').value);
+                uniforms.u_colorShift.value.set(r, g, b);
+            };
+
+            sliders.forEach(s => {
+                const el = document.getElementById(s.id);
+                const valEl = document.getElementById(s.valId);
+                el.addEventListener('input', (e) => {
+                    const v = parseFloat(e.target.value);
+                    if (s.uniform.startsWith('u_colorShift')) {
+                        updateColorShift();
+                    } else {
+                        uniforms[s.uniform].value = v;
+                    }
+                    valEl.textContent = v.toFixed(s.fixed);
+                });
+            });
+
+            resetBtn.addEventListener('click', () => {
+                sliders.forEach(s => {
+                    const el = document.getElementById(s.id);
+                    const valEl = document.getElementById(s.valId);
+                    el.value = s.def;
+                    valEl.textContent = s.def.toFixed(s.fixed);
+                    if (s.uniform.startsWith('u_colorShift')) {
+                        updateColorShift();
+                    } else {
+                        uniforms[s.uniform].value = s.def;
+                    }
+                });
+            });
+
+            let isCollapsed = false;
+            colBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isCollapsed = !isCollapsed;
+                if (isCollapsed) {
+                    body.style.maxHeight = '0px';
+                    body.style.paddingTop = '0';
+                    body.style.paddingBottom = '0';
+                    body.style.opacity = '0';
+                    colBtn.textContent = '+';
+                } else {
+                    body.style.maxHeight = '600px';
+                    body.style.paddingTop = '18px';
+                    body.style.paddingBottom = '18px';
+                    body.style.opacity = '1';
+                    colBtn.textContent = '−';
+                }
+            });
+
+            let isDragging = false, startX, startY, initLeft, initTop;
+            header.addEventListener('mousedown', (e) => {
+                if (e.target === colBtn) return;
+                isDragging = true;
+                startX = e.clientX; startY = e.clientY;
+                const rect = panel.getBoundingClientRect();
+                initLeft = rect.left; initTop = rect.top;
+                panel.style.right = 'auto';
+                panel.style.transition = 'none';
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                let nx = initLeft + e.clientX - startX;
+                let ny = initTop + e.clientY - startY;
+                nx = Math.max(0, Math.min(nx, window.innerWidth - panel.offsetWidth));
+                ny = Math.max(0, Math.min(ny, window.innerHeight - 50));
+                panel.style.left = nx + 'px';
+                panel.style.top = ny + 'px';
+            });
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                panel.style.transition = '';
+            });
+
+            let isVisible = false; // 默认隐藏
+            window.addEventListener('keydown', (e) => {
+                if (e.altKey && e.key.toLowerCase() === 'h') {
+                    e.preventDefault();
+                    isVisible = !isVisible;
+                    if (isVisible) {
+                        panel.style.opacity = '1';
+                        panel.style.pointerEvents = 'auto';
+                        panel.style.transform = 'translateX(0)';
+                    } else {
+                        panel.style.opacity = '0';
+                        panel.style.pointerEvents = 'none';
+                        panel.style.transform = 'translateX(20px)';
+                    }
+                }
+            });
+        }
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            uniforms.iResolution.value.set(window.innerWidth, window.innerHeight, 1);
+        }
+
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+            uniforms.iTime.value = timestamp / 1000.0;
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a25.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

@@ -9,6 +9,10 @@ node_modules/
 .next/
 output/
 
+# Wrangler / Cloudflare dev artifacts
+cf-nav/.wrangler/
+cf-nav/astraview-styles/
+
 # App data
 backend/data/uploads/
 backend/data/tasks/

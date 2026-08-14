@@ -1,0 +1,301 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{SITE_NAME}}</title>
+<meta name="description" content="{{SITE_DESC}}">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/css/main.css">
+<link id="style-css" rel="stylesheet" href="">
+<script>
+(function() {
+  // 检查是否有风格选择，有则跳转
+  var styleChoice = localStorage.getItem('styleChoice');
+  if (styleChoice && window.location.pathname === '/') {
+    window.location.replace('/styles/' + styleChoice);
+  }
+  function applyStyleCSS(cssFile) {
+    var link = document.getElementById('style-css');
+    if (cssFile) {
+      link.href = '/css/' + cssFile;
+    } else {
+      link.href = '';
+    }
+  }
+  // 页面加载时读取已保存的风格
+  applyStyleCSS(localStorage.getItem('styleCSS') || '');
+  // 监听其他标签页的 localStorage 变化（style-preview 应用后触发）
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'styleCSS') applyStyleCSS(e.newValue || '');
+  });
+  // 监听 postMessage（style-preview / bg-preview 通过 window.opener.postMessage 通知）
+  window.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'applyStyle' && e.data.styleId) {
+      localStorage.setItem('styleChoice', e.data.styleId);
+      window.location.href = '/styles/' + e.data.styleId;
+    }
+    if (e.data.type === 'applyBg' && e.data.bgFile !== undefined) {
+      localStorage.setItem('bgChoice', e.data.bgFile);
+      if (window.__setBg) window.__setBg(e.data.bgFile);
+    }
+  });
+})();
+</script>
+</head>
+<body>
+
+<!-- 背景层 -->
+<canvas id="bg-canvas"></canvas>
+<div id="bg-image"></div>
+
+<div id="app">
+  <header>
+    <h1>{{SITE_NAME}}</h1>
+    <p class="site-desc">{{SITE_DESC}}</p>
+    <button class="header-settings-btn" id="settings-btn" onclick="document.getElementById('settings-popup')&&(document.getElementById('settings-popup').hidden=!document.getElementById('settings-popup').hidden)">⚙ 设置</button>
+  </header>
+
+  <nav class="navbar" id="navbar"></nav>
+
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="搜索书签...">
+    <button class="search-clear" id="search-clear">✕</button>
+  </div>
+  <div class="search-info" id="search-info"></div>
+
+  <main class="container" id="main"></main>
+</div>
+
+<!-- 控制台模式悬浮按钮 -->
+<button id="back-to-nav-btn" style="display:none">← 返回导航</button>
+
+<div id="tooltip">
+  <div class="tt-url" id="tt-url"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+</div>
+
+<!-- background.js 需要的隐藏 select -->
+<select id="bg-select" style="display:none">
+  <option value="none">无背景</option>
+</select>
+
+<!-- 数据由 SSR 注入 -->
+<script id="nav-data" type="application/json">{{NAV_DATA}}</script>
+<script id="nav-settings" type="application/json">{{NAV_SETTINGS}}</script>
+
+<!-- 背景音乐播放器 -->
+<audio id="bg-music" loop style="display:none"></audio>
+
+<!-- 设置模态窗口 -->
+<div class="settings-modal" id="settings-popup" hidden>
+  <div class="settings-modal-box">
+    <div class="settings-modal-header">
+      <span>偏好设置</span>
+      <button class="settings-modal-close" onclick="document.getElementById('settings-popup').hidden=true">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <!-- 悬停音效 -->
+      <div class="settings-group">
+        <div class="settings-group-title">悬停音效</div>
+        <div class="settings-row">
+          <span class="settings-label">开启悬停音效</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="sound-toggle" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <!-- 背景音乐 -->
+      <div class="settings-group">
+        <div class="settings-group-title">背景音乐</div>
+        <div class="settings-row">
+          <span class="settings-label">开启背景音乐</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="music-toggle">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="settings-music-url">
+          <input type="url" id="music-url" placeholder="输入音频 URL（mp3/ogg/...）">
+          <button id="music-apply">应用</button>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <!-- 动态背景 -->
+      <div class="settings-group">
+        <div class="settings-group-title">动态背景</div>
+        <div class="settings-row">
+          <span class="settings-label">选择背景</span>
+          <select id="settings-bg-select" class="settings-select">
+            <option value="none">无背景</option>
+          </select>
+          <button class="settings-console-btn" onclick="window.open('http://localhost:8788/bg-preview.html','_blank')">预览</button>
+        </div>
+        <div class="settings-row" style="margin-top:0.25rem">
+          <span class="settings-label" style="font-size:0.78rem;color:var(--muted)">背景控制台</span>
+          <button id="bg-console-btn" class="settings-console-btn">显示</button>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <!-- 导航风格 -->
+      <div class="settings-group">
+        <div class="settings-group-title">导航风格</div>
+        <div class="settings-row">
+          <span class="settings-label">选择风格</span>
+          <select id="style-select" class="settings-select">
+            <!-- 后续完善 -->
+          </select>
+          <button class="settings-console-btn" onclick="window.open('http://localhost:8788/style-preview.html','_blank')">预览</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // 点击遮罩关闭
+  document.getElementById('settings-popup').addEventListener('click', function(e) {
+    if (e.target === this) this.hidden = true;
+  });
+
+  // 音效开关
+  var soundToggle = document.getElementById('sound-toggle');
+  soundToggle.checked = localStorage.getItem('soundEnabled') !== 'false';
+  soundToggle.addEventListener('change', function() {
+    localStorage.setItem('soundEnabled', this.checked);
+  });
+
+  // 背景音乐
+  var bgMusic = document.getElementById('bg-music');
+  var musicToggle = document.getElementById('music-toggle');
+  var musicUrl = document.getElementById('music-url');
+  var musicApply = document.getElementById('music-apply');
+  var savedUrl = localStorage.getItem('musicUrl') || '';
+  var savedOn = localStorage.getItem('musicEnabled') === 'true';
+
+  musicUrl.value = savedUrl;
+  if (savedUrl) bgMusic.src = savedUrl;
+  musicToggle.checked = savedOn;
+  if (savedOn && savedUrl) bgMusic.play().catch(function() {});
+
+  function applyMusic() {
+    var url = musicUrl.value.trim();
+    if (!url) return;
+    bgMusic.src = url;
+    localStorage.setItem('musicUrl', url);
+    if (musicToggle.checked) bgMusic.play().catch(function() {});
+  }
+
+  musicToggle.addEventListener('change', function() {
+    localStorage.setItem('musicEnabled', this.checked);
+    if (this.checked) {
+      if (!bgMusic.src && musicUrl.value.trim()) applyMusic();
+      bgMusic.play().catch(function() {});
+    } else {
+      bgMusic.pause();
+    }
+  });
+  musicApply.addEventListener('click', applyMusic);
+  musicUrl.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyMusic(); });
+
+  // 背景列表加载
+  (async function loadBgOptions() {
+    try {
+      var res = await fetch('/api/backgrounds');
+      var data = await res.json();
+      var sel = document.getElementById('settings-bg-select');
+      (data.backgrounds || []).forEach(function(item) {
+        if (!item.file.startsWith('a')) return;
+        var opt = document.createElement('option');
+        opt.value = item.file;
+        opt.textContent = item.name || item.file;
+        sel.appendChild(opt);
+      });
+      var saved = localStorage.getItem('bgChoice') || 'none';
+      sel.value = saved;
+      sel.addEventListener('change', function() {
+        var val = this.value;
+        if (!val) {
+          localStorage.removeItem('styleChoice');
+          window.location.href = '/';
+          return;
+        }
+        var nm = val.match(/styles0*(\d+)\.css/);
+        if (!nm) return;
+        localStorage.setItem('styleChoice', nm[1]);
+        window.location.href = '/styles/' + nm[1];
+      });
+    } catch(e) { console.warn('风格列表加载失败', e); }
+  })();
+
+  // ── 背景控制台模式 ────────────────────────────────
+  var consoleMode = false;
+  var consoleBtn = document.getElementById('bg-console-btn');
+  var backBtn = document.getElementById('back-to-nav-btn');
+  var app = document.getElementById('app');
+  var settingsPopup = document.getElementById('settings-popup');
+
+  function enterConsoleMode() {
+    var iframe = document.getElementById('bg-iframe');
+    if (!iframe || iframe.style.display === 'none') return;
+    try {
+      var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      var panel = iDoc.getElementById('control-panel') ||
+                  iDoc.getElementById('controlConsole') ||
+                  iDoc.getElementById('panel');
+      if (panel) panel.style.display = '';
+    } catch(e) {}
+    iframe.style.pointerEvents = 'auto';
+    iframe.style.zIndex = '10';
+    if (app) {
+      app.style.visibility = 'hidden';
+      app.style.zIndex = '-1';
+      app.style.pointerEvents = 'none';
+    }
+    if (settingsPopup) settingsPopup.hidden = true;
+    if (backBtn) backBtn.style.display = 'block';
+    consoleMode = true;
+    consoleBtn.textContent = '控制台已开启';
+  }
+
+  function exitConsoleMode() {
+    var iframe = document.getElementById('bg-iframe');
+    if (iframe) {
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '0';
+    }
+    if (app) {
+      app.style.visibility = '';
+      app.style.zIndex = '';
+      app.style.pointerEvents = '';
+    }
+    if (backBtn) backBtn.style.display = 'none';
+    consoleMode = false;
+    consoleBtn.textContent = '显示控制台';
+  }
+
+  consoleBtn.addEventListener('click', function() {
+    if (!consoleMode) {
+      enterConsoleMode();
+    } else {
+      exitConsoleMode();
+    }
+  });
+
+  if (backBtn) {
+    backBtn.addEventListener('click', function() {
+      exitConsoleMode();
+    });
+  }
+})();
+</script>
+
+<script type="module" src="/js/background.js"></script>
+<script type="module" src="/js/search.js"></script>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的导航 - Glance 风格</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:"JetBrains Mono","Fira Code","Courier New","PingFang SC","Microsoft YaHei",monospace,sans-serif;background:#0e1419;color:#a0a8b0;min-height:100vh;overflow-x:hidden}
+
+/* 顶部 Tab 栏 */
+.top-bar{display:flex;align-items:center;background:#0e1419;padding:14px 24px;border-bottom:1px solid rgba(160,168,176,.08);position:sticky;top:0;z-index:50}
+.top-logo{width:30px;height:30px;border:1px solid rgba(160,168,176,.3);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#a0a8b0;font-weight:bold;font-size:14px;margin-right:18px;cursor:pointer}
+.top-logo:hover{border-color:#36ae7b;color:#36ae7b}
+.top-tabs{display:flex;gap:6px}
+.top-tab{padding:6px 14px;color:#a0a8b0;font-size:13px;cursor:pointer;border-radius:4px;border:1px solid transparent;transition:all .2s}
+.top-tab:hover{color:#cfd6dc}
+.top-tab.active{border-color:#36ae7b;color:#36ae7b}
+a.top-tab{text-decoration:none;display:inline-flex;align-items:center}
+a.top-tab:hover{color:#36ae7b;border-color:rgba(54,174,123,.4)}
+
+/* 容器 */
+.app{max-width:1400px;margin:0 auto;padding:20px 24px 60px}
+
+/* 主体网格 */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+/* Widget 通用样式 */
+.widget{background:#161b22;border:1px solid rgba(160,168,176,.08);border-radius:8px;overflow:hidden;transition:border-color .2s}
+.widget:hover{border-color:rgba(54,174,123,.3)}
+.widget-header{padding:10px 14px;color:#a0a8b0;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid rgba(160,168,176,.05)}
+.widget-header .wh-link{color:inherit;text-decoration:none}
+.widget-header .wh-link:hover{color:#36ae7b}
+.widget-header .wh-link i{font-size:10px;margin-left:4px}
+.widget-body{padding:10px 14px}
+
+/* 时钟 widget */
+.clock{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.clock-left{font-size:24px;color:#cfd6dc;font-weight:600;line-height:1.2}
+.clock-left .year{display:block;font-size:11px;color:#a0a8b0;font-weight:400;margin-top:4px}
+.clock-right{text-align:right;font-size:13px;color:#cfd6dc;font-weight:600}
+.clock-right .week{display:block;font-size:11px;color:#36ae7b;font-weight:400;margin-top:4px}
+
+/* 天气（时钟 widget 内） */
+.weather{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(160,168,176,.12);display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;color:#a0a8b0}
+.weather .w-icon{color:#36ae7b;font-size:14px}
+.weather .w-temp{color:#cfd6dc;font-size:15px;font-weight:600}
+.weather .w-city{color:#36ae7b}
+
+/* 链接列表 widget */
+.link-list{display:flex;flex-direction:column;gap:8px}
+.link-item{display:block;color:#36ae7b;text-decoration:none;font-size:13px;line-height:1.5;cursor:pointer;padding:2px 0}
+.link-item:hover{color:#4dd09a;text-decoration:underline}
+.link-meta{display:block;color:#a0a8b0;font-size:11px;font-weight:400;margin-top:2px}
+.show-more{display:block;padding:6px 0;color:#a0a8b0;font-size:11px;text-transform:uppercase;cursor:pointer;margin-top:6px}
+.show-more:hover{color:#36ae7b}
+.show-more::before{content:'▼ ';font-size:8px}
+
+/* Feed item */
+.feed-item{padding:8px 0;border-bottom:1px solid rgba(160,168,176,.05)}
+.feed-item:last-child{border-bottom:none}
+.feed-item .feed-title{display:block;color:#cfd6dc;font-size:13px;font-weight:500;line-height:1.4;text-decoration:none}
+.feed-item .feed-title:hover{color:#36ae7b;text-decoration:underline}
+.feed-item .feed-meta{color:#a0a8b0;font-size:11px;margin-top:4px}
+.feed-item .feed-desc{color:#a0a8b0;font-size:12px;margin-top:6px;line-height:1.5}
+.tag{display:inline-block;background:rgba(54,174,123,.1);color:#36ae7b;font-size:10px;padding:2px 6px;border-radius:3px;margin-right:4px;margin-top:4px}
+
+/* 视频/封面 widget */
+.video-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+a.video-item{display:block;text-decoration:none;transition:transform .2s}
+.video-item:hover{transform:translateY(-2px)}
+.video-thumb{width:100%;aspect-ratio:16/9;background:#0e1419;border-radius:4px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center}
+.video-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.6));pointer-events:none}
+.video-thumb .play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:24px;opacity:.7;z-index:2}
+.video-thumb .v-len{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.78);color:#fff;font-size:10px;padding:1px 5px;border-radius:3px;z-index:2;letter-spacing:.5px}
+.video-title{color:#cfd6dc;font-size:12px;font-weight:500;margin-top:6px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.video-item:hover .video-title{color:#36ae7b}
+.video-meta{color:#a0a8b0;font-size:11px;margin-top:3px}
+
+/* 搜索框 widget */
+.search-widget{display:flex;align-items:center;background:#0e1419;border:1px solid rgba(160,168,176,.15);border-radius:6px;padding:8px 12px;gap:8px}
+.search-widget i{color:#a0a8b0;font-size:13px}
+.search-widget input{flex:1;background:transparent;border:none;color:#cfd6dc;font-family:inherit;font-size:13px;outline:none}
+.search-widget input::placeholder{color:#6c7480}
+
+/* 站点图标网格 widget（标签常显 + 字符兜底） */
+.site-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.site-item{background:#0e1419;border:1px solid rgba(160,168,176,.08);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 4px 8px;transition:all .2s;text-decoration:none;overflow:hidden}
+.site-item:hover{border-color:#36ae7b;transform:translateY(-2px);background:#1a2129}
+.site-item:hover .site-label{color:#36ae7b}
+.site-icon{width:30px;height:30px;position:relative;flex-shrink:0}
+.site-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:4px}
+.site-char{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(54,174,123,.12);color:#36ae7b;border-radius:6px;font-size:13px;font-weight:700}
+.site-icon.hasimg .site-char{display:none}
+.site-label{max-width:100%;font-size:10px;color:#a0a8b0;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .2s}
+
+/* 回到顶部 */
+.to-top{position:fixed;right:24px;bottom:24px;width:40px;height:40px;background:#161b22;border:1px solid rgba(54,174,123,.3);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#36ae7b;cursor:pointer;font-size:16px;opacity:0;pointer-events:none;transition:all .2s;z-index:50}
+.to-top.show{opacity:1;pointer-events:auto}
+.to-top:hover{background:#36ae7b;color:#0e1419}
+
+@media(max-width:1200px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.site-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.site-grid{grid-template-columns:repeat(4,1fr)}.video-list{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- 顶部 -->
+<div class="top-bar">
+    <div class="top-logo">T</div>
+    <div class="top-tabs">
+        <div class="top-tab active" data-tab="all">Home</div>
+        <a class="top-tab" href="https://www.theverge.com/" target="_blank" rel="noopener">Tech News</a>
+        <div class="top-tab" data-tab="ai">AI Tools</div>
+    </div>
+</div>
+
+<div class="app">
+    <div class="grid" id="grid"></div>
+</div>
+
+<div class="to-top" id="totop"><i class="fa fa-arrow-up"></i></div>
+
+<script id="nav-data" type="application/json">
+{"cats":{"resourse":[{"t":"doyoudo","u":"https://www.doyoudo.com/","h":"设计与视频教程","cat":"learning"},{"t":"Panzoid","u":"https://panzoid.com/","h":"视频动画制作","cat":"creative"},{"t":"耳聆网","u":"https://www.ear0.com/","h":"免费音效素材","cat":"creative"},{"t":"免费字体","u":"https://www.hellofont.cn/","h":"字体服务平台","cat":"design"},{"t":"矢量图标","u":"https://www.iconfont.cn/","h":"矢量图标库","cat":"design"},{"t":"大众脸","u":"https://www.lookae.com/","h":"影视后期特效","cat":"creative"},{"t":"台词素材","u":"https://33tc.net/","h":"台词搜索工具","cat":"tool"},{"t":"找台词","u":"http://www.zhaotaici.cn/","h":"台词搜索","cat":"tool"},{"t":"AE脚本","u":"https://jpsmile.com/","h":"AE插件扩展","cat":"creative"},{"t":"GreasyFork","u":"https://greasyfork.org/zh-CN/scripts","h":"脚本分享","cat":"dev"}],"tools":[{"t":"SubHD","u":"https://subhd.tv/","h":"字幕下载","cat":"tool"},{"t":"Magic Studio","u":"https://magicstudio.com/zh/","h":"AI图像处理","cat":"ai"},{"t":"Colab","u":"https://colab.research.google.com/","h":"云端Python","cat":"dev"},{"t":"万能命令","u":"https://wannengrun.com/zh/","h":"工具导航","cat":"tool"},{"t":"猫啃字体","u":"https://www.maoken.com/","h":"免费字体","cat":"design"},{"t":"书法欣赏","u":"http://www.yac8.com/","h":"书法作品","cat":"art"},{"t":"大叔汁源","u":"https://www.kdocs.cn/l/ceZS4cRWJBxs","h":"资源分享","cat":"tool"},{"t":"GFXCamp","u":"http://www.gfxcamp.com/","h":"CG资源","cat":"design"},{"t":"Blaze","u":"https://blaze.vercel.app/","h":"文件共享","cat":"tool"},{"t":"RenderPeople","u":"https://renderpeople.com/","h":"3D人物模型","cat":"3d"},{"t":"100font","u":"https://www.100font.com/","h":"免费字体","cat":"design"},{"t":"佛系软件","u":"https://foxirj.com/","h":"软件分享","cat":"tool"}],"视频":[{"t":"哔哩哔哩","u":"https://www.bilibili.com/","h":"综合视频社区","cat":"video"},{"t":"小红书","u":"https://www.xiaohongshu.com/","h":"生活方式社区","cat":"social"},{"t":"快手","u":"https://www.kuaishou.com/new-reco","h":"短视频平台","cat":"video"},{"t":"TikTok","u":"https://www.tiktok.com/en/","h":"国际短视频","cat":"video"},{"t":"X.COM","u":"https://x.com/xuxk17125","h":"社交平台","cat":"social"},{"t":"西瓜创作","u":"https://studio.ixigua.com/","h":"视频创作者","cat":"video"},{"t":"今日头条","u":"https://www.toutiao.com/","h":"资讯平台","cat":"news"},{"t":"好看视频","u":"https://haokan.baidu.com/","h":"百度短视频","cat":"video"},{"t":"Product Hunt","u":"https://www.producthunt.com/?bc=1","h":"新产品","cat":"tech"},{"t":"百家号","u":"https://baijiahao.baidu.com/","h":"百度创作","cat":"news"}],"AIGC":[{"t":"GitHub","u":"https://github.com/","h":"代码托管","cat":"dev"},{"t":"魔搭社区","u":"https://modelscope.cn/models","h":"阿里AI模型","cat":"ai"},{"t":"HuggingFace","u":"https://huggingface.co/","h":"AI模型共享","cat":"ai"},{"t":"HF Mirror","u":"https://hf-mirror.com/","h":"镜像访问","cat":"ai"},{"t":"Civitai","u":"https://civitai.com/models","h":"AI绘画模型","cat":"ai"},{"t":"LiblibAI","u":"https://www.liblib.art/","h":"国内AI绘画","cat":"ai"},{"t":"NovelAI","u":"https://novelai.dev/","h":"AI绘画资源","cat":"ai"},{"t":"SD解析","u":"https://spell.novelai.dev/","h":"SD参数解析","cat":"ai"},{"t":"cobalt","u":"https://cobalt.tools/","h":"媒体下载","cat":"tool"},{"t":"FMHY","u":"https://fmhy.net/","h":"资源导航","cat":"tool"},{"t":"巨量创意","u":"https://cc.oceanengine.com/","h":"广告创意","cat":"creative"},{"t":"Medium","u":"https://medium.com/","h":"内容平台","cat":"news"}],"AI大语言":[{"t":"通义","u":"https://tongyi.aliyun.com/","h":"阿里大模型","cat":"ai"},{"t":"OpenAI","u":"https://openai.com/","h":"AI研究","cat":"ai"},{"t":"文心一言","u":"https://yiyan.baidu.com/","h":"百度AI","cat":"ai"},{"t":"跃问","u":"https://yuewen.cn/chats/new","h":"阶跃AI助手","cat":"ai"},{"t":"Cici","u":"https://www.cici.com/chat/","h":"字节海外AI","cat":"ai"},{"t":"HyperAI","u":"https://hyper.ai/cn","h":"AI资讯","cat":"news"},{"t":"bolt.new","u":"https://bolt.new/","h":"AI编程","cat":"dev"},{"t":"灵光","u":"https://www.lingguang.com/chat","h":"AI助手","cat":"ai"},{"t":"Pinterest","u":"https://www.pinterest.com/","h":"图片灵感","cat":"design"},{"t":"Magic Poser","u":"https://webapp.magicposer.com/","h":"3D姿态","cat":"3d"},{"t":"云原生镜像","u":"http://dockerimage.gbfeng.com/","h":"Docker镜像","cat":"dev"},{"t":"Quick-poses","u":"https://quickposes.com/en","h":"绘画姿势","cat":"art"}],"AI声音":[{"t":"AI声音","u":"https://musichero.ai/zh-CN/sound-effect","h":"AI音效生成","cat":"ai"},{"t":"Stable Audio","u":"https://stability.ai/stable-audio","h":"AI音频","cat":"ai"},{"t":"Google FX","u":"https://labs.google/fx","h":"AI实验","cat":"ai"},{"t":"Beatoven","u":"https://www.beatoven.ai/","h":"AI音乐","cat":"ai"},{"t":"Free TTS","u":"https://freetts.com/text-to-speech","h":"文字转语音","cat":"ai"},{"t":"海豚AI","u":"https://www.ttson.cn/","h":"语音处理","cat":"ai"},{"t":"马克配音","u":"https://ttsmaker.cn/","h":"在线配音","cat":"ai"},{"t":"Fish Audio","u":"https://fish.audio/zh-CN/","h":"语音生成","cat":"ai"},{"t":"Mureka","u":"https://www.mureka.ai/","h":"AI音乐","cat":"ai"},{"t":"Audiomatic","u":"https://audiomatic.io/","h":"AI音乐","cat":"ai"},{"t":"Audio转换","u":"https://onlineaudioconverter.com/","h":"音频转换","cat":"tool"},{"t":"Logic智","u":"https://luoji.cn/","h":"逻辑智能","cat":"ai"}],"AI-3D":[{"t":"HYPER-3D","u":"https://hyper3d.ai/","h":"AI 3D生成","cat":"3d"},{"t":"Meshy","u":"https://www.meshy.ai/","h":"3D模型生成","cat":"3d"},{"t":"Kinetix","u":"https://www.kinetix.tech/","h":"AI角色动画","cat":"3d"},{"t":"腾讯混元3D","u":"https://3d.hunyuan.tencent.com/","h":"腾讯3D","cat":"3d"},{"t":"MakerWorld","u":"https://makerworld.com/zh","h":"3D打印模型","cat":"3d"},{"t":"Rendair","u":"https://app.rendair.ai/chat/821421","h":"AI 3D设计","cat":"3d"},{"t":"NexodusAI","u":"https://nexodusai.com/","h":"图片转3D","cat":"3d"},{"t":"Artec 3D","u":"https://www.artec3d.com/","h":"3D扫描","cat":"3d"}],"API-VPS":[{"t":"OpenRouter","u":"https://openrouter.ai/","h":"AI API聚合","cat":"dev"},{"t":"ClawCloud","u":"https://us-east-1.run.claw.cloud/","h":"云端应用","cat":"dev"},{"t":"智谱API","u":"https://bigmodel.cn/usercenter/proj-mgmt/apikeys","h":"智谱接口","cat":"ai"},{"t":"阿里百炼","u":"https://bailian.console.aliyun.com/cn-beijing/","h":"通义接口","cat":"ai"},{"t":"阶跃星辰","u":"https://platform.stepfun.com/","h":"Step模型","cat":"ai"},{"t":"智谱国际","u":"https://z.ai/subscribe","h":"海外服务","cat":"ai"},{"t":"HubuHost","u":"https://hubuhost.com/","h":"虚拟主机","cat":"dev"},{"t":"鑫源API","u":"https://xinyuanai666.com/login","h":"AI接口","cat":"ai"}],"APK-Proxy":[{"t":"Aptoide","u":"https://cn.aptoide.com/","h":"Android应用","cat":"mobile"},{"t":"APKPure","u":"https://apkpure.com/cn/","h":"APK下载","cat":"mobile"},{"t":"APKMirror","u":"https://www.apkmirror.com/","h":"APK下载","cat":"mobile"},{"t":"APKCombo","u":"https://apkcombo.com/zh/","h":"APK资源","cat":"mobile"},{"t":"OpenProxy","u":"https://openproxylist.com/","h":"免费代理","cat":"tool"},{"t":"ITDOG","u":"https://www.itdog.cn/ping/","h":"网络检测","cat":"tool"},{"t":"DNS查询","u":"https://dnschecker.org/","h":"DNS查询","cat":"tool"},{"t":"APP收入","u":"https://www.paywallscreens.com/","h":"付费墙设计","cat":"design"}],"Nano Banana":[{"t":"小云雀","u":"https://xyq.jianying.com/home?tab_name=home","h":"剪映AI","cat":"ai"},{"t":"Pippit","u":"https://www.pippit.ai/home?","h":"海外AI创作","cat":"ai"},{"t":"火山方舟","u":"https://console.volcengine.com/auth/login","h":"火山AI","cat":"ai"},{"t":"LMArena","u":"https://lmarena.ai/","h":"模型评测","cat":"ai"},{"t":"Nano Banana","u":"https://nanobananafree.ai/","h":"AI图像","cat":"ai"},{"t":"RunningHub","u":"https://www.runninghub.cn/quick-create","h":"AI工作流","cat":"ai"},{"t":"Vibe Banana","u":"https://intent.app/banana/","h":"AI创作","cat":"ai"},{"t":"iMini","u":"https://imini.com/zh","h":"AI智能体","cat":"ai"},{"t":"Opal-VEO","u":"https://opal.withgoogle.com/?mode=canvas","h":"Google AI","cat":"ai"},{"t":"ego","u":"https://lite.ego.app/","h":"AI助手","cat":"ai"},{"t":"倒计时","u":"https://transpilot.cc.cd/countdown-app/mgr_c8f2a1.php","h":"倒计时工具","cat":"tool"}],"Blog":[{"t":"IP查询","u":"https://ip.sb/","h":"IP查询","cat":"tool"},{"t":"IP风险","u":"https://ping0.cc/","h":"风险查询","cat":"tool"},{"t":"Windsurf","u":"https://windsurf.com/account/register","h":"AI编程","cat":"dev"},{"t":"Fast.com","u":"https://fast.com/zh/cn","h":"网速测试","cat":"tool"},{"t":"果汁榜","u":"http://www.guozhivip.com/rank/","h":"榜单信息","cat":"news"},{"t":"Tally","u":"https://tally.so/dashboard","h":"在线表单","cat":"tool"},{"t":"ManyChat","u":"https://manychat.com/","h":"聊天机器人","cat":"dev"},{"t":"Scamalytics","u":"https://scamalytics.com/","h":"IP检测","cat":"tool"}],"YouTube":[{"t":"FMHY","u":"https://fmhy.pages.dev/","h":"资源导航","cat":"tool"},{"t":"SkyReels","u":"https://www.skyreels.ai/home/","h":"AI视频生成","cat":"ai"},{"t":"相逢解析","u":"https://pan.xfyzyyb.xyz/user/parse","h":"网盘解析","cat":"tool"},{"t":"百度加速","u":"https://jyjc.cloudns.org/bdwpbxs_1","h":"网盘加速","cat":"tool"},{"t":"Ideogram","u":"https://ideogram.ai/character","h":"角色一致性","cat":"ai"},{"t":"Pixabay","u":"https://pixabay.com/","h":"免费素材","cat":"design"},{"t":"PS-key","u":"https://gen.paramore.su/","h":"PS资源","cat":"design"},{"t":"Photoshop","u":"https://photoshop.adobe.com/","h":"Adobe图像","cat":"design"},{"t":"Animagraffs","u":"https://animagraffs.com/","h":"动画信息图","cat":"art"},{"t":"相逢储物","u":"https://pan.xfyzyyb.xyz/ms.html","h":"网盘管理","cat":"tool"}],"mail":[{"t":"One.IDkey","u":"https://one.idkey.cc/","h":"身份验证","cat":"tool"},{"t":"CoPaw","u":"https://copaw.agentscope.io/","h":"AI智能体","cat":"ai"},{"t":"MoeMail","u":"https://moemail.app/zh-CN","h":"在线邮箱","cat":"tool"},{"t":"Outlook","u":"https://outlook.live.com/mail/","h":"微软邮件","cat":"tool"},{"t":"临时邮箱","u":"https://linshiyouxiang.net/","h":"一次性邮箱","cat":"tool"},{"t":"临时Gmail","u":"https://emailtick.com/zh","h":"临时邮箱","cat":"tool"},{"t":"网易数帆","u":"https://console.163yun.com/","h":"网易云","cat":"tool"},{"t":"1.1.1.1","u":"https://one.one.one.one/","h":"Cloudflare","cat":"tool"},{"t":"Base64","u":"https://www.base64-image.de/","h":"图片转码","cat":"tool"}],"Google":[{"t":"google安全","u":"https://myaccount.google.com/security","h":"账号安全","cat":"tool"},{"t":"NotebookLM","u":"https://notebooklm.google.com/","h":"AI笔记","cat":"ai"},{"t":"Genie 3","u":"https://deepmind.google/models/genie/","h":"AI世界模型","cat":"ai"},{"t":"Imagen","u":"https://deepmind.google/models/imagen/","h":"图像生成","cat":"ai"},{"t":"Disco","u":"https://labs.google/disco","h":"实验AI","cat":"ai"},{"t":"Firebase","u":"https://idx.google.com/","h":"应用开发","cat":"dev"},{"t":"Opal","u":"https://opal.google/?mode=canvas","h":"AI应用","cat":"ai"},{"t":"OpenCode","u":"https://opencode.ai/","h":"AI编程","cat":"dev"},{"t":"Stitch","u":"https://stitch.withgoogle.com/","h":"AI设计","cat":"design"},{"t":"Higgsfield","u":"https://higgsfield.ai/","h":"AI视频","cat":"ai"},{"t":"Coze","u":"https://www.coze.com/","h":"AI智能体","cat":"ai"},{"t":"OpenAI API","u":"https://platform.openai.com/docs/overview","h":"开发者接口","cat":"dev"}],"电影":[{"t":"奈飞工厂","u":"https://www.netflixgc.com/","h":"影视播放","cat":"video"},{"t":"音范丝","u":"https://www.yinfans.net/","h":"高清影视","cat":"video"},{"t":"低端影视","u":"https://www.hjdpj.com/","h":"影视播放","cat":"video"},{"t":"低端影视2","u":"https://www.iqingtun.com/","h":"影视播放","cat":"video"},{"t":"大米星球","u":"https://www.5zsz.net/","h":"影视资源","cat":"video"},{"t":"剧圈圈","u":"https://www.jqqzx.me/","h":"影视资源","cat":"video"},{"t":"南瓜影院","u":"http://www.tjwqjz.com/","h":"在线影视","cat":"video"},{"t":"Flixbaba","u":"https://flixbaba.tv/","h":"免费影视","cat":"video"}],"身份":[{"t":"CF IP","u":"http://ip.flares.cloud/","h":"IP优选","cat":"tool"},{"t":"FOFA","u":"https://fofa.info/","h":"网络搜索","cat":"dev"},{"t":"5sim","u":"https://5sim.net/zh/login","h":"短信验证","cat":"tool"},{"t":"Psiphon","u":"https://psiphon.ca/zh/","h":"网络代理","cat":"tool"},{"t":"nthLink","u":"https://www.nthlink.com/zh/","h":"网络连接","cat":"tool"},{"t":"HostMonit","u":"https://stock.hostmonit.com/CloudFlareYes","h":"主机监控","cat":"dev"},{"t":"85LA","u":"https://www.85la.com/","h":"网络节点","cat":"tool"}],"壁纸":[{"t":"FARFETCH","u":"https://www.farfetch.com/","h":"时尚电商","cat":"design"},{"t":"VOGUE","u":"https://www.vogue.com.cn/","h":"时尚资讯","cat":"design"},{"t":"Pexels","u":"https://www.pexels.com/zh-cn/","h":"免费图片","cat":"design"},{"t":"Unsplash","u":"https://unsplash.com/","h":"高质量图片","cat":"design"},{"t":"Wallhaven","u":"https://wallhaven.cc/","h":"高清壁纸","cat":"design"},{"t":"Wallpapers","u":"https://wallpaperscraft.com/","h":"壁纸下载","cat":"design"},{"t":"Freepik","u":"https://www.freepik.com/","h":"设计素材","cat":"design"},{"t":"Mytheresa","u":"https://www.mytheresa.com/cn/zh","h":"奢侈品","cat":"design"},{"t":"Vectorizer","u":"https://vectorizer.ai/","h":"位图转矢量","cat":"design"}]},"videos":[{"t":"老板站背后？0.1秒极限隐藏视频的办公室忍术！🥷💻","len":"1:35","ago":"2天前"},{"t":"老板查岗手忙脚乱？这个“摸鱼神器”100毫秒救命！🆘 Boss Checking? This \"Slacking Tool\" Saves You in 100ms!","len":"3:33","ago":"1周前"},{"t":"Caught Slacking at Work? This Tool Saved Me!😂 上班摸鱼被发现？这个神器救了我！","len":"1:30","ago":"2周前"},{"t":"Generate Excel in 30 Seconds? llama.cpp+Qwen2.5VL 本地多模态AI · 30秒生成Excel","len":"6:08","ago":"1个月前"},{"t":"10+ Free Domains with 163 Email + GitHub & Cloudflare Setup (Beginner Friendly)","len":"15:49","ago":"1个月前"},{"t":"The File Explorer Windows SHOULD Have Built! Preview Everything Instantly 🚀 Windows这款神级资源管理器能秒预览所有文件","len":"3:11","ago":"3个月前"},{"t":"STOP Paying for Wix 🛑 Build a PRO Website for $0 (Forever) 💸 别再花冤枉钱买网站了 🛑 教你 $0 搭建永久免费的专业博客 💸","len":"14:53","ago":"7个月前"},{"t":"who does this to a kitten?? 😡💔 (wait for the ending)","len":"3:21","ago":"7个月前"}]}
+</script>
+
+<script>
+const DATA=JSON.parse(document.getElementById('nav-data').textContent);
+const CATS=DATA.cats;
+const VIDEOS=DATA.videos;
+const CHANNEL_URL='https://www.youtube.com/@AstraView-%E6%98%9F%E8%BE%B0%E8%A7%86%E7%95%8C';
+const gridEl=document.getElementById('grid');
+const totopEl=document.getElementById('totop');
+
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function getHost(url){try{return new URL(url).hostname}catch(e){return ''}}
+function pickItems(cat,n){const items=CATS[cat]||[];return items.slice(0,n)}
+
+function widget(title,body,href){
+    const head=href?`<a class="wh-link" href="${href}" target="_blank" rel="noopener">${escHtml(title)} <i class="fa fa-external-link"></i></a>`:escHtml(title);
+    return `<div class="widget"><div class="widget-header">${head}</div><div class="widget-body">${body}</div></div>`;
+}
+
+/* ===== 时钟 + 自动定位天气 ===== */
+const WMO={0:['Clear','fa-sun-o'],1:['Mostly Clear','fa-sun-o'],2:['Partly Cloudy','fa-cloud'],3:['Overcast','fa-cloud'],45:['Fog','fa-cloud'],48:['Fog','fa-cloud'],51:['Light Drizzle','fa-cloud-rain'],53:['Drizzle','fa-cloud-rain'],55:['Heavy Drizzle','fa-cloud-rain'],56:['Freezing Drizzle','fa-cloud-rain'],57:['Freezing Drizzle','fa-cloud-rain'],61:['Light Rain','fa-cloud-rain'],63:['Rain','fa-cloud-rain'],65:['Heavy Rain','fa-cloud-rain'],66:['Freezing Rain','fa-cloud-rain'],67:['Freezing Rain','fa-cloud-rain'],71:['Light Snow','fa-snowflake-o'],73:['Snow','fa-snowflake-o'],75:['Heavy Snow','fa-snowflake-o'],77:['Snow Grains','fa-snowflake-o'],80:['Light Showers','fa-cloud-rain'],81:['Showers','fa-cloud-rain'],82:['Heavy Showers','fa-cloud-rain'],85:['Snow Showers','fa-snowflake-o'],86:['Snow Showers','fa-snowflake-o'],95:['Thunderstorm','fa-bolt'],96:['Thunderstorm','fa-bolt'],99:['Thunderstorm','fa-bolt']};
+
+function clockWidget(){
+    const d=new Date();
+    const month=d.toLocaleString('en-US',{month:'long'});
+    const day=d.getDate();
+    const year=d.getFullYear();
+    const week=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+    const time=d.toTimeString().slice(0,5);
+    return widget('Clock',`
+        <div class="clock">
+            <div class="clock-left">${day} ${month}<span class="year">${year}</span></div>
+            <div class="clock-right">${time}<span class="week">${week}</span></div>
+        </div>
+        <div class="weather" id="weather-box"><i class="fa fa-spinner fa-spin w-icon"></i><span>Locating…</span></div>`);
+}
+
+async function initWeather(){
+    const box=document.getElementById('weather-box');
+    if(!box)return;
+    let lat=null,lon=null,place='';
+    try{
+        const pos=await new Promise((res,rej)=>{
+            if(!navigator.geolocation)return rej(new Error('no geo'));
+            navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000,maximumAge:600000});
+        });
+        lat=pos.coords.latitude;lon=pos.coords.longitude;
+        try{
+            const rg=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude='+lat+'&longitude='+lon+'&localityLanguage=zh').then(r=>r.json());
+            place=rg.city||rg.locality||rg.principalSubdivision||'';
+        }catch(e){}
+    }catch(e){
+        try{
+            const ip=await fetch('https://ipapi.co/json/').then(r=>r.json());
+            lat=ip.latitude;lon=ip.longitude;place=ip.city||'';
+        }catch(e2){}
+    }
+    if(lat==null||lon==null){box.innerHTML='<i class="fa fa-cloud w-icon"></i><span>Weather unavailable</span>';return;}
+    try{
+        const w=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m').then(r=>r.json());
+        const c=w.current||{};
+        const info=WMO[c.weather_code]||['—','fa-cloud'];
+        box.innerHTML='<i class="fa '+info[1]+' w-icon"></i>'
+            +'<span class="w-temp">'+Math.round(c.temperature_2m)+'°C</span>'
+            +'<span>'+info[0]+'</span>'
+            +(place?'<span class="w-city">'+escHtml(place)+'</span>':'')
+            +'<span>Humidity '+Math.round(c.relative_humidity_2m)+'% · Wind '+Math.round(c.wind_speed_10m)+'km/h</span>';
+    }catch(e){
+        box.innerHTML='<i class="fa fa-cloud w-icon"></i><span>Weather unavailable</span>';
+    }
+}
+
+function searchWidget(){
+    return widget('Search',`
+        <div class="search-widget">
+            <i class="fa fa-search"></i>
+            <input type="text" id="glance-search" placeholder="Search bookmarks...">
+        </div>`);
+}
+
+function linkListWidget(title,items){
+    const list=items.map(it=>`<a class="link-item" href="${escHtml(it.u)}" target="_blank" rel="noopener">${escHtml(it.t)}<span class="link-meta">${escHtml(it.h||'')}</span></a>`).join('');
+    return widget(title,list+`<div class="show-more">SHOW MORE</div>`);
+}
+
+function feedWidget(title,items){
+    const list=items.map(it=>`
+        <div class="feed-item">
+            <a class="feed-title" href="${escHtml(it.u)}" target="_blank" rel="noopener">${escHtml(it.t)}</a>
+            <div class="feed-meta">${escHtml(getHost(it.u))} · ${escHtml(it.cat)}</div>
+            <div class="feed-desc">${escHtml(it.h)}</div>
+            <span class="tag">${escHtml(it.cat)}</span>
+        </div>`).join('');
+    return widget(title,list);
+}
+
+/* ===== 频道视频 widget：AstraView·星辰视界 首页最新8个视频 ===== */
+function videoWidget(){
+    const grads=['152,68,54','36,88,130','104,58,126','46,112,70','140,94,40','52,84,140','130,50,80','40,110,110'];
+    const items=VIDEOS.map((v,i)=>`
+        <a class="video-item" href="https://www.youtube.com/results?search_query=${encodeURIComponent(v.t)}" target="_blank" rel="noopener" title="${escHtml(v.t)}">
+            <div class="video-thumb" style="background:linear-gradient(135deg,rgba(${grads[i%8]},.5),#0e1419)">
+                <i class="fa fa-play-circle play-icon"></i>
+                <span class="v-len">${escHtml(v.len)}</span>
+            </div>
+            <div class="video-title">${escHtml(v.t)}</div>
+            <div class="video-meta">${escHtml(v.ago)} · 宽哥 · AstraView</div>
+        </a>`).join('');
+    return widget('AstraView · 星辰视界',`<div class="video-list">${items}</div>`,CHANNEL_URL);
+}
+
+/* ===== 站点网格：标签常显 + 字符兜底 + 双 favicon 源 ===== */
+function siteGridWidget(title,items){
+    const list=items.map(it=>{
+        const h=getHost(it.u);
+        const fa=h?`https://api.iowen.cn/favicon/favicon.php?domain=${h}&size=64`:'';
+        const fb=h?`https://www.google.com/s2/favicons?domain=${h}&sz=64`:'';
+        const ch=escHtml(((it.t||'?').trim().charAt(0)||'?').toUpperCase());
+        return `
+        <a class="site-item" href="${escHtml(it.u)}" target="_blank" rel="noopener" data-t="${escHtml(it.t)}" title="${escHtml(it.t)}${it.h?' · '+escHtml(it.h):''}">
+            <div class="site-icon">
+                <span class="site-char">${ch}</span>
+                <img src="${fa}" data-fb="${fb}" alt=""
+                     onload="this.parentNode.classList.add('hasimg')"
+                     onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.removeAttribute('data-fb');}else{this.style.display='none';}">
+            </div>
+            <div class="site-label">${escHtml(it.t)}</div>
+        </a>`;
+    }).join('');
+    return widget(title,`<div class="site-grid">${list}</div>`);
+}
+
+function renderGrid(){
+    const html=[
+        clockWidget(),
+        searchWidget(),
+        linkListWidget('Top Resources',pickItems('resourse',5)),
+        feedWidget('r/Selfhosted',pickItems('Blog',4)),
+        feedWidget('r/Homelab',pickItems('身份',3)),
+        videoWidget(),
+        feedWidget('Self-Hosted News',pickItems('AIGC',3)),
+        feedWidget('Self-Hosted Podcasts',pickItems('AI声音',2)),
+        siteGridWidget('Resources',pickItems('resourse',8)),
+        siteGridWidget('Tools',pickItems('tools',8)),
+        siteGridWidget('视频',pickItems('视频',8)),
+        siteGridWidget('AIGC',pickItems('AIGC',8)),
+        siteGridWidget('AI 大语言',pickItems('AI大语言',8)),
+        siteGridWidget('AI 声音',pickItems('AI声音',8)),
+        siteGridWidget('AI 3D',pickItems('AI-3D',8)),
+        siteGridWidget('API & VPS',pickItems('API-VPS',8)),
+        siteGridWidget('APK & Proxy',pickItems('APK-Proxy',8)),
+        siteGridWidget('Nano Banana',pickItems('Nano Banana',8)),
+        siteGridWidget('YouTube',pickItems('YouTube',8)),
+        siteGridWidget('Mail',pickItems('mail',8)),
+        siteGridWidget('Google',pickItems('Google',8)),
+        siteGridWidget('电影',pickItems('电影',8)),
+        siteGridWidget('身份',pickItems('身份',8)),
+        siteGridWidget('壁纸',pickItems('壁纸',8))
+    ].join('');
+    gridEl.innerHTML=html;
+    bindEvents();
+    initWeather();
+}
+
+function bindEvents(){
+    const search=document.getElementById('glance-search');
+    if(search){
+        search.oninput=function(){
+            const q=this.value.trim().toLowerCase();
+            if(!q)return;
+            document.querySelectorAll('.site-item').forEach(s=>{
+                const t=(s.dataset.t||'').toLowerCase();
+                s.style.display=t.includes(q)?'':'none';
+            });
+        };
+    }
+}
+
+/* 顶部 Tab */
+document.querySelectorAll('.top-tab[data-tab]').forEach(t=>{
+    t.onclick=function(){
+        document.querySelectorAll('.top-tab[data-tab]').forEach(x=>x.classList.remove('active'));
+        this.classList.add('active');
+    };
+});
+
+window.addEventListener('scroll',()=>{
+    totopEl.classList.toggle('show',window.scrollY>400);
+});
+totopEl.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+
+renderGrid();
+</script>
+
+<script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+
+</body>
+</html>
