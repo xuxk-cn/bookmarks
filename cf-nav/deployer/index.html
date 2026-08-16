@@ -1,268 +1,123 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>cf-nav 一键部署器</title>
-<style>
-:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--accent:#38bdf8;--text:#f8fafc;--muted:#94a3b8;--green:#4ade80;--red:#f87171}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;padding:2rem;max-width:640px;margin:0 auto}
-h1{color:var(--accent);margin-bottom:.25rem}
-.sub{color:var(--muted);font-size:.9rem;margin-bottom:2rem}
-.card{background:var(--card);border:1px solid var(--border);border-radius:.75rem;padding:1.25rem;margin-bottom:1rem}
-.card-title{font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
-.step-num{background:var(--accent);color:var(--bg);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0}
-.field{margin-bottom:.75rem}
-.field label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.25rem}
-.field input,.field select{width:100%;padding:.5rem .75rem;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:.4rem;font-size:.9rem;outline:none}
-.field input:focus,.field select:focus{border-color:var(--accent)}
-.field .hint{font-size:.75rem;color:var(--muted);margin-top:.2rem}
-button{cursor:pointer;border:none;border-radius:.5rem;font-size:.9rem;font-weight:600;padding:.55rem 1.2rem;transition:opacity .2s}
-.btn-primary{background:var(--accent);color:var(--bg);width:100%;padding:.7rem;font-size:1rem;margin-top:.5rem}
-button:hover{opacity:.85}
-.log{background:var(--bg);border:1px solid var(--border);border-radius:.5rem;padding:.75rem 1rem;font-size:.8rem;font-family:monospace;max-height:300px;overflow-y:auto;margin-top:1rem;display:none}
-.log-line{margin-bottom:.2rem}
-.log-line.ok{color:var(--green)}
-.log-line.err{color:var(--red)}
-.log-line.info{color:var(--muted)}
-.result{display:none;background:#0c2a1a;border:1px solid var(--green);border-radius:.5rem;padding:1rem;margin-top:1rem;text-align:center}
-.result a{color:var(--green);font-size:1.1rem;font-weight:600}
-.progress-wrap{background:var(--border);border-radius:9999px;height:6px;margin:.75rem 0}
-.progress-bar{background:var(--accent);height:6px;border-radius:9999px;transition:width .3s;width:0%}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cf-nav 一键部署器</title>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-<h1>🚀 cf-nav 一键部署器</h1>
-<p class="sub">填写信息后点击部署，自动完成 Cloudflare 所有配置。</p>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Cloudflare Pages 部署工具</p>
+        <h1>cf-nav<br>部署器</h1>
+        <p class="summary">填写 Cloudflare 凭据和管理员账号，点一次自动完成 KV 创建、书签导入、Pages 部署。</p>
+      </div>
+      <div class="status-card">
+        <span class="status-dot"></span>
+        <strong>凭据不会持久化</strong>
+        <p>密钥仅用于转发 Cloudflare API 请求，不存储在服务器端。</p>
+      </div>
+    </section>
 
-<div class="card">
-  <div class="card-title"><div class="step-num">1</div>Cloudflare 账号信息</div>
-  <div class="field">
-    <label>Account ID</label>
-    <input type="text" id="account-id" placeholder="在 CF 控制台右侧可找到">
-  </div>
-  <div class="field">
-    <label>API Token</label>
-    <input type="password" id="api-token" placeholder="需要 Pages、KV、Workers 权限">
-    <div class="hint">
-      <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" style="color:var(--accent)">创建 API Token →</a>
-      权限：Cloudflare Pages:Edit、Workers KV Storage:Edit
-    </div>
-  </div>
-</div>
+    <!-- 步骤 1：CF 凭据 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>1. Cloudflare 凭据</h2>
+          <p>需要 Global API Key（不是 API Token）。</p>
+        </div>
+        <button id="btnLoadAccounts" class="secondary">验证并加载账户</button>
+      </div>
+      <div class="grid two">
+        <label>
+          <span>邮箱</span>
+          <input id="email" type="email" autocomplete="username" placeholder="you@cloudflare.com" />
+        </label>
+        <label>
+          <span>Global API Key</span>
+          <input id="apiKey" type="password" autocomplete="current-password" placeholder="在 CF 个人资料 → API Tokens 获取" />
+        </label>
+        <label>
+          <span>Account</span>
+          <select id="accountId"><option value="">验证后自动加载</option></select>
+        </label>
+        <label>
+          <span>可选：绑定域名的 Zone</span>
+          <select id="zoneId"><option value="">不绑定自定义域名</option></select>
+        </label>
+      </div>
+      <div id="credStatus" class="result mt">等待验证</div>
+    </section>
 
-<div class="card">
-  <div class="card-title"><div class="step-num">2</div>站点基本信息</div>
-  <div class="field"><label>项目名称（英文，用于生成访问地址）</label>
-    <input type="text" id="project-name" placeholder="my-nav" pattern="[a-z0-9-]+">
-  </div>
-  <div class="field"><label>站点名称</label>
-    <input type="text" id="site-name" placeholder="我的导航">
-  </div>
-  <div class="field"><label>管理员用户名</label>
-    <input type="text" id="admin-user" value="admin">
-  </div>
-  <div class="field"><label>管理员密码</label>
-    <input type="password" id="admin-pass" placeholder="请设置强密码">
-  </div>
-</div>
+    <!-- 步骤 2：部署配置 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>2. 部署配置</h2>
+          <p>设置你的导航站信息和管理员账号。</p>
+        </div>
+        <button id="btnRandNames" class="secondary">随机项目名</button>
+      </div>
+      <div class="grid two">
+        <label>
+          <span>Pages 项目名</span>
+          <input id="projectName" placeholder="nav-xxxxxxxx（自动随机）" />
+        </label>
+        <label>
+          <span>KV 命名空间名</span>
+          <input id="kvTitle" placeholder="nav-kv-xxxxxxxx（自动随机）" />
+        </label>
+        <label>
+          <span>站点名称</span>
+          <input id="siteName" value="我的导航" />
+        </label>
+        <label>
+          <span>可选：自定义域名</span>
+          <input id="hostname" placeholder="nav.yourdomain.com" />
+        </label>
+        <label>
+          <span>管理员用户名</span>
+          <input id="adminUsername" value="admin" />
+        </label>
+        <label>
+          <span>管理员密码 <span class="required">*</span></span>
+          <input id="adminPassword" type="password" placeholder="请设置登录密码" />
+        </label>
+      </div>
+    </section>
 
-<div class="card">
-  <div class="card-title"><div class="step-num">3</div>书签文件（可选）</div>
-  <div class="field">
-    <label>上传浏览器导出的书签 HTML（可跳过，部署后在后台导入）</label>
-    <input type="file" id="bookmark-file" accept=".html">
-  </div>
-</div>
+    <!-- 步骤 3：书签导入（可选） -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>3. 导入书签（可选）</h2>
+          <p>上传浏览器导出的书签 HTML 文件，自动解析后写入 KV。</p>
+        </div>
+      </div>
+      <label class="file-label">
+        <span>书签 HTML 文件</span>
+        <input id="bookmarksFile" type="file" accept=".html,.htm" />
+      </label>
+      <div id="bookmarksStatus" class="result mt">未选择文件</div>
+    </section>
 
-<div class="card">
-  <div class="card-title"><div class="step-num">4</div>AI 配置（可选）</div>
-  <div class="field"><label>AI Provider</label>
-    <select id="ai-provider">
-      <option value="workers">CF Workers AI（免费，推荐）</option>
-      <option value="gemini">Google Gemini</option>
-      <option value="openai">OpenAI</option>
-    </select>
-  </div>
-  <div class="field" id="ai-key-wrap" style="display:none">
-    <label>API Key</label>
-    <input type="password" id="ai-key" placeholder="留空则仅使用 Workers AI">
-  </div>
-</div>
+    <!-- 部署按钮 -->
+    <section class="panel deploy-panel">
+      <button id="btnDeploy" class="primary">一键部署</button>
+      <div id="deployResult" class="result">等待部署</div>
+    </section>
 
-<button class="btn-primary" onclick="deploy()">🚀 一键部署</button>
-
-<div class="progress-wrap" id="progress-wrap" style="display:none">
-  <div class="progress-bar" id="progress-bar"></div>
-</div>
-<div class="log" id="log"></div>
-<div class="result" id="result">
-  <div style="margin-bottom:.5rem;color:var(--green)">✅ 部署成功！</div>
-  <a id="result-url" href="#" target="_blank"></a>
-  <div style="font-size:.8rem;color:var(--muted);margin-top:.5rem">首次访问可能需要约 1 分钟完成 DNS 传播</div>
-</div>
-
-<script>
-document.getElementById('ai-provider').addEventListener('change', function() {
-  document.getElementById('ai-key-wrap').style.display = this.value !== 'workers' ? '' : 'none';
-});
-
-const CF_API = 'https://api.cloudflare.com/client/v4';
-let accountId, apiToken;
-
-function cfFetch(path, opts = {}) {
-  return fetch(CF_API + path, {
-    ...opts,
-    headers: { Authorization: `Bearer ${apiToken}`, 'Content-Type': 'application/json', ...(opts.headers||{}) },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  }).then(r => r.json());
-}
-
-function log(msg, type = 'info') {
-  const el = document.getElementById('log');
-  el.style.display = 'block';
-  const div = document.createElement('div');
-  div.className = 'log-line ' + type;
-  div.textContent = msg;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
-}
-
-function setProgress(pct) {
-  document.getElementById('progress-wrap').style.display = '';
-  document.getElementById('progress-bar').style.width = pct + '%';
-}
-
-async function deploy() {
-  accountId = document.getElementById('account-id').value.trim();
-  apiToken  = document.getElementById('api-token').value.trim();
-  const projectName = document.getElementById('project-name').value.trim() || 'my-nav';
-  const siteName    = document.getElementById('site-name').value.trim()    || '我的导航';
-  const adminUser   = document.getElementById('admin-user').value.trim()   || 'admin';
-  const adminPass   = document.getElementById('admin-pass').value.trim();
-  const aiProvider  = document.getElementById('ai-provider').value;
-  const aiKey       = document.getElementById('ai-key').value.trim();
-
-  if (!accountId || !apiToken) return alert('请填写 Account ID 和 API Token');
-  if (!adminPass) return alert('请设置管理员密码');
-
-  log('开始部署...', 'info');
-  setProgress(5);
-
-  try {
-    // Step 1: 创建 KV 命名空间
-    log('正在创建 KV 命名空间...', 'info');
-    const kvRes = await cfFetch(`/accounts/${accountId}/storage/kv/namespaces`, {
-      method: 'POST', body: { title: `${projectName}-kv` },
-    });
-    if (!kvRes.success) throw new Error('KV 创建失败: ' + JSON.stringify(kvRes.errors));
-    const kvId = kvRes.result.id;
-    log(`✓ KV 创建成功: ${kvId}`, 'ok');
-    setProgress(20);
-
-    // Step 2: 写入初始数据到 KV
-    log('写入初始配置...', 'info');
-    const kvPuts = [
-      { key: 'admin_username', value: adminUser },
-      { key: 'admin_password', value: adminPass },
-      { key: 'nav_settings',   value: JSON.stringify({
-        siteName, siteDesc: '个人书签导航站', defaultStyle: '1', defaultBg: 'none',
-        enableSubmit: false, aiProvider, aiApiKey: aiKey,
-      })},
-      { key: 'nav_data', value: JSON.stringify({ categories: [] }) },
-    ];
-    await cfFetch(`/accounts/${accountId}/storage/kv/namespaces/${kvId}/bulk`, {
-      method: 'PUT', body: kvPuts,
-    });
-    log('✓ 初始配置写入完成', 'ok');
-    setProgress(35);
-
-    // Step 3: 处理书签文件（如有）
-    const bmFile = document.getElementById('bookmark-file').files[0];
-    if (bmFile) {
-      log('解析书签文件...', 'info');
-      const html = await bmFile.text();
-      const cats = parseBookmarks(html);
-      await cfFetch(`/accounts/${accountId}/storage/kv/namespaces/${kvId}/bulk`, {
-        method: 'PUT',
-        body: [{ key: 'nav_data', value: JSON.stringify({ categories: cats }) }],
-      });
-      log(`✓ 书签导入完成：${cats.length} 个分类，${cats.reduce((s,c)=>s+c.items.length,0)} 个书签`, 'ok');
-    }
-    setProgress(50);
-
-    // Step 4: 创建 Pages 项目
-    log('创建 Cloudflare Pages 项目...', 'info');
-    const pageRes = await cfFetch(`/accounts/${accountId}/pages/projects`, {
-      method: 'POST',
-      body: {
-        name: projectName,
-        production_branch: 'main',
-        kv_namespaces: [{ id: kvId, name: 'NAV_KV' }],
-      },
-    });
-    if (!pageRes.success && !pageRes.errors?.[0]?.message?.includes('already exists')) {
-      throw new Error('Pages 项目创建失败: ' + JSON.stringify(pageRes.errors));
-    }
-    log('✓ Pages 项目创建成功', 'ok');
-    setProgress(65);
-
-    // Step 5: 上传静态文件
-    log('上传前端文件...', 'info');
-    await uploadFiles(accountId, projectName);
-    log('✓ 文件上传完成', 'ok');
-    setProgress(85);
-
-    // Step 6: 触发部署
-    log('触发部署...', 'info');
-    await cfFetch(`/accounts/${accountId}/pages/projects/${projectName}/deployments`, { method: 'POST' });
-    setProgress(100);
-
-    const url = `https://${projectName}.pages.dev`;
-    log(`✓ 部署成功！访问地址: ${url}`, 'ok');
-
-    const resultEl = document.getElementById('result');
-    const resultUrl = document.getElementById('result-url');
-    resultUrl.href = url;
-    resultUrl.textContent = url;
-    resultEl.style.display = 'block';
-
-  } catch(e) {
-    log('✗ 部署失败: ' + e.message, 'err');
-  }
-}
-
-// 简单书签解析（浏览器端）
-function parseBookmarks(html) {
-  const cats = [];
-  let cur = null;
-  for (const line of html.split('\n')) {
-    const h3 = line.match(/<H3[^>]*>(.*?)<\/H3>/i);
-    if (h3) { cur = { title: h3[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'), items: [] }; cats.push(cur); continue; }
-    const a = line.match(/<A\s+HREF="([^"]+)"[^>]*>(.*?)<\/A>/i);
-    if (a) {
-      try { new URL(a[1]); } catch { continue; }
-      if (!cur) { cur = { title: '未分类', items: [] }; cats.push(cur); }
-      cur.items.push({ title: a[2].replace(/&amp;/g,'&'), url: a[1], icon: '', hover: '' });
-    }
-  }
-  return cats.filter(c => c.items.length > 0);
-}
-
-// 上传文件（使用 Pages Direct Upload API）
-async function uploadFiles(accountId, projectName) {
-  // 实际部署时需要把构建好的文件打包上传
-  // 这里调用 Pages Direct Upload，需要先获取 upload URL
-  const uploadRes = await cfFetch(`/accounts/${accountId}/pages/projects/${projectName}/deployments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: { branch: 'main' },
-  });
-  // 注意：完整的文件上传需要通过 multipart/form-data 上传 zip 包
-  // 这部分在正式版本中通过预构建的 dist.zip 实现
-  return uploadRes;
-}
-</script>
+    <!-- 日志 -->
+    <section class="panel logs-panel">
+      <div class="panel-head compact">
+        <h2>日志</h2>
+        <button id="btnClearLogs" class="secondary small">清空</button>
+      </div>
+      <pre id="logs"></pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
 </body>
 </html>

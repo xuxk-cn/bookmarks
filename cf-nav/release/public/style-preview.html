@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>导航风格选择</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 24px;
+  }
+  h1 { text-align: center; font-size: 1.5rem; color: #f78166; margin-bottom: 8px; letter-spacing: 0.05em; }
+  .subtitle { text-align: center; color: #8b949e; font-size: 0.85rem; margin-bottom: 28px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #21262d;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    background: #161b22;
+  }
+  .card:hover { border-color: #f78166; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(247,129,102,0.15); }
+  .card.active { border-color: #3fb950; box-shadow: 0 0 0 2px rgba(63,185,80,0.3); }
+  .card.active::after {
+    content: '✓ 已选择';
+    position: absolute; top: 8px; right: 8px;
+    background: #3fb950; color: #0d1117;
+    font-size: 0.75rem; font-weight: 700;
+    padding: 3px 10px; border-radius: 12px; z-index: 10;
+  }
+  .preview {
+    width: 100%; height: 220px;
+    border: none; display: block;
+    pointer-events: none; background: #f5f6f8;
+  }
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(22,27,34,0.98);
+    border-top: 1px solid #21262d;
+  }
+  .card-name { font-size: 0.875rem; font-weight: 500; color: #e6edf3; }
+  .card-file {
+    font-size: 0.78rem; color: #f78166; font-family: monospace; font-weight: 600;
+    background: rgba(247,129,102,0.1); padding: 2px 7px; border-radius: 4px;
+    border: 1px solid rgba(247,129,102,0.25);
+  }
+  .loading { text-align: center; color: #8b949e; padding: 60px 0; font-size: 0.95rem; grid-column: 1/-1; }
+  .card-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .card-apply:hover { background: #2ea043; }
+  .card.active .card-apply { background: #1a7f37; }
+</style>
+</head>
+<body>
+
+<h1>🎨 导航风格库</h1>
+<p class="subtitle">点击预览卡片选择风格样式，点击"应用"后返回导航页</p>
+
+<div class="grid" id="grid">
+  <div class="loading">正在加载风格列表...</div>
+</div>
+
+<script>
+function toCssFile(htmlFile) {
+  var m = htmlFile.match(/styles(\d+)\.html/);
+  if (!m) return null;
+  var n = parseInt(m[1]);
+  return 'styles' + (n < 10 ? '0' + n : '' + n) + '.css';
+}
+
+// 注入到 srcdoc head 里的代码：隐藏背景层、注入按钮、阻止 bgChoice 读取
+var INJECT_HEAD = [
+  '<script>',
+  // 拦截 localStorage.getItem，让 bgChoice 返回 none
+  'var _origGet = localStorage.getItem.bind(localStorage);',
+  'localStorage.getItem = function(k) {',
+  '  if (k === "bgChoice") return "none";',
+  '  return _origGet(k);',
+  '};',
+  '<\/script>',
+  '<style>',
+  // 隐藏动态背景画布、背景 iframe、注入按钮
+  '#__apply-btn-wrap__, canvas, #bg-canvas, #bg-image, #bg-iframe { display: none !important; }',
+  '<\/style>'
+].join('\n');
+
+async function fetchStyleDoc(htmlFile) {
+  try {
+    // 从 styles14.html 提取 id=14，走 SSR 路由注入真实书签数据
+    var m = htmlFile.match(/styles(\d+)\.html/);
+    var url = m ? '/styles/' + m[1] : '/backgrounds/' + htmlFile;
+    var res = await fetch(url);
+    var html = await res.text();
+    // 在 </head> 前注入隐藏背景的代码
+    html = html.replace(/<\/head>/i, INJECT_HEAD + '</head>');
+    // 删除 tabbit widget script（styles9 等有这个）
+    html = html.replace(/<script[^>]*data-tabbit[^>]*>[\s\S]*?<\/script>/gi, '');
+    return html;
+  } catch(e) {
+    return '<!DOCTYPE html><html><body style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:13px">加载失败</body></html>';
+  }
+}
+
+(async function() {
+  var grid = document.getElementById('grid');
+  var chosenCss = localStorage.getItem('styleCSS') || null;
+
+  function applyStyle(htmlFile, name) {
+    updateSelected(htmlFile, name);
+    // 提取编号，如 styles1.html -> 1
+    var m = htmlFile.match(/styles(\d+)\.html/);
+    if (!m) return;
+    var id = m[1];
+    localStorage.setItem('styleChoice', id);
+    // 通知主页
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'applyStyle', styleId: id }, '*'); } catch(ex) {}
+      window.close();
+    } else {
+      // 直接跳转
+      window.location.href = '/styles/' + id;
+    }
+  }
+
+  function updateSelected(htmlFile, name) {
+    document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
+    var t = document.querySelector('.card[data-file="' + htmlFile + '"]');
+    if (t) t.classList.add('active');
+    chosenCss = toCssFile(htmlFile);
+  }
+
+  function makeCard(htmlFile, name) {
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.file = htmlFile;
+
+    var cssFile = toCssFile(htmlFile);
+    if (cssFile && cssFile === chosenCss) card.classList.add('active');
+
+    var iframe = document.createElement('iframe');
+    iframe.className = 'preview';
+    iframe.sandbox = 'allow-scripts allow-same-origin';
+
+    var loaded = false;
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting && !loaded) {
+          loaded = true;
+          obs.unobserve(iframe);
+          fetchStyleDoc(htmlFile).then(function(doc) {
+            iframe.srcdoc = doc;
+          });
+        }
+      });
+    }, { rootMargin: '200px' });
+    obs.observe(iframe);
+
+    var footer = document.createElement('div');
+    footer.className = 'card-footer';
+    footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + (cssFile || htmlFile) + '</span><button class="card-apply">应用</button>';
+
+    footer.querySelector('.card-apply').addEventListener('click', function(e) {
+      e.stopPropagation();
+      applyStyle(htmlFile, name);
+    });
+
+    card.appendChild(iframe);
+    card.appendChild(footer);
+    card.addEventListener('click', function() { updateSelected(htmlFile, name); });
+    return card;
+  }
+
+  try {
+    var res = await fetch('/api/backgrounds');
+    var data = await res.json();
+    var styles = data.styles || [];
+
+    grid.innerHTML = '';
+
+    if (!styles.length) {
+      grid.innerHTML = '<div class="loading">未找到风格文件，请确认在开发服务器下访问</div>';
+      return;
+    }
+
+    styles.forEach(function(s) {
+      grid.appendChild(makeCard(s.file, s.name));
+    });
+
+    if (chosenCss) {
+      // chosenCss already applied via makeCard's active class
+    }
+
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">加载失败，请确认在开发服务器下访问</div>';
+  }
+
+})();
+</script>
+
+<!-- 监听子窗口应用操作（由 inject_apply_button.py 注入） -->
+<!-- __patched_by_inject__ -->
+
+</body>
+</html>

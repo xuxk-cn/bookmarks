@@ -15,11 +15,7 @@ export async function onRequestPost({ request, env }) {
   const password = form.get('password') || '';
   const ttl      = parseInt(form.get('ttl') || '86400');
 
-  const _u = (await env.NAV_KV.get('admin_username') || '').trim();
-  const _p = (await env.NAV_KV.get('admin_password') || '').trim();
-  console.log('KV:', JSON.stringify({_u, _p, username, password}));
-  const ok = (username.trim() === 'admin' && password.trim() === 'admin123')
-           || await verifyCredentials(env, username, password);
+  const ok = await verifyCredentials(env, username, password);
 
   if (!ok) {
     return new Response(loginHtml('用户名或密码错误'), {
