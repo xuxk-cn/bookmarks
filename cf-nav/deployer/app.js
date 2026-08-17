@@ -37,7 +37,10 @@ async function loadAccounts() {
 
 // ─── 部署 ────────────────────────────────────────────────────────
 // 与 cf-nav/release/public 下需部署的静态文件清单保持一致
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release';
+// 三个 CDN 镜像按优先级尝试，避免单一来源被限流。
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release'; // 末位回退
+const CDN_BASE        = 'https://cdn.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';         // 主：jsdelivr
+const CDN_BASE_ALT    = 'https://fastly.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';     // 备：fastly 镜像
 const PUBLIC_FILES = [
   '_headers',
   'admin/index.html',
@@ -162,16 +165,16 @@ async function deploy() {
   }
 }
 
-// 并发从 GitHub raw 拉取一批文件，返回 [{path, contentBase64}]
+// 并发从 CDN 拉取一批文件，返回 [{path, contentBase64}]
+// 用 jsdelivr CDN 镜像 GitHub raw：不限流、有边缘缓存，
+// 避免 raw.githubusercontent.com 未鉴权 60 次/小时被 429。
+// 失败时按指数退避重试 3 次。
 async function fetchBatchBase64(paths) {
   const out = [];
   for (let i = 0; i < paths.length; i += FETCH_CONCURRENCY) {
     const group = paths.slice(i, i + FETCH_CONCURRENCY);
     const results = await Promise.all(group.map(async (path) => {
-      const url = `${GITHUB_RAW_BASE}/public/${path}?t=${Date.now()}`;
-      const resp = await fetch(url, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`拉取 ${path} 失败: ${resp.status}`);
-      const buf = await resp.arrayBuffer();
+      const buf = await fetchWithRetry(path);
       const bytes = new Uint8Array(buf);
       let bin = '';
       const CHUNK = 0x8000;
@@ -183,6 +186,44 @@ async function fetchBatchBase64(paths) {
     out.push(...results);
   }
   return out;
+}
+
+// 带重试的 CDN 拉取：依次尝试 jsdelivr(主)、jsdelivr(gh)、raw 退避回退
+async function fetchWithRetry(path) {
+  const urls = [
+    `${CDN_BASE}/public/${path}`,
+    `${CDN_BASE_ALT}/public/${path}`,
+    `${GITHUB_RAW_BASE}/public/${path}`,
+  ];
+  const backoffs = [0, 600, 2500];
+  let lastErr = null;
+  for (let i = 0; i < urls.length; i++) {
+    // 等待退避
+    if (backoffs[i] > 0) await sleep(backoffs[i]);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const resp = await fetch(urls[i], { cache: 'no-cache' });
+        if (resp.ok) return await resp.arrayBuffer();
+        if (resp.status === 404) throw new Error(`拉取 ${path} 失败: 404 (文件不存在)`);
+        if (resp.status === 429 || resp.status >= 500) {
+          // 限流或服务端错误，退避重试
+          lastErr = new Error(`拉取 ${path} 失败: ${resp.status}`);
+          await sleep(500 * Math.pow(2, attempt));
+          continue;
+        }
+        throw new Error(`拉取 ${path} 失败: ${resp.status}`);
+      } catch (e) {
+        if (String(e.message).includes('404')) throw e;
+        lastErr = e;
+        await sleep(500 * Math.pow(2, attempt));
+      }
+    }
+  }
+  throw lastErr || new Error(`拉取 ${path} 失败`);
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ─── 工具函数 ─────────────────────────────────────────────────────
