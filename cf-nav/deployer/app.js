@@ -36,18 +36,58 @@ async function loadAccounts() {
 }
 
 // ─── 部署 ────────────────────────────────────────────────────────
+// 与 cf-nav/release/public 下需部署的静态文件清单保持一致
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release';
+const PUBLIC_FILES = [
+  '_headers',
+  'admin/index.html',
+  'backgrounds/a1.html','backgrounds/a2.html','backgrounds/a3.html','backgrounds/a4.html',
+  'backgrounds/a5.html','backgrounds/a6.html','backgrounds/a7.html','backgrounds/a8.html',
+  'backgrounds/a9.html','backgrounds/a10.html','backgrounds/a11.html','backgrounds/a12.html',
+  'backgrounds/a13.html','backgrounds/a14.html','backgrounds/a15.html','backgrounds/a16.html',
+  'backgrounds/a17.html','backgrounds/a18.html','backgrounds/a19.html','backgrounds/a20.html',
+  'backgrounds/a21.html','backgrounds/a22.html','backgrounds/a23.html','backgrounds/a24.html',
+  'backgrounds/a25.html','backgrounds/a26.html','backgrounds/a27.html','backgrounds/a28.html',
+  'backgrounds/a29.html','backgrounds/a30.html','backgrounds/a31.html','backgrounds/a32.html',
+  'backgrounds/a33.html','backgrounds/a34.html','backgrounds/a35.html','backgrounds/a36.html',
+  'backgrounds/a37.html','backgrounds/a38.html','backgrounds/a39.html','backgrounds/a40.html',
+  'backgrounds/a41.html','backgrounds/a42.html','backgrounds/a43.html','backgrounds/a44.html',
+  'backgrounds/a45.html','backgrounds/a46.html',
+  'backgrounds/aurora.js','backgrounds/forest.js','backgrounds/matrix.js','backgrounds/particles.js',
+  'backgrounds/rain.html','backgrounds/rain.js','backgrounds/sakura.js','backgrounds/snow.js',
+  'backgrounds/stars.js','backgrounds/stream.js',
+  'backgrounds/styles1.html','backgrounds/styles2.html','backgrounds/styles3.html',
+  'backgrounds/styles4.html','backgrounds/styles5.html','backgrounds/styles6.html',
+  'backgrounds/styles7.html','backgrounds/styles8.html','backgrounds/styles9.html',
+  'backgrounds/styles10.html','backgrounds/styles11.html','backgrounds/styles12.html',
+  'backgrounds/styles13.html','backgrounds/styles14.html','backgrounds/styles15.html',
+  'backgrounds/styles16.html',
+  'bg-preview.html',
+  'css/main.css',
+  'css/styles01.css','css/styles02.css','css/styles03.css','css/styles04.css',
+  'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css',
+  'css/styles09.css','css/styles10.css','css/styles11.css','css/styles12.css',
+  'css/styles13.css','css/styles14.css','css/styles15.css','css/styles16.css',
+  'index.html',
+  'js/background.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
+  'style-preview.html',
+];
+
+const BATCH_SIZE = 8;          // 每批从 GitHub 拉取并上传的文件数（控制单请求 body 体积）
+const FETCH_CONCURRENCY = 4;   // 单批内的并发 fetch 数
+
 async function deploy() {
-  // 基本校验
   const adminPass = $('adminPassword').value.trim();
   if (!adminPass) { setResult('请先设置管理员密码', 'error'); return; }
 
   setBusy(true);
-  setResult('部署中，请稍候（约 1-2 分钟）...');
+  setResult('部署中，请稍候（约 2-4 分钟）...');
   $('logs').textContent = '';
+  const startedAt = Date.now();
 
   try {
     const creds = getCredentials();
-    const payload = {
+    const basePayload = {
       credentials: creds,
       accountId: $('accountId').value,
       projectName: $('projectName').value.trim(),
@@ -62,28 +102,87 @@ async function deploy() {
     // 读取书签文件
     const file = $('bookmarksFile').files[0];
     if (file) {
-      payload.bookmarksHtml = await readFile(file);
+      basePayload.bookmarksHtml = await readFile(file);
       log(`书签文件已读取: ${file.name}`);
     }
 
-    const result = await post('/api/deploy', payload);
-    (result.logs || []).forEach(log);
+    // ── Step 1: prepare ─────────────────────────────────────
+    setResult('1/3 准备环境（创建 KV、Pages 项目）...');
+    log('\n[1/3] 准备环境...');
+    const prepare = await post('/api/deploy/prepare', basePayload);
+    (prepare.logs || []).forEach(log);
 
-    const url = result.domain?.hostname
-      ? `https://${result.domain.hostname}`
-      : result.url || `https://${result.projectName}.pages.dev`;
+    const { accountId, projectName, jwt } = prepare;
+    const manifest = {};
+
+    // ── Step 2: 上传静态文件（前端直接从 GitHub raw 拉取并 base64 后送 worker）──
+    setResult(`2/3 上传静态文件（共 ${PUBLIC_FILES.length} 个）...`);
+    log(`\n[2/3] 上传 ${PUBLIC_FILES.length} 个静态文件，分批拉取 GitHub raw...`);
+    let uploaded = 0;
+    for (let i = 0; i < PUBLIC_FILES.length; i += BATCH_SIZE) {
+      const batchPaths = PUBLIC_FILES.slice(i, i + BATCH_SIZE);
+      // 分组并发：缓解 GitHub raw 单连接慢
+      const assets = await fetchBatchBase64(batchPaths);
+      const resp = await post('/api/deploy/upload-batch', { jwt, assets });
+      (resp.logs || []).forEach(log);
+      Object.assign(manifest, resp.manifestPatch || {});
+      uploaded += batchPaths.length;
+      setResult(`2/3 上传中... ${uploaded}/${PUBLIC_FILES.length}`);
+      log(`  已上传 ${uploaded}/${PUBLIC_FILES.length}（本批 ${batchPaths.length}，缺 ${resp.missingCount} 真传）`);
+    }
+    log(`静态文件 manifest 收集完成，共 ${Object.keys(manifest).length} 项`);
+
+    // ── Step 3: finalize ─────────────────────────────────────
+    setResult('3/3 提交 Pages 部署...');
+    log('\n[3/3] 提交部署...');
+    const finalize = await post('/api/deploy/finalize', {
+      credentials: creds,
+      accountId,
+      projectName,
+      manifest,
+      hostname: basePayload.hostname,
+      zoneId: basePayload.zoneId,
+    });
+    (finalize.logs || []).forEach(log);
+
+    const url = finalize.domain?.hostname
+      ? `https://${finalize.domain.hostname}`
+      : finalize.url || `https://${projectName}.pages.dev`;
     setResult(`✅ 部署成功！访问：${url}`, 'success');
-    log(`\n🎉 部署完成！`);
-    log(`   项目名: ${result.projectName}`);
+    const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+    log(`\n🎉 部署完成！(用时 ${secs}s)`);
+    log(`   项目名: ${finalize.projectName}`);
     log(`   访问地址: ${url}`);
     log(`   管理后台: ${url}/admin`);
-    log(`   KV: ${result.kv?.title}`);
   } catch (e) {
     setResult(e.message, 'error');
     log(`❌ 部署失败: ${e.message}`);
   } finally {
     setBusy(false);
   }
+}
+
+// 并发从 GitHub raw 拉取一批文件，返回 [{path, contentBase64}]
+async function fetchBatchBase64(paths) {
+  const out = [];
+  for (let i = 0; i < paths.length; i += FETCH_CONCURRENCY) {
+    const group = paths.slice(i, i + FETCH_CONCURRENCY);
+    const results = await Promise.all(group.map(async (path) => {
+      const url = `${GITHUB_RAW_BASE}/public/${path}?t=${Date.now()}`;
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`拉取 ${path} 失败: ${resp.status}`);
+      const buf = await resp.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      const CHUNK = 0x8000;
+      for (let j = 0; j < bytes.length; j += CHUNK) {
+        bin += String.fromCharCode(...bytes.subarray(j, j + CHUNK));
+      }
+      return { path, contentBase64: btoa(bin) };
+    }));
+    out.push(...results);
+  }
+  return out;
 }
 
 // ─── 工具函数 ─────────────────────────────────────────────────────

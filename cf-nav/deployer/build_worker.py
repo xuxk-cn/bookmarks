@@ -49,6 +49,46 @@ function serveStatic(path) {{
 }}
 
 // ─── 后端 Worker 逻辑 ─────────────────────────────────────────────
+const CF_API = 'https://api.cloudflare.com/client/v4';
+const COMPAT_DATE = '2024-09-23';
+const KV_BINDING = 'NAV_KV';
+const GITHUB_RAW = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release';
+
+const PUBLIC_FILES = [
+  '_headers',
+  'admin/index.html',
+  'backgrounds/a1.html','backgrounds/a2.html','backgrounds/a3.html','backgrounds/a4.html',
+  'backgrounds/a5.html','backgrounds/a6.html','backgrounds/a7.html','backgrounds/a8.html',
+  'backgrounds/a9.html','backgrounds/a10.html','backgrounds/a11.html','backgrounds/a12.html',
+  'backgrounds/a13.html','backgrounds/a14.html','backgrounds/a15.html','backgrounds/a16.html',
+  'backgrounds/a17.html','backgrounds/a18.html','backgrounds/a19.html','backgrounds/a20.html',
+  'backgrounds/a21.html','backgrounds/a22.html','backgrounds/a23.html','backgrounds/a24.html',
+  'backgrounds/a25.html','backgrounds/a26.html','backgrounds/a27.html','backgrounds/a28.html',
+  'backgrounds/a29.html','backgrounds/a30.html','backgrounds/a31.html','backgrounds/a32.html',
+  'backgrounds/a33.html','backgrounds/a34.html','backgrounds/a35.html','backgrounds/a36.html',
+  'backgrounds/a37.html','backgrounds/a38.html','backgrounds/a39.html','backgrounds/a40.html',
+  'backgrounds/a41.html','backgrounds/a42.html','backgrounds/a43.html','backgrounds/a44.html',
+  'backgrounds/a45.html','backgrounds/a46.html',
+  'backgrounds/aurora.js','backgrounds/forest.js','backgrounds/matrix.js','backgrounds/particles.js',
+  'backgrounds/rain.html','backgrounds/rain.js','backgrounds/sakura.js','backgrounds/snow.js',
+  'backgrounds/stars.js','backgrounds/stream.js',
+  'backgrounds/styles1.html','backgrounds/styles2.html','backgrounds/styles3.html',
+  'backgrounds/styles4.html','backgrounds/styles5.html','backgrounds/styles6.html',
+  'backgrounds/styles7.html','backgrounds/styles8.html','backgrounds/styles9.html',
+  'backgrounds/styles10.html','backgrounds/styles11.html','backgrounds/styles12.html',
+  'backgrounds/styles13.html','backgrounds/styles14.html','backgrounds/styles15.html',
+  'backgrounds/styles16.html',
+  'bg-preview.html',
+  'css/main.css',
+  'css/styles01.css','css/styles02.css','css/styles03.css','css/styles04.css',
+  'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css',
+  'css/styles09.css','css/styles10.css','css/styles11.css','css/styles12.css',
+  'css/styles13.css','css/styles14.css','css/styles15.css','css/styles16.css',
+  'index.html',
+  'js/background.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
+  'style-preview.html',
+];
+
 {backend_logic}"""
 
 with open(out_path, 'w', encoding='utf-8') as f:
