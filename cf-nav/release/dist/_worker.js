@@ -814,7 +814,7 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (path === "/api/favicon") {
     if (method === "GET") return faviconGet(make());
   }
-  const stylesMatch = path.match(/^\/styles\/(.+)$/);
+  const stylesMatch = path.match(/^\/api\/styles\/(.+)$/);
   if (stylesMatch) {
     if (method === "GET") return onRequestGet10(make({ id: stylesMatch[1] }));
   }

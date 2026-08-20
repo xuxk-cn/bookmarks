@@ -11,31 +11,14 @@
 <link id="style-css" rel="stylesheet" href="">
 <script>
 (function() {
-  // 检查是否有风格选择，有则跳转
-  var styleChoice = localStorage.getItem('styleChoice');
-  if (styleChoice && window.location.pathname === '/') {
-    window.location.replace('/styles/' + styleChoice);
-  }
-  function applyStyleCSS(cssFile) {
-    var link = document.getElementById('style-css');
-    if (cssFile) {
-      link.href = '/css/' + cssFile;
-    } else {
-      link.href = '';
-    }
-  }
-  // 页面加载时读取已保存的风格
-  applyStyleCSS(localStorage.getItem('styleCSS') || '');
-  // 监听其他标签页的 localStorage 变化（style-preview 应用后触发）
-  window.addEventListener('storage', function(e) {
-    if (e.key === 'styleCSS') applyStyleCSS(e.newValue || '');
-  });
   // 监听 postMessage（style-preview / bg-preview 通过 window.opener.postMessage 通知）
   window.addEventListener('message', function(e) {
     if (!e.data) return;
     if (e.data.type === 'applyStyle' && e.data.styleId) {
       localStorage.setItem('styleChoice', e.data.styleId);
-      window.location.href = '/styles/' + e.data.styleId;
+      // 设置 Cookie，让后端在加载首页时可以直接读取该风格并渲染
+      document.cookie = "styleChoice=" + e.data.styleId + ";path=/;max-age=31536000;SameSite=Lax";
+      window.location.reload();
     }
     if (e.data.type === 'applyBg' && e.data.bgFile !== undefined) {
       localStorage.setItem('bgChoice', e.data.bgFile);
@@ -203,34 +186,72 @@
   musicApply.addEventListener('click', applyMusic);
   musicUrl.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyMusic(); });
 
-  // 背景列表加载
-  (async function loadBgOptions() {
+  // 偏好设置选项加载与绑定
+  (async function loadSettingsOptions() {
     try {
       var res = await fetch('/api/backgrounds');
       var data = await res.json();
-      var sel = document.getElementById('settings-bg-select');
+      
+      // 1. 初始化背景下拉框
+      var bgSel = document.getElementById('settings-bg-select');
+      // 插入 Canvas 动画选项
+      [['rain','🌧 下雨'],['snow','❄️ 下雪'],['forest','🌿 落叶']].forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item[0];
+        opt.textContent = item[1];
+        bgSel.appendChild(opt);
+      });
+      // 插入 Shader 特效选项
       (data.backgrounds || []).forEach(function(item) {
-        if (!item.file.startsWith('a')) return;
+        if (!item.file.startsWith('a') && item.file !== 'rain.html') return;
         var opt = document.createElement('option');
         opt.value = item.file;
         opt.textContent = item.name || item.file;
-        sel.appendChild(opt);
+        bgSel.appendChild(opt);
       });
-      var saved = localStorage.getItem('bgChoice') || 'none';
-      sel.value = saved;
-      sel.addEventListener('change', function() {
+      var savedBg = localStorage.getItem('bgChoice') || 'none';
+      bgSel.value = savedBg;
+      bgSel.addEventListener('change', function() {
         var val = this.value;
-        if (!val) {
-          localStorage.removeItem('styleChoice');
-          window.location.href = '/';
-          return;
+        localStorage.setItem('bgChoice', val);
+        if (window.__setBg) {
+          window.__setBg(val);
+        } else {
+          // 同步给隐藏的 select 并触发 change
+          var hiddenSel = document.getElementById('bg-select');
+          if (hiddenSel) {
+            hiddenSel.value = val;
+            hiddenSel.dispatchEvent(new Event('change'));
+          }
         }
-        var nm = val.match(/styles0*(\d+)\.css/);
-        if (!nm) return;
-        localStorage.setItem('styleChoice', nm[1]);
-        window.location.href = '/styles/' + nm[1];
       });
-    } catch(e) { console.warn('风格列表加载失败', e); }
+
+      // 2. 初始化风格下拉框
+      var styleSel = document.getElementById('style-select');
+      styleSel.innerHTML = '<option value="none">默认风格</option>';
+      (data.styles || []).forEach(function(item) {
+        var opt = document.createElement('option');
+        var m = item.file.match(/styles(\d+)\.html/);
+        if (!m) return;
+        opt.value = m[1];
+        opt.textContent = item.name || ('风格 ' + m[1]);
+        styleSel.appendChild(opt);
+      });
+      var savedStyle = localStorage.getItem('styleChoice') || 'none';
+      styleSel.value = savedStyle;
+      styleSel.addEventListener('change', function() {
+        var val = this.value;
+        if (!val || val === 'none') {
+          localStorage.removeItem('styleChoice');
+          document.cookie = "styleChoice=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          window.location.reload();
+        } else {
+          localStorage.setItem('styleChoice', val);
+          document.cookie = "styleChoice=" + val + ";path=/;max-age=31536000;SameSite=Lax";
+          window.location.reload();
+        }
+      });
+    } catch(e) { console.warn('设置选项加载失败', e); }
   })();
 
   // ── 背景控制台模式 ────────────────────────────────

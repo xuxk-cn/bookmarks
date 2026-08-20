@@ -3,99 +3,180 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>我的导航</title>
+<title>星辰视界 - 我的导航</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
 <style>
 :root {
-    --sidebar-bg: #2c2c2c;
-    --sidebar-hover: #404040;
+    --sidebar-bg: #1e1e23;
+    --sidebar-hover: #2a2a32;
     --sidebar-text: #b0b0b0;
     --sidebar-text-active: #fff;
-    --accent: #ff6700;
-    --content-bg: #fafafa;
+    --accent: #38a1d0;
+    --accent-hover: #2b8cb8;
+    --content-bg: #f4f5f7;
     --card-bg: #ffffff;
     --card-border: #ececec;
-    --card-hover: #ff6700;
+    --card-hover: #38a1d0;
     --text-primary: #333;
     --text-secondary: #888;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--content-bg);color:var(--text-primary);display:flex;min-height:100vh}
-.sidebar{width:220px;background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100}
+
+/* 报错条 */
+#errbox{position:fixed;left:0;right:0;bottom:0;background:#7f1d1d;color:#fff;font-size:12px;padding:6px 10px;z-index:99999;white-space:pre-wrap;font-family:monospace;display:none}
+
+/* 侧栏 */
+.sidebar{width:220px;background:var(--sidebar-bg);color:var(--sidebar-text);flex-shrink:0;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100;display:flex;flex-direction:column}
 .sidebar::-webkit-scrollbar{width:6px}
 .sidebar::-webkit-scrollbar-thumb{background:#555;border-radius:3px}
-.sidebar-logo{padding:28px 16px 20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.05)}
-.logo-main{font-size:22px;font-weight:bold;color:var(--accent);letter-spacing:1px}
-.logo-sub{font-size:12px;color:#888;margin-top:4px}
-.sidebar-menu{list-style:none;padding:8px 0}
-.menu-item{padding:13px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;font-size:14px;transition:all .2s;border-left:3px solid transparent;user-select:none}
+
+.sidebar-logo{padding:20px 16px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:10px;justify-content:center}
+.sidebar-logo svg{width:36px;height:36px;flex-shrink:0}
+.logo-text{font-size:18px;font-weight:bold;color:#fff;letter-spacing:1px}
+.logo-sub{font-size:11px;color:#888;margin-top:2px}
+.logo-wrap{display:flex;flex-direction:column;align-items:flex-start}
+
+.sidebar-menu{list-style:none;padding:8px 0;flex:1;overflow-y:auto}
+.sidebar-menu::-webkit-scrollbar{width:4px}
+.sidebar-menu::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+.menu-item{padding:10px 18px;cursor:pointer;display:flex;align-items:center;gap:12px;font-size:13px;transition:all .2s;border-left:3px solid transparent;user-select:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-item:hover{background:var(--sidebar-hover);color:var(--sidebar-text-active)}
 .menu-item.active{background:var(--sidebar-hover);color:var(--sidebar-text-active);border-left-color:var(--accent)}
-.menu-item i{width:18px;text-align:center;font-size:15px}
+.menu-item i{width:18px;text-align:center;font-size:14px;color:var(--accent)}
+.menu-item.active i{color:#6cc0e8}
+
+/* 主区 */
 .main{margin-left:220px;flex:1;padding:24px 28px 60px;background:var(--content-bg);min-height:100vh}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
-.page-title{font-size:22px;font-weight:600;color:var(--text-primary)}
-.search-box{position:relative;width:280px;max-width:100%}
-.search-box input{width:100%;padding:8px 12px 8px 34px;border-radius:6px;border:1px solid #e0e0e0;background:#fff;font-size:13px;outline:none;transition:border-color .2s}
+.page-title{font-size:22px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:12px}
+.header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+
+/* 天气 */
+.weather-info{font-size:13px;color:#666;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e0e0e0;border-radius:20px;padding:6px 14px}
+.weather-info i{color:var(--accent)}
+
+/* 搜索引擎切换 */
+.engine-switch{display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #e0e0e0;border-radius:20px;padding:4px 8px}
+.engine-switch a{font-size:12px;padding:4px 10px;cursor:pointer;border-radius:14px;color:#666;transition:all .15s;user-select:none}
+.engine-switch a:hover{color:var(--accent)}
+.engine-switch a.active{background:var(--accent);color:#fff}
+
+/* 搜索 */
+.search-box{position:relative;width:320px;max-width:100%}
+.search-box input{width:100%;padding:8px 12px 8px 34px;border-radius:20px;border:1px solid #e0e0e0;background:#fff;font-size:13px;outline:none;transition:border-color .2s}
 .search-box input:focus{border-color:var(--accent)}
 .search-box i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#aaa;font-size:13px}
+
 .section{margin-top:28px}
 .section-title{font-size:16px;font-weight:600;color:var(--text-primary);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .section-title::before{content:'';width:4px;height:16px;background:var(--accent);border-radius:2px}
+.section-count{font-size:12px;color:var(--text-secondary);font-weight:400;margin-left:6px}
+
 .card-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .25s;min-height:72px}
-.card:hover{border-color:var(--card-hover);box-shadow:0 6px 16px rgba(255,103,0,.08);transform:translateY(-2px)}
+.card:hover{border-color:var(--card-hover);box-shadow:0 6px 16px rgba(56,161,208,.12);transform:translateY(-2px)}
 .card-icon{width:40px;height:40px;border-radius:8px;background:#f5f5f5;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .card-icon img{width:90%;height:90%;object-fit:contain}
+.card-icon .card-fallback{font-size:14px;font-weight:600;color:#999}
 .card-body{flex:1;min-width:0}
 .card-title{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card-desc{font-size:12px;color:var(--text-secondary);line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
-.about-content{background:#fff;border:1px solid var(--card-border);border-radius:8px;padding:28px;color:#555;line-height:1.8;font-size:14px}
+
+.empty{text-align:center;padding:60px 20px;color:#999;font-size:14px;background:#fff;border:1px dashed #e0e0e0;border-radius:8px}
+
 @media(max-width:1200px){.card-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.card-grid{grid-template-columns:repeat(2,1fr)}.main{padding:16px}}
-@media(max-width:640px){body{flex-direction:column}.sidebar{position:relative;width:100%;bottom:auto;height:auto;max-height:none}.main{margin-left:0}.card-grid{grid-template-columns:1fr}.menu-item{padding:10px 16px}.header{flex-direction:column;align-items:stretch}.search-box{width:100%}}
+@media(max-width:640px){
+    body{flex-direction:column}
+    .sidebar{position:relative;width:100%;bottom:auto;height:auto;max-height:none;flex-direction:row;flex-wrap:wrap}
+    .sidebar-logo{width:100%}
+    .sidebar-menu{display:flex;flex-wrap:wrap;padding:4px;gap:4px}
+    .menu-item{padding:8px 12px;font-size:12px;border-left:none;border-bottom:2px solid transparent}
+    .menu-item.active{border-left:none;border-bottom-color:var(--accent)}
+    .main{margin-left:0}
+    .card-grid{grid-template-columns:1fr}
+    .header{flex-direction:column;align-items:stretch}
+    .search-box{width:100%}
+    .header-right{width:100%;justify-content:space-between}
+}
 </style>
 </head>
 <body>
 
 <aside class="sidebar">
     <div class="sidebar-logo">
-        <div class="logo-main">WebStack</div>
-        <div class="logo-sub">我的网址导航</div>
+        <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+                <linearGradient id="lgBg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#26262d"/>
+                    <stop offset="0.65" stop-color="#2a2734"/>
+                    <stop offset="1" stop-color="#473567"/>
+                </linearGradient>
+                <linearGradient id="lgBand" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0" stop-color="#2e7ea8"/>
+                    <stop offset="1" stop-color="#54b4dc"/>
+                </linearGradient>
+                <clipPath id="lgClip"><rect width="96" height="96" rx="22"/></clipPath>
+            </defs>
+            <g clip-path="url(#lgClip)">
+                <rect width="96" height="96" fill="url(#lgBg)"/>
+                <path d="M -6 80 C 28 62 50 36 66 -8" stroke="url(#lgBand)" stroke-width="36" fill="none"/>
+                <path d="M 94 16 C 80 44 70 68 66 102" stroke="url(#lgBand)" stroke-width="14" fill="none" opacity="0.9"/>
+                <path d="M25 51 L28.8 57.2 L35 61 L28.8 64.8 L25 71 L21.2 64.8 L15 61 L21.2 57.2 Z" fill="#f5c033"/>
+                <path d="M63 46 L65.7 50.3 L70 53 L65.7 55.7 L63 60 L60.3 55.7 L56 53 L60.3 50.3 Z" fill="#f5c033"/>
+                <rect x="42" y="20" width="8" height="8" rx="1.5" fill="#f5c033" transform="rotate(45 46 24)"/>
+                <rect x="64.5" y="13.5" width="7" height="7" rx="1.5" fill="#3fd6ee" transform="rotate(45 68 17)"/>
+                <rect x="38" y="48" width="6" height="6" rx="1.2" fill="#3fd6ee" transform="rotate(45 41 51)"/>
+                <circle cx="14" cy="18" r="2" fill="#3b82c4"/>
+                <circle cx="34" cy="12" r="1.6" fill="#ffffff"/>
+                <circle cx="52" cy="30" r="1.4" fill="#e8f6ff"/>
+                <circle cx="16" cy="42" r="1.6" fill="#ffffff"/>
+                <circle cx="82" cy="12" r="1.8" fill="#ffffff"/>
+                <circle cx="86" cy="40" r="2" fill="#3b82c4"/>
+                <circle cx="12" cy="80" r="1.6" fill="#ffffff"/>
+                <circle cx="36" cy="86" r="1.8" fill="#3b82c4"/>
+                <circle cx="56" cy="88" r="1.5" fill="#ffffff"/>
+                <circle cx="86" cy="74" r="2" fill="#3b82c4"/>
+                <circle cx="76" cy="90" r="1.5" fill="#e8f6ff"/>
+            </g>
+        </svg>
+        <div class="logo-wrap">
+            <div class="logo-text">星辰视界</div>
+            <div class="logo-sub">我的网址导航</div>
+        </div>
     </div>
     <ul class="sidebar-menu" id="menu"></ul>
-    <ul class="sidebar-menu">
-        <li class="menu-item" data-id="about">
-            <i class="fa fa-info-circle"></i>
-            <span>关于本站</span>
-        </li>
-    </ul>
 </aside>
 
 <main class="main">
     <div class="header">
         <div class="page-title" id="page-title">资源中心</div>
-        <div class="search-box">
-            <i class="fa fa-search"></i>
-            <input type="text" id="search" placeholder="搜索书签...">
+        <div class="header-right">
+            <div class="weather-info" id="weather"><i class="fa fa-map-marker"></i> <span>📍 定位中…</span></div>
+            <div class="engine-switch" id="engineSwitch"></div>
+            <div class="search-box">
+                <i class="fa fa-search"></i>
+                <input type="text" id="search" placeholder="Google 搜索">
+            </div>
         </div>
     </div>
     <div id="content"></div>
 </main>
 
+<div id="errbox"></div>
+
+<script>
+window.onerror = function(msg, src, line) {
+    var d = document.getElementById('errbox');
+    d.style.display = 'block';
+    d.textContent = 'JS错误: ' + msg + ' (行 ' + line + ')';
+};
+</script>
+
 <script id="nav-data" type="application/json">
 {
-  "sidebar": [
-    {"id":"resource","title":"资源中心","icon":"fa-graduation-cap","cats":["resourse","Blog"]},
-    {"id":"tools","title":"在线工具","icon":"fa-bullhorn","cats":["tools","soft"]},
-    {"id":"inspiration","title":"灵感素材","icon":"fa-lightbulb-o","cats":["壁纸"]},
-    {"id":"ai-art","title":"AI绘画","icon":"fa-paint-brush","cats":["AIGC","AI","ai","AI-3D"]},
-    {"id":"ai-language","title":"AI语音","icon":"fa-comments-o","cats":["AI大语言","AI声音","反推提示词"]},
-    {"id":"video","title":"视频媒体","icon":"fa-film","cats":["视频","YouTube","电影"]},
-    {"id":"network","title":"网络服务","icon":"fa-server","cats":["身份","mail","Google","API-VPS"]},
-    {"id":"mobile","title":"移动应用","icon":"fa-mobile","cats":["APK-Proxy","Nano Banana"]}
-  ],
   "cats": {
     "resourse": [
       {"t":"doyoudo官网","u":"https://www.doyoudo.com/","h":"在线设计与视频制作学习平台，提供AE、PR、PS、C4D、剪辑、动画等教程"},
@@ -282,7 +363,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
       {"t":"奈飞工厂","u":"https://www.netflixgc.com/","h":"影视在线播放聚合网站，提供电影电视剧纪录片动漫综艺"},
       {"t":"音范丝","u":"https://www.yinfans.net/","h":"高清影视资源整理，收录蓝光原盘4K影片高清电影"},
       {"t":"低端影视","u":"https://www.hjdpj.com/","h":"影视内容在线播放平台，提供电影电视剧分类浏览搜索"},
-      {"t":"低端影视","u":"https://www.iqingtun.com/","h":"影视播放网站，提供影视资源展示分类筛选搜索播放"},
+      {"t":"低端影视-","u":"https://www.iqingtun.com/","h":"影视播放网站，提供影视资源展示分类筛选搜索播放"},
       {"t":"大米星球","u":"https://www.5zsz.net/","h":"在线视频影视资源站，提供电影电视剧动漫综艺内容"},
       {"t":"剧圈圈","u":"https://www.jqqzx.me/","h":"影视播放与资源整理网站，提供影片分类搜索在线播放"},
       {"t":"南瓜影院","u":"http://www.tjwqjz.com/","h":"在线视频影视平台，提供电影电视剧影视内容浏览播放"},
@@ -382,148 +463,307 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Micr
 }
 </script>
 
+<!-- IP 定位脚本（独立块，ES5） -->
 <script>
-const DATA = JSON.parse(document.getElementById('nav-data').textContent);
-const SIDEBAR = DATA.sidebar;
-const CATS = DATA.cats;
+(function(){
+    var weatherEl = document.getElementById('weather').querySelector('span') || document.getElementById('weather');
+    var settled = false;
+    setTimeout(function(){ if(!settled) weatherEl.textContent = '📍 未知位置'; }, 16000);
 
-const menuEl = document.getElementById('menu');
-const contentEl = document.getElementById('content');
-const titleEl = document.getElementById('page-title');
-const searchEl = document.getElementById('search');
-
-let currentId = 'resource';
-
-function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function getHost(url){try{return new URL(url).hostname}catch(e){return ''}}
-function favicon(url){const h=getHost(url);return h?`https://www.google.com/s2/favicons?domain=${h}&sz=64`:''}
-function shortDesc(h,max){if(!h)return'';if(h.length<=max)return h;return h.slice(0,max)+'…'}
-
-function buildSidebar(){
-    SIDEBAR.forEach((s,idx)=>{
-        const li=document.createElement('li');
-        li.className='menu-item'+(idx===0?' active':'');
-        li.dataset.id=s.id;
-        li.innerHTML=`<i class="fa ${s.icon}"></i><span>${escHtml(s.title)}</span>`;
-        li.onclick=()=>select(s.id);
-        menuEl.appendChild(li);
-    });
-}
-
-function buildCard(item){
-    const card=document.createElement('div');
-    card.className='card';
-    card.onclick=()=>window.open(item.u,'_blank');
-    card.innerHTML=`
-        <div class="card-icon"><img src="${favicon(item.u)}" onerror="this.style.visibility='hidden'" alt=""></div>
-        <div class="card-body">
-            <div class="card-title">${escHtml(item.t)}</div>
-            <div class="card-desc">${escHtml(shortDesc(item.h,60))}</div>
-        </div>`;
-    return card;
-}
-
-function renderCategory(s){
-    const main=contentEl;
-    main.innerHTML='';
-    const cfg=SIDEBAR.find(x=>x.id===s);
-    if(!cfg)return;
-    let first=true;
-    cfg.cats.forEach(catName=>{
-        const items=CATS[catName];
-        if(!items||!items.length)return;
-        const sec=document.createElement('div');
-        sec.className='section';
-        sec.innerHTML=`<div class="section-title">${escHtml(catName)} <span style="font-size:12px;color:var(--text-secondary);font-weight:400;margin-left:6px">${items.length} 个</span></div>`;
-        const grid=document.createElement('div');
-        grid.className='card-grid';
-        items.forEach(it=>grid.appendChild(buildCard(it)));
-        sec.appendChild(grid);
-        main.appendChild(sec);
-    });
-}
-
-function renderAbout(){
-    contentEl.innerHTML=`
-        <div class="section">
-            <div class="section-title">关于本站</div>
-            <div class="about-content">
-                <p>这是一个个人网址导航页面，收录各类常用网站、AI 工具、影视资源、设计素材等内容。</p>
-                <p style="margin-top:12px">所有内容来自网络收集，仅供学习参考。</p>
-                <p style="margin-top:12px;color:var(--accent);font-weight:600">共收录 ${Object.values(CATS).reduce((a,b)=>a+b.length,0)} 个书签 · ${Object.keys(CATS).length} 个分类</p>
-            </div>
-        </div>`;
-}
-
-function renderSearch(q){
-    const query=q.trim().toLowerCase();
-    const main=contentEl;
-    main.innerHTML='';
-    if(!query){renderCategory(currentId);return;}
-    let total=0;
-    const matched=[];
-    Object.keys(CATS).forEach(cat=>{
-        CATS[cat].forEach(it=>{
-            if((it.t||'').toLowerCase().includes(query)||(it.h||'').toLowerCase().includes(query)||(it.u||'').toLowerCase().includes(query)){
-                matched.push({it,cat});
-                total++;
+    function getJson(url, cb){
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.timeout = 5000;
+            xhr.onload = function(){
+                if(xhr.status >= 200 && xhr.status < 300){
+                    try { cb(null, JSON.parse(xhr.responseText)); } catch(e){ cb(e); }
+                } else { cb(new Error('http ' + xhr.status)); }
+            };
+            xhr.onerror = function(){ cb(new Error('net')); };
+            xhr.ontimeout = function(){ cb(new Error('timeout')); };
+            xhr.send();
+        } catch(e){ cb(e); }
+    }
+    function weatherIcon(code){
+        code = +code;
+        if(code === 0) return '☀️';
+        if(code <= 2) return '🌤';
+        if(code === 3) return '☁️';
+        if(code <= 48) return '🌫';
+        if(code <= 57) return '🌦';
+        if(code <= 67) return '🌧';
+        if(code <= 77) return '🌨';
+        if(code <= 82) return '🌧';
+        if(code <= 86) return '❄️';
+        return '⛈';
+    }
+    function show(geo){
+        var parts = [];
+        if(geo.city) parts.push(geo.city);
+        if(geo.region && geo.region !== geo.city) parts.push(geo.region);
+        var place = parts.join(' ') || geo.country || '未知位置';
+        getJson('https://api.open-meteo.com/v1/forecast?latitude=' + geo.latitude + '&longitude=' + geo.longitude + '&current=temperature_2m,weather_code&timezone=auto', function(err, j){
+            settled = true;
+            if(!err && j && j.current){
+                weatherEl.textContent = '📍 ' + place + ' ' + weatherIcon(j.current.weather_code) + ' ' + Math.round(j.current.temperature_2m) + '°';
+            } else {
+                weatherEl.textContent = '📍 ' + place;
             }
         });
+    }
+    getJson('https://ipwho.is/', function(err, j){
+        if(!err && j && j.success !== false && (j.city || j.region)){
+            show({city:j.city, region:j.region, country:j.country, latitude:j.latitude, longitude:j.longitude});
+            return;
+        }
+        getJson('https://ipapi.co/json/', function(err2, j2){
+            if(!err2 && j2 && (j2.city || j2.region)){
+                show({city:j2.city, region:j2.region, country:j2.country_name, latitude:j2.latitude, longitude:j2.longitude});
+                return;
+            }
+            getJson('https://api.ip.sb/geoip', function(err3, j3){
+                if(!err3 && j3 && (j3.city || j3.region)){
+                    show({city:j3.city, region:j3.region, country:j3.country, latitude:j3.latitude, longitude:j3.longitude});
+                    return;
+                }
+                settled = true;
+                weatherEl.textContent = '📍 未知位置';
+            });
+        });
     });
-    if(!total){
-        main.innerHTML=`<div class="section"><div class="section-title">搜索结果</div><div style="color:var(--text-secondary);padding:40px 0;text-align:center">未找到匹配 "${escHtml(q)}" 的书签</div></div>`;
+})();
+</script>
+
+<!-- 主程序（ES5，收藏夹板块直列） -->
+<script>
+(function(){
+    var dataEl = document.getElementById('nav-data');
+    var DATA;
+    try {
+        DATA = JSON.parse(dataEl.textContent);
+    } catch(e) {
+        document.getElementById('content').innerHTML = '<div class="empty">数据解析失败: ' + e.message + '</div>';
         return;
     }
-    let curCat=null;
-    matched.forEach(({it,cat})=>{
-        if(cat!==curCat){
-            curCat=cat;
-            const sec=document.createElement('div');
-            sec.className='section';
-            sec.innerHTML=`<div class="section-title">${escHtml(cat)}</div>`;
-            const grid=document.createElement('div');
-            grid.className='card-grid';
-            sec.appendChild(grid);
-            main.appendChild(sec);
-            window.__curGrid=grid;
+    var CATS = DATA.cats;
+
+    /* 收藏夹板块直列（去掉分组层级） */
+    var MENU = [
+        {id:'resourse',    title:'resourse',    icon:'fa-book'},
+        {id:'tools',       title:'tools',       icon:'fa-wrench'},
+        {id:'soft',        title:'soft',        icon:'fa-download'},
+        {id:'视频',        title:'视频',        icon:'fa-video-camera'},
+        {id:'AIGC',        title:'AIGC',        icon:'fa-magic'},
+        {id:'AI',          title:'AI',          icon:'fa-cube'},
+        {id:'ai',          title:'ai',          icon:'fa-diamond'},
+        {id:'AI大语言',    title:'AI大语言',    icon:'fa-comments'},
+        {id:'AI声音',      title:'AI声音',      icon:'fa-microphone'},
+        {id:'反推提示词',  title:'反推提示词',  icon:'fa-search'},
+        {id:'YouTube',     title:'YouTube',     icon:'fa-youtube-play'},
+        {id:'Google',      title:'Google',      icon:'fa-google'},
+        {id:'电影',        title:'电影',        icon:'fa-film'},
+        {id:'身份',        title:'身份',        icon:'fa-user-secret'},
+        {id:'壁纸',        title:'壁纸',        icon:'fa-image'},
+        {id:'API-VPS',     title:'API-VPS',     icon:'fa-cloud'},
+        {id:'AI-3D',       title:'AI-3D',       icon:'fa-cube'},
+        {id:'APK-Proxy',   title:'APK-Proxy',   icon:'fa-android'},
+        {id:'Nano Banana', title:'Nano Banana', icon:'fa-star'},
+        {id:'Blog',        title:'Blog',        icon:'fa-pencil'},
+        {id:'mail',        title:'mail',        icon:'fa-envelope'}
+    ];
+
+    /* 搜索引擎 */
+    var ENGINES = [
+        {name:'Google', placeholder:'Google 搜索',           url:'https://www.google.com/search?q='},
+        {name:'Bing',   placeholder:'微软Bing搜索',          url:'https://www.bing.com/search?q='},
+        {name:'AI',     placeholder:'AI 搜索（Perplexity）', url:'https://www.perplexity.ai/search?q='}
+    ];
+    var currentEngine = 'Google';
+
+    var menuEl = document.getElementById('menu');
+    var contentEl = document.getElementById('content');
+    var titleEl = document.getElementById('page-title');
+    var searchEl = document.getElementById('search');
+    var engineSwitchEl = document.getElementById('engineSwitch');
+    var currentId = 'resourse';
+
+    function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function getHost(url){ try { var a = document.createElement('a'); a.href = url; return a.hostname; } catch(e){ return ''; } }
+    function favicon(url){ var h = getHost(url); return h ? ('https://www.google.com/s2/favicons?domain=' + h + '&sz=64') : ''; }
+
+    /* 渲染侧栏 */
+    function buildSidebar(){
+        menuEl.innerHTML = '';
+        for(var i=0; i<MENU.length; i++){
+            var m = MENU[i];
+            var li = document.createElement('li');
+            li.className = 'menu-item' + (i === 0 ? ' active' : '');
+            li.dataset.id = m.id;
+            li.innerHTML = '<i class="fa ' + m.icon + '"></i><span>' + escHtml(m.title) + '</span>';
+            (function(id){ li.onclick = function(){ select(id); }; })(m.id);
+            menuEl.appendChild(li);
         }
-        window.__curGrid.appendChild(buildCard(it));
+    }
+
+    /* 渲染搜索引擎切换 */
+    function renderEngineSwitch(){
+        var html = '';
+        for(var i=0; i<ENGINES.length; i++){
+            var e = ENGINES[i];
+            html += '<a data-engine="' + e.name + '" class="' + (e.name === currentEngine ? 'active' : '') + '">' + e.name + '</a>';
+        }
+        engineSwitchEl.innerHTML = html;
+        var links = engineSwitchEl.querySelectorAll('a[data-engine]');
+        for(var j=0; j<links.length; j++){
+            (function(el){
+                el.onclick = function(){
+                    currentEngine = el.getAttribute('data-engine');
+                    for(var k=0; k<ENGINES.length; k++){
+                        if(ENGINES[k].name === currentEngine){
+                            searchEl.placeholder = ENGINES[k].placeholder;
+                        }
+                    }
+                    renderEngineSwitch();
+                };
+            })(links[j]);
+        }
+    }
+
+    /* 构建卡片 */
+    function buildCard(item){
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = (function(url){ return function(){ window.open(url, '_blank'); }; })(item.u);
+        var iconUrl = favicon(item.u);
+        var iconHtml = iconUrl
+            ? '<img src="' + iconUrl + '" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'<span class=card-fallback>' + escHtml((item.t||'?').charAt(0).toUpperCase()) + '</span>\'" alt="">'
+            : '<span class="card-fallback">' + escHtml((item.t||'?').charAt(0).toUpperCase()) + '</span>';
+        card.innerHTML =
+            '<div class="card-icon">' + iconHtml + '</div>' +
+            '<div class="card-body">' +
+                '<div class="card-title">' + escHtml(item.t) + '</div>' +
+                '<div class="card-desc">' + escHtml(item.h || '') + '</div>' +
+            '</div>';
+        return card;
+    }
+
+    /* 渲染分类 */
+    function renderCategory(id){
+        contentEl.innerHTML = '';
+        var items = CATS[id];
+        if(!items || !items.length){
+            contentEl.innerHTML = '<div class="empty">「' + escHtml(id) + '」分类下还没有内容</div>';
+            return;
+        }
+        var sec = document.createElement('div');
+        sec.className = 'section';
+        sec.innerHTML = '<div class="section-title">' + escHtml(id) + '<span class="section-count">(' + items.length + ' 个)</span></div>';
+        var grid = document.createElement('div');
+        grid.className = 'card-grid';
+        for(var i=0; i<items.length; i++){
+            grid.appendChild(buildCard(items[i]));
+        }
+        sec.appendChild(grid);
+        contentEl.appendChild(sec);
+    }
+
+    /* 渲染搜索 */
+    function renderSearch(q){
+        var query = q.replace(/^\s+|\s+$/g, '').toLowerCase();
+        contentEl.innerHTML = '';
+        if(!query){ renderCategory(currentId); return; }
+
+        var total = 0;
+        var matched = [];
+        var catNames = Object.keys(CATS);
+        for(var c=0; c<catNames.length; c++){
+            var cat = catNames[c];
+            var items = CATS[cat];
+            for(var i=0; i<items.length; i++){
+                var it = items[i];
+                var t = (it.t||'').toLowerCase();
+                var h = (it.h||'').toLowerCase();
+                var u = (it.u||'').toLowerCase();
+                if(t.indexOf(query) !== -1 || h.indexOf(query) !== -1 || u.indexOf(query) !== -1){
+                    matched.push({it: it, cat: cat});
+                    total++;
+                }
+            }
+        }
+        if(!total){
+            contentEl.innerHTML = '<div class="section"><div class="section-title">搜索结果</div><div class="empty">未找到匹配 "' + escHtml(q) + '" 的书签</div></div>';
+            return;
+        }
+
+        var tip = document.createElement('div');
+        tip.style.cssText = 'margin-bottom:12px;color:#888;font-size:13px';
+        tip.textContent = '找到 ' + total + ' 条匹配结果';
+        contentEl.appendChild(tip);
+
+        var curCat = null;
+        var secEl = null;
+        var gridEl = null;
+        for(var m=0; m<matched.length; m++){
+            var mc = matched[m];
+            if(mc.cat !== curCat){
+                curCat = mc.cat;
+                secEl = document.createElement('div');
+                secEl.className = 'section';
+                secEl.innerHTML = '<div class="section-title">' + escHtml(mc.cat) + '</div>';
+                gridEl = document.createElement('div');
+                gridEl.className = 'card-grid';
+                secEl.appendChild(gridEl);
+                contentEl.appendChild(secEl);
+            }
+            gridEl.appendChild(buildCard(mc.it));
+        }
+    }
+
+    /* 搜索跳转 */
+    function doSearchJump(){
+        var q = searchEl.value.replace(/^\s+|\s+$/g, '');
+        if(!q) return;
+        for(var i=0; i<ENGINES.length; i++){
+            if(ENGINES[i].name === currentEngine){
+                window.open(ENGINES[i].url + encodeURIComponent(q), '_blank');
+                return;
+            }
+        }
+    }
+
+    /* 切换分类 */
+    function select(id){
+        currentId = id;
+        var items = menuEl.querySelectorAll('.menu-item');
+        for(var i=0; i<items.length; i++){
+            if(items[i].dataset.id === id) items[i].classList.add('active');
+            else items[i].classList.remove('active');
+        }
+        for(var j=0; j<MENU.length; j++){
+            if(MENU[j].id === id){ titleEl.textContent = MENU[j].title; break; }
+        }
+        searchEl.value = '';
+        renderCategory(id);
+    }
+
+    /* 搜索框事件 */
+    searchEl.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') doSearchJump();
     });
-    const tip=document.createElement('div');
-    tip.style.cssText='margin-top:8px;color:var(--text-secondary);font-size:13px';
-    tip.textContent=`找到 ${total} 条匹配结果`;
-    main.insertBefore(tip,main.firstChild);
-}
-
-function select(id){
-    currentId=id;
-    document.querySelectorAll('.menu-item').forEach(el=>{
-        el.classList.toggle('active',el.dataset.id===id);
+    searchEl.addEventListener('input', function(e){
+        var v = e.target.value;
+        if(!v.replace(/^\s+|\s+$/g, '')){ select(currentId); return; }
+        var items = menuEl.querySelectorAll('.menu-item');
+        for(var i=0; i<items.length; i++) items[i].classList.remove('active');
+        titleEl.textContent = '搜索结果';
+        renderSearch(v);
     });
-    const cfg=SIDEBAR.find(s=>s.id===id);
-    if(cfg){titleEl.textContent=cfg.title;renderCategory(id);}
-    else if(id==='about'){titleEl.textContent='关于本站';renderAbout();}
-    searchEl.value='';
-}
 
-document.querySelector('[data-id="about"]').onclick=function(){select('about')};
-document.querySelectorAll('.menu-item').forEach(el=>{
-    el.addEventListener('click',function(){
-        const id=this.dataset.id;
-        select(id);
-    });
-});
-
-searchEl.addEventListener('input',e=>{
-    const v=e.target.value;
-    if(!v.trim()){select(currentId);return;}
-    document.querySelectorAll('.menu-item').forEach(el=>el.classList.remove('active'));
-    titleEl.textContent='搜索结果';
-    renderSearch(v);
-});
-
-buildSidebar();
-select('resource');
+    buildSidebar();
+    renderEngineSwitch();
+    select('resourse');
+})();
 </script>
 
 <script data-tabbit-widget-diagnostics="true">
@@ -557,30 +797,7 @@ select('resource');
     emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
   });
 })();
-</script>
-<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
-<div id="__apply-btn-wrap__" style="
-  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
-  z-index:99999; display:flex; gap:0.75rem; align-items:center;
-  background:rgba(13,17,23,0.92); border:1px solid #334155;
-  border-radius:2rem; padding:0.5rem 1.25rem;
-  box-shadow:0 4px 20px rgba(0,0,0,0.5); backdrop-filter:blur(8px);
-">
-  <span style="font-size:0.82rem; color:#94a3b8;">styles4.html</span>
-  <button id="__apply-btn__" onclick="__applyToNav__()" style="
-    background:#238636; color:#fff; border:none; border-radius:1.5rem;
-    padding:0.45rem 1.2rem; font-size:0.88rem; font-weight:600;
-    cursor:pointer; transition:background 0.15s; white-space:nowrap;
-  " onmouseover="this.style.background='#2ea043'"
-    onmouseout="this.style.background='#238636'">
-    ✓ 应用到导航页
-  </button>
-  <button onclick="document.getElementById('__apply-btn-wrap__').style.display='none'" style="
-    background:none; border:none; color:#64748b; cursor:pointer;
-    font-size:1rem; padding:0 0.25rem;
-  " title="隐藏">✕</button>
-</div>
-<script>
+
 function __applyToNav__() {
   var file = 'styles4.html';
   localStorage.setItem('styleChoice', file);

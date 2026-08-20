@@ -119,9 +119,7 @@ async function routeRequest(request, env, ctx, url, path, method) {
   }
 
   // ── styles/[id] ───────────────────────────────────────────────
-  // 注意：源 functions/styles/[id].js 的实际路径是 /styles/<id>，
-  // 前端 style-preview.html 也调用 /styles/<id>，不要带 /api/ 前缀。
-  const stylesMatch = path.match(/^\/styles\/(.+)$/);
+  const stylesMatch = path.match(/^\/api\/styles\/(.+)$/);
   if (stylesMatch) {
     if (method === 'GET') return stylesGet(make({ id: stylesMatch[1] }));
   }
