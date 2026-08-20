@@ -136,13 +136,14 @@ async function fetchStyleDoc(htmlFile) {
     if (!m) return;
     var id = m[1];
     localStorage.setItem('styleChoice', id);
+    document.cookie = "styleChoice=" + id + ";path=/;max-age=31536000;SameSite=Lax";
     // 通知主页
     if (window.opener) {
       try { window.opener.postMessage({ type: 'applyStyle', styleId: id }, '*'); } catch(ex) {}
       window.close();
     } else {
-      // 直接跳转
-      window.location.href = '/styles/' + id;
+      // 直接跳转到首页
+      window.location.href = '/';
     }
   }
 
