@@ -66,3 +66,25 @@ export async function onRequestDelete({ env, params }) {
   await putData(env, data);
   return json({ ok: true });
 }
+
+// POST /api/bookmarks/reorder → 调整某分类内书签的排序位置
+export async function onRequestReorder({ request, env }) {
+  const body = await request.json().catch(() => null);
+  const catIndex = body?.catIndex;
+  const from = body?.from;
+  const to   = body?.to;
+  if (catIndex == null || from == null || to == null) return err('缺少必要字段');
+
+  const data = await getData(env);
+  const cat = data.categories[catIndex];
+  if (!cat) return err('分类不存在');
+
+  const items = cat.items;
+  if (from < 0 || from >= items.length || to < 0 || to >= items.length) return err('索引越界');
+  if (from === to) return json({ ok: true });
+
+  const [moved] = items.splice(from, 1);
+  items.splice(to, 0, moved);
+  await putData(env, data);
+  return json({ ok: true });
+}

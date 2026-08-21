@@ -425,6 +425,23 @@ async function onRequestDelete({ env, params }) {
   await putData(env, data);
   return json({ ok: true });
 }
+async function onRequestReorder({ request, env }) {
+  const body = await request.json().catch(() => null);
+  const catIndex = body?.catIndex;
+  const from = body?.from;
+  const to = body?.to;
+  if (catIndex == null || from == null || to == null) return err("\u7F3A\u5C11\u5FC5\u8981\u5B57\u6BB5");
+  const data = await getData(env);
+  const cat = data.categories[catIndex];
+  if (!cat) return err("\u5206\u7C7B\u4E0D\u5B58\u5728");
+  const items = cat.items;
+  if (from < 0 || from >= items.length || to < 0 || to >= items.length) return err("\u7D22\u5F15\u8D8A\u754C");
+  if (from === to) return json({ ok: true });
+  const [moved] = items.splice(from, 1);
+  items.splice(to, 0, moved);
+  await putData(env, data);
+  return json({ ok: true });
+}
 
 // functions/api/categories.js
 async function onRequestGet6({ env }) {
@@ -459,6 +476,20 @@ async function onRequestDelete2({ env, params }) {
   const data = await getData(env);
   if (!data.categories[i]) return err("\u5206\u7C7B\u4E0D\u5B58\u5728");
   data.categories.splice(i, 1);
+  await putData(env, data);
+  return json({ ok: true });
+}
+async function onRequestReorder2({ request, env }) {
+  const body = await request.json().catch(() => null);
+  const from = body?.from;
+  const to = body?.to;
+  if (from == null || to == null) return err("\u7F3A\u5C11\u5FC5\u8981\u5B57\u6BB5");
+  const data = await getData(env);
+  const cats = data.categories;
+  if (from < 0 || from >= cats.length || to < 0 || to >= cats.length) return err("\u7D22\u5F15\u8D8A\u754C");
+  if (from === to) return json({ ok: true });
+  const [moved] = cats.splice(from, 1);
+  cats.splice(to, 0, moved);
   await putData(env, data);
   return json({ ok: true });
 }
@@ -745,12 +776,14 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (path === "/api/backgrounds") {
     if (method === "GET") return onRequestGet4(make());
   }
+  if (path === "/api/bookmarks/reorder" && method === "POST") return onRequestReorder(make());
   if (path.startsWith("/api/bookmarks")) {
     if (method === "GET") return onRequestGet5(make());
     if (method === "POST") return onRequestPost3(make());
     if (method === "PUT") return onRequestPut(make());
     if (method === "DELETE") return onRequestDelete(make());
   }
+  if (path === "/api/categories/reorder" && method === "POST") return onRequestReorder2(make());
   if (path.startsWith("/api/categories")) {
     if (method === "GET") return onRequestGet6(make());
     if (method === "POST") return onRequestPost4(make());

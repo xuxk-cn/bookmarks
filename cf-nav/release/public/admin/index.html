@@ -342,12 +342,20 @@ function renderBmTable() {
         <td class="url-cell" title="${escH(item.url)}">${escH(item.url)}</td>
         <td style="max-width:200px;font-size:.78rem;color:var(--muted)">${escH((item.hover||'').slice(0,40))}${item.hover?.length>40?'…':''}</td>
         <td style="white-space:nowrap">
-          <button class="btn-sec btn-sm" onclick="editBm(${catIdx},${itmIdx})">编辑</button>
+          <button class="btn-sec btn-sm" onclick="moveBm(${catIdx},${itmIdx},-1)" ${itmIdx===0?'disabled':''} title="上移">↑</button>
+          <button class="btn-sec btn-sm" onclick="moveBm(${catIdx},${itmIdx},1)" ${itmIdx===cat.items.length-1?'disabled':''} title="下移" style="margin-left:.2rem">↓</button>
+          <button class="btn-sec btn-sm" onclick="editBm(${catIdx},${itmIdx})" style="margin-left:.4rem">编辑</button>
           <button class="btn-danger btn-sm" style="margin-left:.25rem" onclick="deleteBm(${catIdx},${itmIdx})">删除</button>
         </td>`;
       tbody.appendChild(tr);
     });
   });
+}
+
+async function moveBm(ci, ii, dir) {
+  const to = ii + dir;
+  await api('/api/bookmarks/reorder', { method: 'POST', body: { catIndex: ci, from: ii, to } });
+  await loadBookmarks();
 }
 
 function escH(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -449,10 +457,18 @@ async function loadCategories() {
     div.innerHTML = `
       <span style="flex:1;font-weight:500">${escH(c.title)}</span>
       <span style="color:var(--muted);font-size:.8rem;margin-right:1rem">${c.count} 个书签</span>
-      <button class="btn-sec btn-sm" onclick="editCat(${c.index},'${escH(c.title)}')">编辑</button>
+      <button class="btn-sec btn-sm" onclick="moveCat(${c.index},-1)" ${c.index===0?'disabled':''} title="上移">↑</button>
+      <button class="btn-sec btn-sm" onclick="moveCat(${c.index},1)" ${c.index===cats.length-1?'disabled':''} title="下移" style="margin-left:.2rem">↓</button>
+      <button class="btn-sec btn-sm" onclick="editCat(${c.index},'${escH(c.title)}')" style="margin-left:.4rem">编辑</button>
       <button class="btn-danger btn-sm" style="margin-left:.4rem" onclick="deleteCat(${c.index})">删除</button>`;
     list.appendChild(div);
   });
+}
+
+async function moveCat(i, dir) {
+  const to = i + dir;
+  await api('/api/categories/reorder', { method: 'POST', body: { from: i, to } });
+  await loadCategories();
 }
 
 function openAddCat() {
