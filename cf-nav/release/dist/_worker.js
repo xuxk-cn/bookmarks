@@ -217,10 +217,7 @@ async function onRequestPost({ request, env }) {
   const username = form.get("username") || "";
   const password = form.get("password") || "";
   const ttl = parseInt(form.get("ttl") || "86400");
-  const _u = (await env.NAV_KV.get("admin_username") || "").trim();
-  const _p = (await env.NAV_KV.get("admin_password") || "").trim();
-  console.log("KV:", JSON.stringify({ _u, _p, username, password }));
-  const ok = username.trim() === "admin" && password.trim() === "admin123" || await verifyCredentials(env, username, password);
+  const ok = await verifyCredentials(env, username, password);
   if (!ok) {
     return new Response(loginHtml("\u7528\u6237\u540D\u6216\u5BC6\u7801\u9519\u8BEF"), {
       status: 401,
@@ -356,22 +353,9 @@ var NAME_MAP = {
   "a47.html": "\u2728 \u7279\u654847"
 };
 var STYLES_MAP = {
-  "styles1.html": "\u98CE\u683C 1",
-  "styles2.html": "\u98CE\u683C 2",
-  "styles3.html": "\u98CE\u683C 3",
-  "styles4.html": "\u98CE\u683C 4",
-  "styles5.html": "\u98CE\u683C 5",
-  "styles6.html": "\u98CE\u683C 6",
-  "styles7.html": "\u98CE\u683C 7",
-  "styles8.html": "\u98CE\u683C 8",
-  "styles9.html": "\u98CE\u683C 9",
-  "styles10.html": "\u98CE\u683C 10",
-  "styles11.html": "\u98CE\u683C 11",
-  "styles12.html": "\u98CE\u683C 12",
-  "styles13.html": "\u98CE\u683C 13",
-  "styles14.html": "\u98CE\u683C 14",
-  "styles15.html": "\u98CE\u683C 15",
-  "styles16.html": "\u98CE\u683C 16"
+  "styles1.html": "\u98CE\u683C 1 \xB7 \u7ECF\u5178\u84DD\u767D",
+  "styles2.html": "\u98CE\u683C 2 \xB7 \u661F\u6CB3\u6E10\u53D8",
+  "styles3.html": "\u98CE\u683C 3 \xB7 \u9ED1\u66DC\u77F3"
 };
 function onRequestGet4() {
   const files = Object.entries(NAME_MAP).map(([file, name]) => ({ file, name }));
@@ -707,31 +691,11 @@ function cleanDesc(text) {
 }
 
 // functions/styles/[id].js
-async function onRequestGet10({ params, env }) {
-  const id = params.id;
-  const htmlFile = `styles${id}.html`;
-  const [navData, settings, templateRes] = await Promise.all([
-    getData(env),
-    getSettings(env),
-    env.ASSETS.fetch(new Request(`https://placeholder/backgrounds/${htmlFile}`))
-  ]);
-  if (!templateRes.ok) {
-    return new Response("Style not found", { status: 404 });
-  }
-  const navDataJson = JSON.stringify(navData).replace(/<\/script>/gi, "<\\/script>");
-  let html2 = await templateRes.text();
-  html2 = html2.replace(/\{\{NAV_DATA\}\}/g, navDataJson);
-  html2 = html2.replace(/\{\{SITE_NAME\}\}/g, escHtml2(settings.siteName || "\u5BFC\u822A"));
-  html2 = html2.replace(/\{\{SITE_DESC\}\}/g, escHtml2(settings.siteDesc || ""));
-  return new Response(html2, {
-    headers: {
-      "Content-Type": "text/html;charset=utf-8",
-      "Cache-Control": "no-cache"
-    }
-  });
-}
-function escHtml2(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function onRequestGet10() {
+  return new Response(
+    "\u6B64\u8DEF\u7531\u5DF2\u505C\u7528\u3002\u98CE\u683C\u76AE\u80A4\u73B0\u901A\u8FC7 index.html \u7684 style-css link \u5207\u6362\uFF0C\u8BF7\u76F4\u63A5\u8BBF\u95EE /\u3002",
+    { status: 410, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+  );
 }
 
 // functions/worker-entry.js

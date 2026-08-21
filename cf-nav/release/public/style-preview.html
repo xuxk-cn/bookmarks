@@ -17,9 +17,9 @@
   .subtitle { text-align: center; color: #8b949e; font-size: 0.85rem; margin-bottom: 28px; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
     gap: 16px;
-    max-width: 1400px;
+    max-width: 1500px;
     margin: 0 auto;
   }
   .card {
@@ -41,7 +41,7 @@
     padding: 3px 10px; border-radius: 12px; z-index: 10;
   }
   .preview {
-    width: 100%; height: 220px;
+    width: 100%; height: 280px;
     border: none; display: block;
     pointer-events: none; background: #f5f6f8;
   }
@@ -78,93 +78,107 @@
 <body>
 
 <h1>🎨 导航风格库</h1>
-<p class="subtitle">点击预览卡片选择风格样式，点击"应用"后返回导航页</p>
+<p class="subtitle">每个预览卡片下都是同一张"书签导航页"，只换了不同的皮肤样式。点击"应用"将皮肤同步到导航页。</p>
 
 <div class="grid" id="grid">
   <div class="loading">正在加载风格列表...</div>
 </div>
 
 <script>
-function toCssFile(htmlFile) {
-  var m = htmlFile.match(/styles(\d+)\.html/);
-  if (!m) return null;
-  var n = parseInt(m[1]);
+// 风格编号 → CSS 文件名（1-9 补零，10 起不补零）
+function styleIdToCss(id) {
+  var n = parseInt(id, 10);
+  if (isNaN(n)) return null;
   return 'styles' + (n < 10 ? '0' + n : '' + n) + '.css';
 }
+function cssToStyleId(cssFile) {
+  var m = (cssFile || '').match(/styles0*(\d+)\.css/);
+  return m ? m[1] : '';
+}
 
-// 注入到 srcdoc head 里的代码：隐藏背景层、注入按钮、阻止 bgChoice 读取
-var INJECT_HEAD = [
-  '<script>',
-  // 拦截 localStorage.getItem，让 bgChoice 返回 none
-  'var _origGet = localStorage.getItem.bind(localStorage);',
-  'localStorage.getItem = function(k) {',
-  '  if (k === "bgChoice") return "none";',
-  '  return _origGet(k);',
-  '};',
-  '<\/script>',
-  '<style>',
-  // 隐藏动态背景画布、背景 iframe、注入按钮
-  '#__apply-btn-wrap__, canvas, #bg-canvas, #bg-image, #bg-iframe { display: none !important; }',
-  '<\/style>'
-].join('\n');
+// 抓取真实的"书签导航页 index.html"作为预览主体（保留 SSR 注入的数据结构占位）
+var INDEX_DOC_CACHE = null;
+async function fetchIndexDoc() {
+  if (INDEX_DOC_CACHE) return INDEX_DOC_CACHE;
+  var res = await fetch('/');
+  INDEX_DOC_CACHE = await res.text();
+  return INDEX_DOC_CACHE;
+}
 
-async function fetchStyleDoc(htmlFile) {
+// 抓取皮肤 CSS 文本
+var CSS_CACHE = {};
+async function fetchCss(cssFile) {
+  if (CSS_CACHE[cssFile] !== undefined) return CSS_CACHE[cssFile];
   try {
-    // 从 styles14.html 提取 id=14，走 SSR 路由注入真实书签数据
-    var m = htmlFile.match(/styles(\d+)\.html/);
-    var url = m ? '/styles/' + m[1] : '/backgrounds/' + htmlFile;
-    var res = await fetch(url);
-    var html = await res.text();
-    // 在 </head> 前注入隐藏背景的代码
-    html = html.replace(/<\/head>/i, INJECT_HEAD + '</head>');
-    // 删除 tabbit widget script（styles9 等有这个）
-    html = html.replace(/<script[^>]*data-tabbit[^>]*>[\s\S]*?<\/script>/gi, '');
-    return html;
+    var res = await fetch('/css/' + cssFile);
+    if (!res.ok) { CSS_CACHE[cssFile] = ''; return ''; }
+    CSS_CACHE[cssFile] = await res.text();
+    return CSS_CACHE[cssFile];
   } catch(e) {
-    return '<!DOCTYPE html><html><body style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:13px">加载失败</body></html>';
+    CSS_CACHE[cssFile] = '';
+    return '';
   }
+}
+
+// 在 index.html 文本的 </head> 前注入：拦截动态背景、注入皮肤 CSS、打开弹窗与设置项
+async function buildPreviewDoc(cssFile, cssText) {
+  var indexHtml = await fetchIndexDoc();
+
+  // 注入代码片段
+  var inject = [
+    '<script>',
+    // 把背景相关样式隐藏，避免 iframe 里没有背景资源也跑动画
+    'document.addEventListener("DOMContentLoaded", function(){',
+    '  var cv = document.getElementById("bg-canvas"); if (cv) cv.style.display = "none";',
+    '  var bi = document.getElementById("bg-image"); if (bi) bi.style.display = "none";',
+    '  // 自动展开第一个分类，方便预览看到卡片',
+    '});',
+    '<\/script>',
+    // 皮肤 CSS 内联进 <head>
+    '<style id="injected-skin-css">' + (cssText || '') + '</style>'
+  ].join('\n');
+
+  // 把 </head> 替换为：注入 + </head>
+  var html = indexHtml.replace(/<\/head>/i, inject + '\n</head>');
+
+  return html;
 }
 
 (async function() {
   var grid = document.getElementById('grid');
-  var chosenCss = localStorage.getItem('styleCSS') || null;
+  var chosenCss = localStorage.getItem('styleCSS') || '';
+  var chosenStyleId = cssToStyleId(chosenCss);
 
-  function applyStyle(htmlFile, name) {
-    updateSelected(htmlFile, name);
-    // 提取编号，如 styles1.html -> 1
-    var m = htmlFile.match(/styles(\d+)\.html/);
-    if (!m) return;
-    var id = m[1];
-    localStorage.setItem('styleChoice', id);
-    document.cookie = "styleChoice=" + id + ";path=/;max-age=31536000;SameSite=Lax";
-    // 通知主页
+  function updateSelected(styleId) {
+    document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
+    var t = document.querySelector('.card[data-style-id="' + styleId + '"]');
+    if (t) t.classList.add('active');
+  }
+
+  function applyStyle(styleId, cssFile) {
+    updateSelected(styleId);
+    localStorage.setItem('styleCSS', cssFile);
     if (window.opener) {
-      try { window.opener.postMessage({ type: 'applyStyle', styleId: id }, '*'); } catch(ex) {}
+      try {
+        window.opener.postMessage({ type: 'applyStyle', styleCSS: cssFile, styleId: styleId }, '*');
+      } catch(ex) {}
       window.close();
     } else {
-      // 直接跳转到首页
+      // 没有 opener（直接打开预览页）：让用户回到主页
       window.location.href = '/';
     }
   }
 
-  function updateSelected(htmlFile, name) {
-    document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
-    var t = document.querySelector('.card[data-file="' + htmlFile + '"]');
-    if (t) t.classList.add('active');
-    chosenCss = toCssFile(htmlFile);
-  }
-
-  function makeCard(htmlFile, name) {
+  function makeCard(styleId, name, cssFile) {
     var card = document.createElement('div');
     card.className = 'card';
-    card.dataset.file = htmlFile;
-
-    var cssFile = toCssFile(htmlFile);
-    if (cssFile && cssFile === chosenCss) card.classList.add('active');
+    card.dataset.styleId = styleId;
+    if (styleId === chosenStyleId) card.classList.add('active');
 
     var iframe = document.createElement('iframe');
     iframe.className = 'preview';
     iframe.sandbox = 'allow-scripts allow-same-origin';
+    iframe.loading = 'lazy';
 
     var loaded = false;
     var obs = new IntersectionObserver(function(entries) {
@@ -172,8 +186,12 @@ async function fetchStyleDoc(htmlFile) {
         if (e.isIntersecting && !loaded) {
           loaded = true;
           obs.unobserve(iframe);
-          fetchStyleDoc(htmlFile).then(function(doc) {
+          fetchCss(cssFile).then(function(cssText) {
+            return buildPreviewDoc(cssFile, cssText);
+          }).then(function(doc) {
             iframe.srcdoc = doc;
+          }).catch(function() {
+            iframe.srcdoc = '<!DOCTYPE html><html><body style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:13px">加载失败</body></html>';
           });
         }
       });
@@ -182,16 +200,16 @@ async function fetchStyleDoc(htmlFile) {
 
     var footer = document.createElement('div');
     footer.className = 'card-footer';
-    footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + (cssFile || htmlFile) + '</span><button class="card-apply">应用</button>';
+    footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + cssFile + '</span><button class="card-apply">应用</button>';
 
     footer.querySelector('.card-apply').addEventListener('click', function(e) {
       e.stopPropagation();
-      applyStyle(htmlFile, name);
+      applyStyle(styleId, cssFile);
     });
 
     card.appendChild(iframe);
     card.appendChild(footer);
-    card.addEventListener('click', function() { updateSelected(htmlFile, name); });
+    card.addEventListener('click', function() { updateSelected(styleId); });
     return card;
   }
 
@@ -203,27 +221,27 @@ async function fetchStyleDoc(htmlFile) {
     grid.innerHTML = '';
 
     if (!styles.length) {
-      grid.innerHTML = '<div class="loading">未找到风格文件，请确认在开发服务器下访问</div>';
+      grid.innerHTML = '<div class="loading">未找到风格文件</div>';
       return;
     }
 
+    // 为每个风格生成预览卡片
     styles.forEach(function(s) {
-      grid.appendChild(makeCard(s.file, s.name));
+      var m = s.file.match(/styles(\d+)\.html/);
+      if (!m) return;
+      var styleId = m[1];
+      var cssFile = styleIdToCss(styleId);
+      if (!cssFile) return;
+      grid.appendChild(makeCard(styleId, s.name || ('风格 ' + styleId), cssFile));
     });
 
-    if (chosenCss) {
-      // chosenCss already applied via makeCard's active class
-    }
-
+    // 缓存首页 doc 以便后续快速预览（lazy 触发时已会自动加载）
+    fetchIndexDoc().catch(function(){});
   } catch(e) {
     grid.innerHTML = '<div class="loading">加载失败，请确认在开发服务器下访问</div>';
   }
-
 })();
 </script>
-
-<!-- 监听子窗口应用操作（由 inject_apply_button.py 注入） -->
-<!-- __patched_by_inject__ -->
 
 </body>
 </html>
