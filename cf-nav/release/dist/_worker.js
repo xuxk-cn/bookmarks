@@ -497,7 +497,7 @@ async function onRequestPost4({ request, env }) {
   return json({ ok: true, index: data.categories.length - 1 });
 }
 async function onRequestPut2({ request, env, params }) {
-  const i = parseInt(params.i);
+  const i = parseInt(params.id);
   const body = await request.json().catch(() => null);
   if (!body?.title) return err("\u7F3A\u5C11\u5206\u7C7B\u540D\u79F0");
   const data = await getData(env);
@@ -507,7 +507,7 @@ async function onRequestPut2({ request, env, params }) {
   return json({ ok: true });
 }
 async function onRequestDelete2({ env, params }) {
-  const i = parseInt(params.i);
+  const i = parseInt(params.id);
   const data = await getData(env);
   if (!data.categories[i]) return err("\u5206\u7C7B\u4E0D\u5B58\u5728");
   data.categories.splice(i, 1);

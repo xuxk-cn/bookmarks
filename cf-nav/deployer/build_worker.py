@@ -80,12 +80,13 @@ const PUBLIC_FILES = [
   'backgrounds/styles16.html',
   'bg-preview.html',
   'css/main.css',
+  'css/beauty.css',
   'css/styles01.css','css/styles02.css','css/styles03.css','css/styles04.css',
   'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css',
   'css/styles09.css','css/styles10.css','css/styles11.css','css/styles12.css',
   'css/styles13.css','css/styles14.css','css/styles15.css','css/styles16.css',
   'index.html',
-  'js/background.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
+  'js/background.js','js/beauty.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
   'style-preview.html',
 ];
 

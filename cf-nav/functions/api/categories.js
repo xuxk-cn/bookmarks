@@ -28,7 +28,7 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestPut({ request, env, params }) {
-  const i = parseInt(params.i);
+  const i = parseInt(params.id);
   const body = await request.json().catch(() => null);
   if (!body?.title) return err('缺少分类名称');
 
@@ -40,10 +40,28 @@ export async function onRequestPut({ request, env, params }) {
 }
 
 export async function onRequestDelete({ env, params }) {
-  const i = parseInt(params.i);
+  const i = parseInt(params.id);
   const data = await getData(env);
   if (!data.categories[i]) return err('分类不存在');
   data.categories.splice(i, 1);
+  await putData(env, data);
+  return json({ ok: true });
+}
+
+// POST /api/categories/reorder → 调整分类的排序位置
+export async function onRequestReorder({ request, env }) {
+  const body = await request.json().catch(() => null);
+  const from = body?.from;
+  const to   = body?.to;
+  if (from == null || to == null) return err('缺少必要字段');
+
+  const data = await getData(env);
+  const cats = data.categories;
+  if (from < 0 || from >= cats.length || to < 0 || to >= cats.length) return err('索引越界');
+  if (from === to) return json({ ok: true });
+
+  const [moved] = cats.splice(from, 1);
+  cats.splice(to, 0, moved);
   await putData(env, data);
   return json({ ok: true });
 }
