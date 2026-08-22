@@ -857,6 +857,47 @@
             document.getElementById('val-light').textContent = p_lightness.toFixed(2);
         });
 
+        // ── 参数持久化：让调好的背景也能用在主页 iframe 上 ──
+        const PARAM_KEY = 'bgParams:a1.html';
+        function saveParams() {
+            try {
+                localStorage.setItem(PARAM_KEY, JSON.stringify({
+                    waveHeight: p_waveHeight,
+                    waveChoppy: p_waveChoppy,
+                    animSpeed: p_animSpeed,
+                    waterClarity: p_waterClarity,
+                    lightness: p_lightness,
+                    skyPreset: (document.getElementById('sl-sky-preset') || {}).value || ''
+                }));
+            } catch (e) {}
+        }
+        function restoreParams() {
+            try {
+                const sp = JSON.parse(localStorage.getItem(PARAM_KEY) || '{}');
+                const setVal = (slId, valId, val, digits) => {
+                    if (typeof val !== 'number') return;
+                    const s = document.getElementById(slId); if (s) s.value = val;
+                    const v = document.getElementById(valId); if (v) v.textContent = val.toFixed(digits);
+                };
+                if (typeof sp.waveHeight === 'number') p_waveHeight = sp.waveHeight;
+                if (typeof sp.waveChoppy === 'number') p_waveChoppy = sp.waveChoppy;
+                if (typeof sp.animSpeed === 'number') p_animSpeed = sp.animSpeed;
+                if (typeof sp.waterClarity === 'number') p_waterClarity = sp.waterClarity;
+                if (typeof sp.lightness === 'number') p_lightness = sp.lightness;
+                setVal('sl-wave', 'val-wave', p_waveHeight, 2);
+                setVal('sl-choppy', 'val-choppy', p_waveChoppy, 2);
+                setVal('sl-speed', 'val-speed', p_animSpeed, 2);
+                setVal('sl-clarity', 'val-clarity', p_waterClarity, 2);
+                setVal('sl-light', 'val-light', p_lightness, 2);
+                if (sp.skyPreset) {
+                    const ss = document.getElementById('sl-sky-preset');
+                    if (ss) { ss.value = sp.skyPreset; if (typeof updateCubemapPreset === 'function') updateCubemapPreset(sp.skyPreset); }
+                }
+            } catch (e) {}
+        }
+        if (panel) { panel.addEventListener('input', saveParams); panel.addEventListener('change', saveParams); }
+        restoreParams();
+
         // File Uploader Logic
         const fileInput = document.getElementById('file-skybox');
         document.getElementById('btn-trigger-file').addEventListener('click', () => {
@@ -952,6 +993,7 @@
 <script>
 function __applyToNav__() {
   var file = 'a1.html';
+  if (typeof saveParams === 'function') saveParams();
   localStorage.setItem('bgChoice', file);
   var btn = document.getElementById('__apply-btn__');
   btn.textContent = '✔ 已应用！';

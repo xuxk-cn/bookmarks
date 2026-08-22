@@ -137,3 +137,14 @@ export function setImageBackground(url) {
   bgImage.classList.add('active');
 }
 window.__setBg = setBackground;
+
+// 同源 localStorage 共享：在 /backgrounds/a1 调参后，已打开的主页 iframe 实时刷新
+window.addEventListener('storage', (e) => {
+  if (!e.key || !e.key.startsWith('bgParams:')) return;
+  if (!currentName || !currentName.endsWith('.html')) return;
+  if (e.key !== 'bgParams:' + currentName) return;
+  const f = getIframeLayer();
+  if (f && f.style.display !== 'none') {
+    try { f.contentWindow.location.reload(); } catch (_) { f.src = f.src; }
+  }
+});
