@@ -8,6 +8,7 @@
 <meta name="description" content="{{SITE_DESC}}">
 <link rel="icon" href="/favicon.svg">
 <link rel="stylesheet" href="/css/main.css">
+<link rel="stylesheet" href="/css/beauty.css">
 <link id="style-css" rel="stylesheet" href="">
 <script>
 (function() {
@@ -47,6 +48,7 @@
   <header>
     <h1>{{SITE_NAME}}</h1>
     <p class="site-desc">{{SITE_DESC}}</p>
+    <div id="welcome" class="welcome" hidden></div>
     <button class="header-settings-btn" id="settings-btn" onclick="document.getElementById('settings-popup')&&(document.getElementById('settings-popup').hidden=!document.getElementById('settings-popup').hidden)">⚙ 设置</button>
   </header>
 
@@ -77,6 +79,7 @@
 <!-- 数据由 SSR 注入 -->
 <script id="nav-data" type="application/json">{{NAV_DATA}}</script>
 <script id="nav-settings" type="application/json">{{NAV_SETTINGS}}</script>
+<script id="nav-beauty" type="application/json">{{NAV_BEAUTY}}</script>
 
 <!-- 背景音乐播放器 -->
 <audio id="bg-music" loop style="display:none"></audio>
@@ -322,5 +325,6 @@
 <script type="module" src="/js/background.js"></script>
 <script type="module" src="/js/search.js"></script>
 <script type="module" src="/js/main.js"></script>
+<script type="module" src="/js/beauty.js"></script>
 </body>
 </html>

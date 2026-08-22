@@ -1,0 +1,45 @@
+/* ── 风格二：图标左侧 + 标题 + 介绍 ──────────────── */
+.cards-style2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+.cards-style2 .card {
+  background: rgba(30,41,59,0.85);
+  border-radius: var(--card-radius);
+  padding: 0.85rem 1rem;
+  display: flex; align-items: center; gap: 0.85rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
+  backdrop-filter: blur(4px);
+}
+.cards-style2 .card:hover {
+  background: rgba(51,65,85,0.95);
+  border-color: var(--accent);
+}
+.cards-style2 .card-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 0.4rem; object-fit: contain;
+  background: #fff; padding: 3px;
+}
+.cards-style2 .card-icon-placeholder {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 0.4rem; background: var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.cards-style2 .card-body { min-width: 0; }
+.cards-style2 .card-title {
+  font-size: 0.9rem; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cards-style2 .card-desc {
+  font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+}
+
+@media (max-width: 640px) {
+  .cards-style2 { grid-template-columns: 1fr; }
+}

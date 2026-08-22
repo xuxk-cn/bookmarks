@@ -80,19 +80,23 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (path === '/api/bookmarks/reorder' && method === 'POST') return bookmarksReorder(make());
 
   if (path.startsWith('/api/bookmarks')) {
+    const m = path.match(/^\/api\/bookmarks\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === 'GET') return bookmarksGet(make());
     if (method === 'POST') return bookmarksPost(make());
-    if (method === 'PUT') return bookmarksPut(make());
-    if (method === 'DELETE') return bookmarksDelete(make());
+    if (method === 'PUT') return bookmarksPut(make(p));
+    if (method === 'DELETE') return bookmarksDelete(make(p));
   }
 
   if (path === '/api/categories/reorder' && method === 'POST') return categoriesReorder(make());
 
   if (path.startsWith('/api/categories')) {
+    const m = path.match(/^\/api\/categories\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === 'GET') return categoriesGet(make());
     if (method === 'POST') return categoriesPost(make());
-    if (method === 'PUT') return categoriesPut(make());
-    if (method === 'DELETE') return categoriesDelete(make());
+    if (method === 'PUT') return categoriesPut(make(p));
+    if (method === 'DELETE') return categoriesDelete(make(p));
   }
 
   if (path.startsWith('/api/settings')) {
@@ -119,7 +123,7 @@ async function routeRequest(request, env, ctx, url, path, method) {
   }
 
   if (path === '/api/favicon') {
-    if (method === 'GET') return faviconGet(make());
+    if (method === 'POST') return faviconPost(make());
   }
 
   // ── styles/[id] ───────────────────────────────────────────────

@@ -29,8 +29,27 @@ var DEFAULT_SETTINGS = {
   aiDelay: 1500,
   // 批量 AI 间隔 ms
   faviconApi: "https://faviconsnap.com/api/favicon?url=",
-  sessionTtl: 86400
+  sessionTtl: 86400,
   // Session 有效期（秒），默认 1 天
+  // ── 站点美化设置（独立模块，出错不影响主程序） ──
+  theme: "dark",
+  // dark | cyberpunk | minimal | forest | system
+  glass: true,
+  // 毛玻璃卡片
+  hoverFx: true,
+  // 图标悬停弹跳/变色/形态变换
+  tilt: true,
+  // 3D 倾斜
+  waterfall: true,
+  // 瀑布流错落淡入
+  shared: true,
+  // 共享元素过渡（点击放大）
+  searchFx: true,
+  // 搜索框呼吸光 + 展开
+  welcome: true,
+  // 动态欢迎语
+  weather: false
+  // 天气联动（结合欢迎语）
 };
 
 // functions/lib/auth.js
@@ -167,10 +186,26 @@ async function markDirty(env) {
 
 // functions/lib/renderer.js
 function renderHome(templateHtml, navData, settings) {
+  let beautyJson = "{}";
+  try {
+    beautyJson = JSON.stringify({
+      theme: settings.theme,
+      glass: settings.glass,
+      hoverFx: settings.hoverFx,
+      tilt: settings.tilt,
+      waterfall: settings.waterfall,
+      shared: settings.shared,
+      searchFx: settings.searchFx,
+      welcome: settings.welcome,
+      weather: settings.weather
+    }).replace(/</g, "\\u003c");
+  } catch (e) {
+    beautyJson = "{}";
+  }
   return templateHtml.replace(/\{\{SITE_NAME\}\}/g, escHtml(settings.siteName)).replace(/\{\{SITE_DESC\}\}/g, escHtml(settings.siteDesc)).replace(/\{\{NAV_DATA\}\}/g, JSON.stringify(navData)).replace(/\{\{NAV_SETTINGS\}\}/g, JSON.stringify({
     defaultStyle: settings.defaultStyle,
     defaultBg: settings.defaultBg
-  }));
+  })).replace(/\{\{NAV_BEAUTY\}\}/g, beautyJson);
 }
 function escHtml(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -721,6 +756,106 @@ function cleanDesc(text) {
   return (text || "").replace(/<[^>]+>/g, "").replace(/^(介绍|描述|说明|网站介绍|功能介绍)[:：]\s*/i, "").trim().split("\n")[0].trim();
 }
 
+// functions/lib/favicon.js
+async function fetchFavicon(url, apiPrefix = "https://faviconsnap.com/api/favicon?url=") {
+  const parsed = new URL(url);
+  const origin = parsed.origin;
+  try {
+    const apiUrl = apiPrefix + encodeURIComponent(origin);
+    const res = await fetch(apiUrl, { cf: { cacheTtl: 86400 } });
+    if (res.ok) {
+      const ct = res.headers.get("content-type") || "image/png";
+      if (ct.startsWith("image/")) {
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength > 100) {
+          return toDataUri(buf, ct.split(";")[0]);
+        }
+      }
+    }
+  } catch {
+  }
+  try {
+    const googleUrl = `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=64`;
+    const res = await fetch(googleUrl, { cf: { cacheTtl: 86400 } });
+    if (res.ok) {
+      const ct = res.headers.get("content-type") || "image/png";
+      if (ct.startsWith("image/")) {
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength > 100) {
+          return toDataUri(buf, ct.split(";")[0]);
+        }
+      }
+    }
+  } catch {
+  }
+  return "";
+}
+async function fetchFavicons(urls, apiPrefix, concurrency = 5) {
+  const results = {};
+  const chunks = [];
+  for (let i = 0; i < urls.length; i += concurrency) {
+    chunks.push(urls.slice(i, i + concurrency));
+  }
+  for (const chunk of chunks) {
+    await Promise.all(chunk.map(async (url) => {
+      results[url] = await fetchFavicon(url, apiPrefix);
+    }));
+  }
+  return results;
+}
+function toDataUri(buf, mimeType) {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const b64 = btoa(binary);
+  return `data:${mimeType};base64,${b64}`;
+}
+
+// functions/api/favicon.js
+async function onRequestPost8({ request, env }) {
+  const body = await request.json().catch(() => null);
+  if (!body?.urls?.length && body?.all !== true) {
+    return err("\u7F3A\u5C11 urls \u5B57\u6BB5");
+  }
+  const settings = await getSettings(env);
+  const apiPrefix = settings.faviconApi || "https://faviconsnap.com/api/favicon?url=";
+  const data = await getData(env);
+  let targets = [];
+  if (body.all) {
+    data.categories.forEach((cat, ci) => {
+      cat.items.forEach((item, ii) => {
+        if (!item.icon) targets.push({ ci, ii, url: item.url });
+      });
+    });
+  } else if (body.catIndex != null) {
+    const cat = data.categories[body.catIndex];
+    if (!cat) return err("\u5206\u7C7B\u4E0D\u5B58\u5728");
+    cat.items.forEach((item, ii) => {
+      if (!item.icon) targets.push({ ci: body.catIndex, ii, url: item.url });
+    });
+  } else {
+    targets = body.urls.map((url) => {
+      for (let ci = 0; ci < data.categories.length; ci++) {
+        const ii = data.categories[ci].items.findIndex((i) => i.url === url);
+        if (ii !== -1) return { ci, ii, url };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+  if (!targets.length) return json({ ok: true, updated: 0, message: "\u6CA1\u6709\u9700\u8981\u6293\u53D6\u7684\u56FE\u6807" });
+  const urls = [...new Set(targets.map((t) => t.url))];
+  const faviconMap = await fetchFavicons(urls, apiPrefix, 5);
+  let updated = 0;
+  targets.forEach(({ ci, ii, url }) => {
+    if (faviconMap[url]) {
+      data.categories[ci].items[ii].icon = faviconMap[url];
+      updated++;
+    }
+  });
+  if (updated > 0) await putData(env, data);
+  return json({ ok: true, updated, total: targets.length });
+}
+
 // functions/styles/[id].js
 function onRequestGet10() {
   return new Response(
@@ -778,17 +913,21 @@ async function routeRequest(request, env, ctx, url, path, method) {
   }
   if (path === "/api/bookmarks/reorder" && method === "POST") return onRequestReorder(make());
   if (path.startsWith("/api/bookmarks")) {
+    const m = path.match(/^\/api\/bookmarks\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === "GET") return onRequestGet5(make());
     if (method === "POST") return onRequestPost3(make());
-    if (method === "PUT") return onRequestPut(make());
-    if (method === "DELETE") return onRequestDelete(make());
+    if (method === "PUT") return onRequestPut(make(p));
+    if (method === "DELETE") return onRequestDelete(make(p));
   }
   if (path === "/api/categories/reorder" && method === "POST") return onRequestReorder2(make());
   if (path.startsWith("/api/categories")) {
+    const m = path.match(/^\/api\/categories\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === "GET") return onRequestGet6(make());
     if (method === "POST") return onRequestPost4(make());
-    if (method === "PUT") return onRequestPut2(make());
-    if (method === "DELETE") return onRequestDelete2(make());
+    if (method === "PUT") return onRequestPut2(make(p));
+    if (method === "DELETE") return onRequestDelete2(make(p));
   }
   if (path.startsWith("/api/settings")) {
     if (method === "GET") return onRequestGet7(make());
@@ -809,7 +948,7 @@ async function routeRequest(request, env, ctx, url, path, method) {
     if (method === "POST") return onRequestPost7(make());
   }
   if (path === "/api/favicon") {
-    if (method === "GET") return faviconGet(make());
+    if (method === "POST") return onRequestPost8(make());
   }
   const stylesMatch = path.match(/^\/api\/styles\/(.+)$/);
   if (stylesMatch) {

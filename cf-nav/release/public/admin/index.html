@@ -226,6 +226,45 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <button class="btn-primary" onclick="saveAiSettings()">保存 AI 配置</button>
     </div>
     <div class="card" style="margin-top:1rem">
+      <div style="font-weight:600;margin-bottom:.75rem">站点美化</div>
+      <div class="field"><label>主题</label>
+        <select id="s-theme">
+          <option value="dark">暗黑模式</option>
+          <option value="cyberpunk">赛博朋克</option>
+          <option value="minimal">极简白</option>
+          <option value="forest">森林绿</option>
+          <option value="system">跟随系统</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-glass" style="width:16px;height:16px"><label for="s-glass" style="margin:0;font-size:.875rem">毛玻璃卡片</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-hover" style="width:16px;height:16px"><label for="s-hover" style="margin:0;font-size:.875rem">图标悬停弹跳/变色/形态变换</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-tilt" style="width:16px;height:16px"><label for="s-tilt" style="margin:0;font-size:.875rem">3D 倾斜（随鼠标位置）</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-waterfall" style="width:16px;height:16px"><label for="s-waterfall" style="margin:0;font-size:.875rem">瀑布流错落淡入</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-shared" style="width:16px;height:16px"><label for="s-shared" style="margin:0;font-size:.875rem">点击卡片共享元素放大过渡</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-search" style="width:16px;height:16px"><label for="s-search" style="margin:0;font-size:.875rem">搜索框呼吸光 + 悬停展开</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-welcome" style="width:16px;height:16px"><label for="s-welcome" style="margin:0;font-size:.875rem">动态欢迎语（按时段）</label>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-weather" style="width:16px;height:16px"><label for="s-weather" style="margin:0;font-size:.875rem">天气联动（欢迎语显示天气）</label>
+      </div>
+      <div style="margin-top:.75rem">
+        <button class="btn-primary" onclick="saveBeauty()">保存美化设置</button>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem">
       <div style="font-weight:600;margin-bottom:.75rem">修改管理员密码</div>
       <div class="field"><label>新密码</label><input type="password" id="new-pass"></div>
       <div class="field"><label>确认新密码</label><input type="password" id="new-pass2"></div>
@@ -267,6 +306,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   </div>
 </div>
 
+<div id="fav-progress" hidden style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#1e293b;color:#f8fafc;padding:1.2rem 1.6rem;border-radius:1rem;box-shadow:0 20px 50px rgba(0,0,0,.55);z-index:1000;text-align:center;min-width:260px">
+  <div id="fav-progress-text" style="font-size:.9rem;margin-bottom:.6rem">抓取中…</div>
+  <div style="height:8px;background:rgba(255,255,255,.15);border-radius:9999px;overflow:hidden">
+    <div id="fav-progress-bar" style="height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#818cf8);transition:width .25s"></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -423,6 +468,31 @@ async function batchAiSelected() {
   toast(`完成，${res.results?.filter(r=>r.ok).length} 条成功`);
 }
 
+function showFavProgress(done, total, label) {
+  const box = document.getElementById('fav-progress');
+  box.hidden = false;
+  document.getElementById('fav-progress-text').textContent = `${label} ${done}/${total}`;
+  document.getElementById('fav-progress-bar').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+}
+function hideFavProgress() { document.getElementById('fav-progress').hidden = true; }
+
+async function fetchFaviconsChunked(urls, label) {
+  if (!urls.length) return toast('没有需要抓取的图标', 'err');
+  const chunkSize = 8;
+  let updated = 0;
+  showFavProgress(0, urls.length, label);
+  for (let i = 0; i < urls.length; i += chunkSize) {
+    const chunk = urls.slice(i, i + chunkSize);
+    const res = await api('/api/favicon', { method: 'POST', body: { urls: chunk } });
+    updated += res?.updated || 0;
+    showFavProgress(Math.min(i + chunkSize, urls.length), urls.length, label);
+    await new Promise(r => setTimeout(r, 150));
+  }
+  hideFavProgress();
+  await loadBookmarks();
+  toast(`完成，${updated} 个图标已更新`);
+}
+
 async function batchFaviconSelected() {
   const checked = [...document.querySelectorAll('#bm-tbody input[type=checkbox]:checked')];
   if (!checked.length) return toast('请先选择书签', 'err');
@@ -430,16 +500,14 @@ async function batchFaviconSelected() {
     const ci = parseInt(c.dataset.ci), ii = parseInt(c.dataset.ii);
     return allData.categories[ci]?.items[ii]?.url;
   }).filter(Boolean);
-  const res = await api('/api/favicon', { method: 'POST', body: { urls } });
-  await loadBookmarks();
-  toast(`完成，${res.updated} 个图标已更新`);
+  await fetchFaviconsChunked(urls, '抓取图标');
 }
 
 async function fetchAllFavicons() {
   if (!confirm('将抓取所有空图标的书签，可能需要较长时间，确定吗？')) return;
-  const res = await api('/api/favicon', { method: 'POST', body: { all: true } });
-  await loadBookmarks();
-  toast(`完成，${res.updated}/${res.total} 个图标已更新`);
+  const urls = [];
+  allData.categories.forEach(c => c.items.forEach(it => { if (!it.icon) urls.push(it.url); }));
+  await fetchFaviconsChunked(urls, '批量抓取');
 }
 
 // ── 分类管理 ──────────────────────────────────────────
@@ -659,6 +727,37 @@ async function saveAiSettings() {
   toast('AI 配置已保存');
 }
 
+// ── 站点美化设置（独立模块，出错不影响其他设置） ──
+async function loadBeauty() {
+  const s = await api('/api/settings');
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+  set('s-theme', s.theme || 'dark');
+  chk('s-glass', s.glass);
+  chk('s-hover', s.hoverFx);
+  chk('s-tilt', s.tilt);
+  chk('s-waterfall', s.waterfall);
+  chk('s-shared', s.shared);
+  chk('s-search', s.searchFx);
+  chk('s-welcome', s.welcome);
+  chk('s-weather', s.weather);
+}
+
+async function saveBeauty() {
+  await api('/api/settings', { method: 'POST', body: {
+    theme:     document.getElementById('s-theme').value,
+    glass:     document.getElementById('s-glass').checked,
+    hoverFx:   document.getElementById('s-hover').checked,
+    tilt:      document.getElementById('s-tilt').checked,
+    waterfall: document.getElementById('s-waterfall').checked,
+    shared:    document.getElementById('s-shared').checked,
+    searchFx:  document.getElementById('s-search').checked,
+    welcome:   document.getElementById('s-welcome').checked,
+    weather:   document.getElementById('s-weather').checked,
+  }});
+  toast('美化设置已保存（刷新前台首页生效）');
+}
+
 async function changePassword() {
   const p1 = document.getElementById('new-pass').value;
   const p2 = document.getElementById('new-pass2').value;
@@ -675,6 +774,8 @@ function logout() {
 
 // 初始加载
 loadBookmarks();
+// 站点美化设置：独立加载，失败不影响主程序
+loadBeauty().catch((e) => console.warn('美化设置加载失败', e));
 </script>
 </body>
 </html>

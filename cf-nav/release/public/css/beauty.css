@@ -1,0 +1,115 @@
+/* ============================================================
+   站点美化模块（独立样式，出错不影响主程序 main.css）
+   包含：主题 / 毛玻璃 / 悬停动效 / 3D 倾斜 / 瀑布流淡入 /
+        共享元素过渡 / 搜索呼吸光 / 动态欢迎语
+   ============================================================ */
+
+/* ── 主题（覆盖 CSS 变量） ──────────────────────────── */
+:root[data-theme="dark"] {
+  --bg: #0f172a; --card-bg: #1e293b; --border: #334155;
+  --text: #f8fafc; --muted: #94a3b8; --accent: #38bdf8; --hover-bg: #334155;
+}
+:root[data-theme="cyberpunk"] {
+  --bg: #0a0118; --card-bg: #160a2b; --border: #7b2ff7;
+  --text: #e9d5ff; --muted: #a78bfa; --accent: #ff2bd6; --hover-bg: #2a1250;
+  --neon: #00f0ff;
+}
+:root[data-theme="minimal"] {
+  --bg: #f5f6f8; --card-bg: #ffffff; --border: #e2e6ea;
+  --text: #1f2933; --muted: #7b8794; --accent: #3b82f6; --hover-bg: #eef2f7;
+}
+:root[data-theme="forest"] {
+  --bg: #0c1a12; --card-bg: #13241a; --border: #2f6b43;
+  --text: #e7f5ec; --muted: #9cc7ad; --accent: #34d399; --hover-bg: #1c3325;
+}
+
+/* ── 动态欢迎语 ─────────────────────────────────────── */
+.welcome {
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin: 0.1rem auto 0.5rem;
+  min-height: 1.2em;
+  letter-spacing: 0.02em;
+}
+.welcome[hidden] { display: none; }
+.welcome .w-em { color: var(--accent); font-weight: 600; }
+.welcome .w-weather { margin-left: 0.4rem; opacity: 0.85; }
+
+/* ── 毛玻璃卡片 ─────────────────────────────────────── */
+body.b-glass .card {
+  background: color-mix(in srgb, var(--card-bg) 58%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+/* ── 图标悬停动效（弹跳 / 变色 / 形态变换） ────────── */
+body.b-hover .card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+body.b-hover .card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.28); }
+body.b-hover .card:hover .card-icon,
+body.b-hover .card:hover .card-icon-placeholder {
+  animation: beautyPop 0.5s ease;
+  filter: drop-shadow(0 0 8px var(--accent));
+}
+body.b-hover .card:hover .card-title { color: var(--accent); }
+@keyframes beautyPop {
+  0%   { transform: scale(1) rotate(0); }
+  35%  { transform: scale(1.22) rotate(-8deg); }
+  70%  { transform: scale(0.94) rotate(5deg); }
+  100% { transform: scale(1.08) rotate(0); }
+}
+
+/* ── 3D 倾斜（transform 由 beauty.js 计算注入） ─────── */
+body.b-tilt .card {
+  transform-style: preserve-3d;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+  will-change: transform;
+}
+
+/* ── 瀑布流错落淡入 ─────────────────────────────────── */
+body.b-waterfall .card {
+  opacity: 0;
+  animation: beautyFade 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes beautyFade {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 共享元素过渡（点击卡片放大再到下一页） ─────────── */
+.card.beauty-shared {
+  animation: beautyZoom 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 50;
+  pointer-events: none;
+}
+@keyframes beautyZoom {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(1.35); opacity: 0; }
+}
+
+/* ── 搜索框呼吸光 + 展开 ────────────────────────────── */
+body.b-search .search-wrap input {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: beautyBreathe 2.6s ease-in-out infinite;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+body.b-search .search-wrap:hover input,
+body.b-search .search-wrap input:focus {
+  animation: none;
+  transform: scale(1.03);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+@keyframes beautyBreathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); }
+  50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
+/* 降低动效（系统偏好减少动态） */
+@media (prefers-reduced-motion: reduce) {
+  body.b-waterfall .card,
+  body.b-hover .card:hover .card-icon,
+  .card.beauty-shared { animation: none !important; opacity: 1 !important; }
+  body.b-search .search-wrap input { animation: none !important; }
+}
