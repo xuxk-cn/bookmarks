@@ -148,3 +148,24 @@ window.addEventListener('storage', (e) => {
     try { f.contentWindow.location.reload(); } catch (_) { f.src = f.src; }
   }
 });
+
+// 将 Alt+ 组合键转发给背景 iframe：背景层 pointer-events:none 且无法获得键盘焦点，
+// 按键事件会跑到父页面，导致 a2.html 等的 Alt+H 设置面板在作为背景时打不开。
+// 转发后（输入态除外），这些自带快捷键在背景中也能正常使用。
+window.addEventListener('keydown', (e) => {
+  if (!e.altKey) return;                                  // 仅转发 Alt 组合键
+  const el = document.activeElement;
+  if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return; // 输入时不转发
+  const f = getIframeLayer();
+  if (!f || f.style.display === 'none' || !f.contentWindow || !f.contentWindow.document) return;
+  if (!currentName || !currentName.endsWith('.html')) return;
+  try {
+    const ev = new f.contentWindow.KeyboardEvent('keydown', {
+      key: e.key, code: e.code,
+      altKey: e.altKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey,
+      keyCode: e.keyCode || e.which || 0, which: e.keyCode || e.which || 0,
+      bubbles: true, cancelable: true,
+    });
+    f.contentWindow.document.dispatchEvent(ev);
+  } catch (_) {}
+});

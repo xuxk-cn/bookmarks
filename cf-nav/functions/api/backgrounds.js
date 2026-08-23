@@ -52,23 +52,13 @@ const NAME_MAP = {
   'a47.html': '✨ 特效47',
 };
 
+// 已重写为"真皮肤 CSS"（基于 index.html 真实 DOM）的风格列表；
+// 只有出现在这里、且 public/css/stylesNN.css 已重写好的风格才会暴露给用户。
+// 后续重写新的 skin CSS 后，往这里加一行即可。
 const STYLES_MAP = {
-  'styles1.html':  '风格 1',
-  'styles2.html':  '风格 2',
-  'styles3.html':  '风格 3',
-  'styles4.html':  '风格 4',
-  'styles5.html':  '风格 5',
-  'styles6.html':  '风格 6',
-  'styles7.html':  '风格 7',
-  'styles8.html':  '风格 8',
-  'styles9.html':  '风格 9',
-  'styles10.html': '风格 10',
-  'styles11.html': '风格 11',
-  'styles12.html': '风格 12',
-  'styles13.html': '风格 13',
-  'styles14.html': '风格 14',
-  'styles15.html': '风格 15',
-  'styles16.html': '风格 16',
+  'styles1.html':  '风格 1 · 经典蓝白',
+  'styles2.html':  '风格 2 · 星河渐变',
+  'styles3.html':  '风格 3 · 黑曜石',
 };
 
 export function onRequestGet() {

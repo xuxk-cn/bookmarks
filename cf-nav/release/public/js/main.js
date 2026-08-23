@@ -27,19 +27,6 @@ let currentCat  = categories[0]?.title || null;
 let cardStyle   = parseInt(localStorage.getItem('cardStyle') || navSettings.defaultStyle || '1');
 let searchTimer = null;
 
-// ── 设置按钮（导航栏第一个） ──────────────────────────
-(function() {
-  const settingsBtn = document.createElement('button');
-  settingsBtn.textContent = '设置';
-  settingsBtn.id = 'nav-settings-btn';
-  settingsBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    const popup = document.getElementById('settings-popup');
-    if (popup) popup.hidden = !popup.hidden;
-  });
-  navbar.insertBefore(settingsBtn, navbar.firstChild);
-})();
-
 // ── 初始化导航栏 ──────────────────────────────────────
 categories.forEach((cat, i) => {
   const btn = document.createElement('button');

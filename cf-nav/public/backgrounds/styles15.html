@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的导航 - Homer Dashboard</title>
+    <style>
+        :root {
+            --header-bg: #3b82f6;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #3b82f6;
+            --card-border: #e2e8f0;
+            --banner-header: #293548;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* 顶部导航栏 Header */
+        header {
+            background-color: var(--header-bg);
+            color: #ffffff;
+            padding: 0.75rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .header-brand .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--header-bg);
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .navbar button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #ffffff;
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .navbar button:hover {
+            background: rgba(255, 255, 255, 0.28);
+        }
+
+        .navbar button.active {
+            background: #ffffff;
+            color: var(--header-bg);
+            font-weight: 600;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .search-box-header {
+            position: relative;
+        }
+
+        .search-box-header input {
+            padding: 0.4rem 1rem 0.4rem 2.2rem;
+            border-radius: 9999px;
+            border: none;
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff;
+            font-size: 0.88rem;
+            outline: none;
+            width: 200px;
+            transition: all 0.2s ease;
+        }
+
+        .search-box-header input::placeholder {
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .search-box-header input:focus {
+            background: #ffffff;
+            color: var(--text-primary);
+            width: 260px;
+        }
+
+        .search-box-header input:focus::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+
+        .sound-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* 主主体 Main Page Layout */
+        .page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem 1.5rem 3rem;
+        }
+
+        /* 欢迎告示牌 Banner */
+        .welcome-banner {
+            background: #ffffff;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--card-border);
+            margin-bottom: 2rem;
+        }
+
+        .welcome-banner .banner-title {
+            background: var(--banner-header);
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .welcome-banner .banner-body {
+            padding: 1rem;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+        }
+
+        .welcome-banner .banner-body a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        /* Homer 风格多列 Block 布局 */
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .category-block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding-bottom: 0.25rem;
+        }
+
+        /* Homer 风格 Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 0.375rem;
+            padding: 0.75rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--card-border);
+            border-right: 3.5px solid var(--accent-color); /* Homer 经典的右侧蓝色指示线 */
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+            position: relative;
+            text-decoration: none;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e1;
+            border-right-color: #2563eb;
+        }
+
+        .card img {
+            width: 36px;
+            height: 36px;
+            border-radius: 0.375rem;
+            object-fit: contain;
+            flex-shrink: 0;
+            background: #f8fafc;
+            padding: 2px;
+        }
+
+        .card-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .card .title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .cat-tag {
+            font-size: 0.68rem;
+            color: var(--accent-color);
+            background: #eff6ff;
+            padding: 1px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 2px;
+        }
+
+        /* Tooltip */
+        #tooltip {
+            position: fixed;
+            background: #ffffff;
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.82rem;
+            max-width: 300px;
+            pointer-events: none;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--accent-color);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+            .header-controls {
+                justify-content: space-between;
+            }
+            .search-box-header input {
+                width: 100%;
+            }
+            .search-box-header input:focus {
+                width: 100%;
+            }
+            .categories-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <script src="icons.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="header-brand">
+        <div class="logo-icon">🧭</div>
+        <span>我的导航</span>
+    </div>
+
+    <nav class="navbar" id="nav"></nav>
+
+    <div class="header-controls">
+        <div class="search-box-header">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search" placeholder="搜索书签...">
+        </div>
+        <label class="sound-label">
+            <input type="checkbox" id="sound-toggle" checked style="accent-color: #ffffff;">
+            音效
+        </label>
+    </div>
+</header>
+
+<div class="page-container">
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="banner-title">
+            <span>👋 Welcome !</span>
+        </div>
+        <div class="banner-body">
+            欢迎使用个人导航仪表盘，轻松管理与探索您的各类工具及优质资源。
+        </div>
+    </div>
+
+    <!-- Main Categories Container -->
+    <main id="main" class="categories-grid"></main>
+</div>
+
+<footer>
+    Created with ❤️ Homer Style Dashboard
+</footer>
+
+<div id="tooltip"></div>
+
+<!-- JSON 数据集保留无损 -->
+<script id="nav-data" type="application/json">{{NAV_DATA}}</script>
+
+<script>
+    const data = JSON.parse(document.getElementById('nav-data').textContent);
+    const main = document.getElementById('main');
+    const nav = document.getElementById('nav');
+    const search = document.getElementById('search');
+    const tooltip = document.getElementById('tooltip');
+    const soundToggle = document.getElementById('sound-toggle');
+
+    if (localStorage.getItem('soundEnabled') === 'false') soundToggle.checked = false;
+    soundToggle.addEventListener('change', () => localStorage.setItem('soundEnabled', soundToggle.checked));
+
+    let audioCtx = null;
+    function playDing() {
+        if (!soundToggle.checked) return;
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const c = audioCtx;
+            const t = c.currentTime;
+            [[457.38,0.25,0.88],[914.76,0.12,0.45],[1829.52,0.06,0.18]].forEach(([f,v,d]) => {
+                const o = c.createOscillator(), g = c.createGain();
+                o.connect(g); g.connect(c.destination);
+                o.type = 'sine'; o.frequency.value = f;
+                g.gain.setValueAtTime(v, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + d);
+                o.start(t); o.stop(t + d);
+            });
+        } catch(e) {}
+    }
+
+    // 常用板块图标映射表
+    const categoryIcons = {
+        'resourse': '☁️',
+        'tools': '🛠️',
+        'soft': '💻',
+        '视频': '🎬',
+        'AIGC': '🤖',
+        'AI': '⚡',
+        'ai': '✨',
+        'AI大语言': '🧠',
+        'AI声音': '🎙️',
+        '反推提示词': '🔍',
+        'YouTube': '📹',
+        'Google': '🌐',
+        '电影': '🍿',
+        '身份': '🛡️',
+        '壁纸': '🖼️',
+        'API-VPS': '🖥️',
+        'AI-3D': '🧊',
+        'APK-Proxy': '📱',
+        'Nano Banana': '🍌',
+        'Blog': '📝',
+        'mail': '✉️'
+    };
+
+    const allItems = [];
+    data.categories.forEach(cat => cat.items.forEach(item => allItems.push({...item, catTitle: cat.title})));
+
+    let currentCategory = 'ALL';
+    let searchTimer = null;
+
+    // 渲染顶部导航分类链接（包含“全部”模式）
+    const allBtn = document.createElement('button');
+    allBtn.textContent = '全部';
+    allBtn.classList.add('active');
+    allBtn.onclick = () => { search.value = ''; switchCategory('ALL', allBtn); };
+    nav.appendChild(allBtn);
+
+    data.categories.forEach((cat) => {
+        const btn = document.createElement('button');
+        btn.textContent = cat.title;
+        btn.onclick = () => { search.value = ''; switchCategory(cat.title, btn); };
+        nav.appendChild(btn);
+    });
+
+    function switchCategory(title, btn) {
+        document.querySelectorAll('.navbar button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCategory = title;
+        renderMain();
+    }
+
+    function escHtml(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    function highlight(text, words) {
+        if (!text || !words.length) return escHtml(text || '');
+        let result = escHtml(text);
+        words.forEach(w => {
+            const re = new RegExp(escRe(escHtml(w)), 'gi');
+            result = result.replace(re, m =>
+                '<mark style="background:#38bdf8;color:#0f172a;border-radius:2px;padding:0 2px">' + m + '</mark>'
+            );
+        });
+        return result;
+    }
+
+    function scoreItem(item, words) {
+        const t = (item.title || '').toLowerCase();
+        const u = (item.url || '').toLowerCase();
+        const h = (item.hover || '').toLowerCase();
+        for (const w of words) {
+            if (!t.includes(w) && !u.includes(w) && !h.includes(w)) return -1;
+        }
+        let score = 0;
+        for (const w of words) {
+            if (t === w)              score += 100;
+            else if (t.startsWith(w)) score += 60;
+            else if (t.includes(w))   score += 40;
+            if (u.includes(w)) score += 10;
+            if (h.includes(w)) score += 5;
+        }
+        return score;
+    }
+
+    // Homer 样式 Card 生成器
+    function makeCard(item, words, showCat) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => window.open(item.url, '_blank');
+        
+        const hostname = (() => { try { return new URL(item.url).hostname; } catch(e) { return ''; } })();
+        const icons = window.__NAV_ICONS__ || {};
+        const iconUrl = icons[item.url] || item.icon || (hostname ? 'https://www.google.com/s2/favicons?domain=' + hostname + '&sz=64' : '');
+        
+        const imgTag = iconUrl
+            ? '<img src="' + iconUrl + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394a3b8%22 stroke-width=%222%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><path d=%22M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20%22/><path d=%22M2 12h20%22/></svg>\'" alt="">'
+            : '<div style="width:36px;height:36px;border-radius:0.375rem;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#64748b">🔗</div>';
+        
+        const catBadge = showCat && item.catTitle
+            ? '<span class="cat-tag">' + escHtml(item.catTitle) + '</span>'
+            : '';
+        
+        const subTitleText = item.hover ? escHtml(item.hover) : item.url;
+
+        card.innerHTML = imgTag + 
+            '<div class="card-info">' + 
+                catBadge + 
+                '<div class="title">' + highlight(item.title, words) + '</div>' + 
+                '<div class="subtitle">' + subTitleText + '</div>' + 
+            '</div>';
+
+        card.addEventListener('mouseenter', (e) => {
+            playDing();
+            tooltip.innerHTML = '<div style="color:var(--accent-color);font-weight:600;font-size:0.8rem;margin-bottom:4px;word-break:break-all">'
+                + escHtml(item.url) + '</div>' + (item.hover ? '<div style="color:var(--text-secondary);line-height:1.4">' + escHtml(item.hover) + '</div>' : '');
+            tooltip.style.display = 'block';
+            updateTooltipPos(e);
+        });
+        card.addEventListener('mousemove', updateTooltipPos);
+        card.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+        return card;
+    }
+
+    // 渲染分栏 (Homer 分栏模式)
+    function renderMain() {
+        main.innerHTML = '';
+        const targetCategories = currentCategory === 'ALL' 
+            ? data.categories 
+            : data.categories.filter(c => c.title === currentCategory);
+
+        targetCategories.forEach(cat => {
+            const block = document.createElement('div');
+            block.className = 'category-block';
+
+            const icon = categoryIcons[cat.title] || '📂';
+            const header = document.createElement('div');
+            header.className = 'category-header';
+            header.innerHTML = '<span>' + icon + '</span><span>' + escHtml(cat.title) + '</span>';
+            block.appendChild(header);
+
+            cat.items.forEach(item => {
+                block.appendChild(makeCard(item, [], false));
+            });
+
+            main.appendChild(block);
+        });
+    }
+
+    // 渲染搜索模式
+    function renderSearch(query) {
+        main.innerHTML = '';
+        const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (!words.length) { renderMain(); return; }
+
+        const scored = allItems
+            .map(item => ({ item, score: scoreItem(item, words) }))
+            .filter(r => r.score >= 0)
+            .sort((a, b) => b.score - a.score);
+
+        if (!scored.length) {
+            main.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-secondary);padding:4rem 0">未找到匹配书签</div>';
+            return;
+        }
+
+        const block = document.createElement('div');
+        block.className = 'category-block';
+        block.style.gridColumn = '1 / -1';
+
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.textContent = '🔍 搜索结果 (' + scored.length + ' 条)';
+        block.appendChild(header);
+
+        const searchGrid = document.createElement('div');
+        searchGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:0.75rem';
+
+        scored.forEach(({ item }) => searchGrid.appendChild(makeCard(item, words, true)));
+        block.appendChild(searchGrid);
+        main.appendChild(block);
+    }
+
+    function updateTooltipPos(e) {
+        const x = e.clientX + 15, y = e.clientY + 15;
+        tooltip.style.left = (x + tooltip.offsetWidth > window.innerWidth ? e.clientX - tooltip.offsetWidth - 15 : x) + 'px';
+        tooltip.style.top  = (y + tooltip.offsetHeight > window.innerHeight ? e.clientY - tooltip.offsetHeight - 15 : y) + 'px';
+    }
+
+    // 防抖搜索监听
+    search.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        const q = e.target.value;
+        if (!q.trim()) { renderMain(); return; }
+        searchTimer = setTimeout(() => renderSearch(q), 200);
+    });
+
+    renderMain();
+</script>
+
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'styles15.html';
+  localStorage.setItem('styleChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+</body>
+</html>

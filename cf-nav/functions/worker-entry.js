@@ -8,8 +8,8 @@ import { onRequestGet as adminLoginGet, onRequestPost as adminLogin } from './ad
 import { onRequestPost as adminLogout } from './admin/logout.js';
 import { onRequestGet as adminIndex } from './admin/index.js';
 import { onRequestGet as bgGet } from './api/backgrounds.js';
-import { onRequestGet as bookmarksGet, onRequestPost as bookmarksPost, onRequestPut as bookmarksPut, onRequestDelete as bookmarksDelete } from './api/bookmarks.js';
-import { onRequestGet as categoriesGet, onRequestPost as categoriesPost, onRequestPut as categoriesPut, onRequestDelete as categoriesDelete } from './api/categories.js';
+import { onRequestGet as bookmarksGet, onRequestPost as bookmarksPost, onRequestPut as bookmarksPut, onRequestDelete as bookmarksDelete, onRequestReorder as bookmarksReorder } from './api/bookmarks.js';
+import { onRequestGet as categoriesGet, onRequestPost as categoriesPost, onRequestPut as categoriesPut, onRequestDelete as categoriesDelete, onRequestReorder as categoriesReorder } from './api/categories.js';
 import { onRequestGet as settingsGet, onRequestPost as settingsPost, onRequestGetPublic as settingsGetPublic } from './api/settings.js';
 import { onRequestPost as importPost } from './api/import.js';
 import { onRequestGet as exportGet } from './api/export.js';
@@ -77,18 +77,26 @@ async function routeRequest(request, env, ctx, url, path, method) {
     if (method === 'GET') return bgGet(make());
   }
 
+  if (path === '/api/bookmarks/reorder' && method === 'POST') return bookmarksReorder(make());
+
   if (path.startsWith('/api/bookmarks')) {
+    const m = path.match(/^\/api\/bookmarks\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === 'GET') return bookmarksGet(make());
     if (method === 'POST') return bookmarksPost(make());
-    if (method === 'PUT') return bookmarksPut(make());
-    if (method === 'DELETE') return bookmarksDelete(make());
+    if (method === 'PUT') return bookmarksPut(make(p));
+    if (method === 'DELETE') return bookmarksDelete(make(p));
   }
 
+  if (path === '/api/categories/reorder' && method === 'POST') return categoriesReorder(make());
+
   if (path.startsWith('/api/categories')) {
+    const m = path.match(/^\/api\/categories\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === 'GET') return categoriesGet(make());
     if (method === 'POST') return categoriesPost(make());
-    if (method === 'PUT') return categoriesPut(make());
-    if (method === 'DELETE') return categoriesDelete(make());
+    if (method === 'PUT') return categoriesPut(make(p));
+    if (method === 'DELETE') return categoriesDelete(make(p));
   }
 
   if (path.startsWith('/api/settings')) {
@@ -115,7 +123,7 @@ async function routeRequest(request, env, ctx, url, path, method) {
   }
 
   if (path === '/api/favicon') {
-    if (method === 'GET') return faviconGet(make());
+    if (method === 'POST') return faviconPost(make());
   }
 
   // ── styles/[id] ───────────────────────────────────────────────

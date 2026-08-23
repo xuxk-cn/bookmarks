@@ -197,7 +197,8 @@ function renderHome(templateHtml, navData, settings) {
       shared: settings.shared,
       searchFx: settings.searchFx,
       welcome: settings.welcome,
-      weather: settings.weather
+      weather: settings.weather,
+      noLinkBorder: settings.noLinkBorder
     }).replace(/</g, "\\u003c");
   } catch (e) {
     beautyJson = "{}";

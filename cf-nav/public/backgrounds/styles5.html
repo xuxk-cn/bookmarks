@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星辰视界 - 我的导航</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#141a28;color:#cfd8dc;min-height:100vh;overflow-x:hidden}
+
+/* 报错条（平时隐藏） */
+#errbox{position:fixed;left:0;right:0;bottom:0;background:#7f1d1d;color:#fff;font-size:12px;padding:6px 10px;z-index:99999;white-space:pre-wrap;font-family:monospace;display:none}
+
+.hero{position:relative;height:220px;background:linear-gradient(135deg,#0a1420 0%,#101c30 50%,#0a1826 100%);overflow:hidden;border-bottom:1px solid rgba(77,182,226,.12)}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><pattern id='g' width='4' height='4' patternUnits='userSpaceOnUse'><path d='M 4 0 L 0 0 0 4' fill='none' stroke='%234db6e2' stroke-width='0.15' opacity='0.4'/></pattern></defs><rect width='100' height='100' fill='url(%23g)'/></svg>");opacity:.6;pointer-events:none}
+.hero-dna{position:absolute;right:10%;top:50%;transform:translateY(-50%);font-family:'Courier New',monospace;color:#4db6e2;font-size:11px;line-height:1;opacity:.5;pointer-events:none;white-space:pre;user-select:none}
+
+.top-nav{position:relative;z-index:10;display:flex;align-items:center;gap:16px;padding:18px 30px 0 30px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px}
+.brand svg{width:32px;height:32px;display:block}
+.brand-text{color:#fff;font-weight:700;font-size:16px;letter-spacing:1px}
+.top-nav .weather{display:flex;align-items:center;gap:6px;color:#7cc4e8;font-size:13px;margin-left:14px}
+.top-nav .quote{margin-left:auto;color:#8fa3a8;font-size:12px;font-style:italic;max-width:300px;text-align:right}
+
+.search-wrap{position:relative;z-index:20;display:flex;justify-content:center;margin-top:-30px;padding:0 30px}
+.search-box{position:relative;width:560px;max-width:100%;background:#fff;border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,.4);overflow:hidden}
+.search-box input{width:100%;padding:14px 50px 14px 24px;border:none;outline:none;font-size:14px;color:#333;background:transparent}
+.search-box .search-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);color:#666;font-size:16px;cursor:pointer}
+
+/* 搜索引擎切换 */
+.engine-row{position:relative;z-index:10;display:flex;justify-content:center;gap:8px;margin-top:14px}
+.engine-row a{color:#8fa3a8;font-size:12px;padding:4px 16px;border-radius:14px;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);transition:all .2s;user-select:none}
+.engine-row a:hover{color:#cfd8dc;border-color:rgba(77,182,226,.4)}
+.engine-row a.active{color:#0a1420;background:#4db6e2;border-color:#4db6e2;font-weight:600}
+
+.search-suggest{position:relative;width:560px;max-width:100%;margin:0 auto;background:#fff;border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;max-height:300px;overflow-y:auto}
+.search-suggest.show{display:block}
+.search-suggest .item{padding:10px 24px;cursor:pointer;color:#333;font-size:13px;border-bottom:1px solid #f0f0f0}
+.search-suggest .item:hover{background:#f5f5f5}
+.search-suggest .item:last-child{border-bottom:none}
+
+.tabs-wrap{position:relative;padding:24px 30px 8px}
+.tabs{display:flex;gap:18px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}
+.tabs::-webkit-scrollbar{height:4px}
+.tabs::-webkit-scrollbar-thumb{background:rgba(77,182,226,.3);border-radius:2px}
+.tab{padding:8px 4px;color:#8fa3a8;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;user-select:none;white-space:nowrap;flex-shrink:0}
+.tab:hover{color:#cfd8dc}
+.tab.active{color:#4db6e2;border-bottom-color:#4db6e2}
+
+.main{padding:20px 30px 60px}
+.section{margin-bottom:28px}
+.section-title{display:flex;align-items:center;gap:8px;font-size:14px;color:#cfd8dc;margin-bottom:14px;font-weight:500}
+.section-title::before{content:'▣';color:#4db6e2;font-size:12px}
+.section-title .count{color:#6b7884;font-weight:400;margin-left:6px}
+
+.card-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.card{background:#1d2534;border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .25s;min-height:62px;position:relative}
+.card:hover{background:#263146;border-color:rgba(77,182,226,.35);transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.card-icon{width:34px;height:34px;border-radius:6px;background:#fff;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.card-icon img{width:90%;height:90%;object-fit:contain}
+.card-icon .card-fallback{font-size:13px;font-weight:600;color:#999}
+.card-body{flex:1;min-width:0}
+.card-title{font-size:13px;font-weight:600;color:#cfd8dc;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-desc{font-size:11px;color:#6b7884;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .more{position:absolute;right:8px;bottom:6px;font-size:11px;color:#4db6e2;opacity:.6}
+.card:hover .more{opacity:1}
+
+.right-tools{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:150}
+.right-tools .tool-btn{width:40px;height:40px;background:#1d2534;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#8fa3a8;cursor:pointer;transition:all .2s;border:1px solid rgba(255,255,255,.05)}
+.right-tools .tool-btn:hover{background:#263146;color:#4db6e2}
+
+@media(max-width:1200px){.card-grid{grid-template-columns:repeat(5,1fr)}}
+@media(max-width:1000px){.card-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:800px){.card-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.main{padding:16px}.hero{height:200px}.search-box,.search-suggest{width:90%}.top-nav{flex-wrap:wrap;gap:12px;padding:14px 16px 0}.tabs-wrap{padding:16px 16px 8px}.card-grid{grid-template-columns:repeat(2,1fr)}.right-tools{display:none}.top-nav .quote{display:none}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+    <div class="hero-dna">A T G C A T G C
+A-T G-C A-T
+T-A C-G T-A
+G-C A-T G-C
+A T G C A T G C
+STAR::VISION
+0x4F2A HEXA 0xBC10
+SCANNING...
+▣▣▣▣▣▣▣
+GENOME::MAPPED
+▣▣▣▣▣▣▣▣▣
+SEQUENCE::OK
+▣▣▣▣▣▣▣
+FETCHING DATA
+▣▣▣▣▣
+MED01 DEC 65HE 69PON
+IDENT 458CC
+HEXA 584K PRO 872 MEDI 01 01</div>
+    <div class="top-nav">
+        <div class="brand">
+            <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                    <linearGradient id="lgBg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#26262d"/>
+                        <stop offset="0.65" stop-color="#2a2734"/>
+                        <stop offset="1" stop-color="#473567"/>
+                    </linearGradient>
+                    <linearGradient id="lgBand" x1="0" y1="1" x2="1" y2="0">
+                        <stop offset="0" stop-color="#2e7ea8"/>
+                        <stop offset="1" stop-color="#54b4dc"/>
+                    </linearGradient>
+                    <clipPath id="lgClip"><rect width="96" height="96" rx="22"/></clipPath>
+                </defs>
+                <g clip-path="url(#lgClip)">
+                    <rect width="96" height="96" fill="url(#lgBg)"/>
+                    <path d="M -6 80 C 28 62 50 36 66 -8" stroke="url(#lgBand)" stroke-width="36" fill="none"/>
+                    <path d="M 94 16 C 80 44 70 68 66 102" stroke="url(#lgBand)" stroke-width="14" fill="none" opacity="0.9"/>
+                    <path d="M25 51 L28.8 57.2 L35 61 L28.8 64.8 L25 71 L21.2 64.8 L15 61 L21.2 57.2 Z" fill="#f5c033"/>
+                    <path d="M63 46 L65.7 50.3 L70 53 L65.7 55.7 L63 60 L60.3 55.7 L56 53 L60.3 50.3 Z" fill="#f5c033"/>
+                    <rect x="42" y="20" width="8" height="8" rx="1.5" fill="#f5c033" transform="rotate(45 46 24)"/>
+                    <rect x="64.5" y="13.5" width="7" height="7" rx="1.5" fill="#3fd6ee" transform="rotate(45 68 17)"/>
+                    <rect x="38" y="48" width="6" height="6" rx="1.2" fill="#3fd6ee" transform="rotate(45 41 51)"/>
+                    <circle cx="14" cy="18" r="2" fill="#3b82c4"/>
+                    <circle cx="34" cy="12" r="1.6" fill="#ffffff"/>
+                    <circle cx="52" cy="30" r="1.4" fill="#e8f6ff"/>
+                    <circle cx="16" cy="42" r="1.6" fill="#ffffff"/>
+                    <circle cx="82" cy="12" r="1.8" fill="#ffffff"/>
+                    <circle cx="86" cy="40" r="2" fill="#3b82c4"/>
+                    <circle cx="12" cy="80" r="1.6" fill="#ffffff"/>
+                    <circle cx="36" cy="86" r="1.8" fill="#3b82c4"/>
+                    <circle cx="56" cy="88" r="1.5" fill="#ffffff"/>
+                    <circle cx="86" cy="74" r="2" fill="#3b82c4"/>
+                    <circle cx="76" cy="90" r="1.5" fill="#e8f6ff"/>
+                </g>
+            </svg>
+            <span class="brand-text">星辰视界</span>
+        </div>
+        <div class="weather" id="weather"><i class="fa fa-map-marker"></i> <span>📍 定位中…</span></div>
+        <div class="quote">就是因为你不够好,才要留在你身边,给你幸福。</div>
+    </div>
+    <div class="search-wrap">
+        <div style="width:560px;max-width:100%">
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Google 搜索" autocomplete="off">
+                <i class="fa fa-search search-icon" id="searchIcon" title="搜索"></i>
+            </div>
+            <div class="search-suggest" id="suggest"></div>
+        </div>
+    </div>
+    <div class="engine-row" id="engineRow"></div>
+</div>
+
+<div class="tabs-wrap">
+    <div class="tabs" id="tabs"></div>
+</div>
+
+<main class="main">
+    <div id="content"></div>
+</main>
+
+<div class="right-tools">
+    <div class="tool-btn" id="rtSearch" title="搜索"><i class="fa fa-search"></i></div>
+    <div class="tool-btn" id="rtTop" title="返回顶部"><i class="fa fa-arrow-up"></i></div>
+    <div class="tool-btn" id="rtBell" title="消息"><i class="fa fa-bell-o"></i></div>
+</div>
+
+<div id="errbox"></div>
+
+<script>
+window.onerror = function(msg, src, line) {
+    var d = document.getElementById('errbox');
+    d.style.display = 'block';
+    d.textContent = 'JS错误: ' + msg + ' (行 ' + line + ')';
+};
+</script>
+
+<!-- IP 定位（独立脚本块，ES5 + XHR，带超时兜底） -->
+<script>
+(function(){
+    var el = document.getElementById('weather');
+    var span = el.getElementsByTagName('span')[0];
+    var settled = false;
+    setTimeout(function(){ if(!settled) span.textContent = '📍 未知位置'; }, 16000);
+
+    function getJson(url, cb){
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.timeout = 5000;
+            xhr.onload = function(){
+                if(xhr.status >= 200 && xhr.status < 300){
+                    try { cb(null, JSON.parse(xhr.responseText)); } catch(e){ cb(e); }
+                } else { cb(new Error('http ' + xhr.status)); }
+            };
+            xhr.onerror = function(){ cb(new Error('net')); };
+            xhr.ontimeout = function(){ cb(new Error('timeout')); };
+            xhr.send();
+        } catch(e){ cb(e); }
+    }
+    function weatherIcon(code){
+        code = +code;
+        if(code === 0) return '☀️';
+        if(code <= 2) return '🌤';
+        if(code === 3) return '☁️';
+        if(code <= 48) return '🌫';
+        if(code <= 57) return '🌦';
+        if(code <= 67) return '🌧';
+        if(code <= 77) return '🌨';
+        if(code <= 82) return '🌧';
+        if(code <= 86) return '❄️';
+        return '⛈';
+    }
+    function show(geo){
+        var parts = [];
+        if(geo.city) parts.push(geo.city);
+        if(geo.region && geo.region !== geo.city) parts.push(geo.region);
+        var place = parts.join(' ') || geo.country || '未知位置';
+        getJson('https://api.open-meteo.com/v1/forecast?latitude=' + geo.latitude + '&longitude=' + geo.longitude + '&current=temperature_2m,weather_code&timezone=auto', function(err, j){
+            settled = true;
+            if(!err && j && j.current){
+                span.textContent = '📍 ' + place + ' ' + weatherIcon(j.current.weather_code) + ' ' + Math.round(j.current.temperature_2m) + '°';
+            } else {
+                span.textContent = '📍 ' + place;
+            }
+        });
+    }
+    getJson('https://ipwho.is/', function(err, j){
+        if(!err && j && j.success !== false && (j.city || j.region)){
+            show({city:j.city, region:j.region, country:j.country, latitude:j.latitude, longitude:j.longitude});
+            return;
+        }
+        getJson('https://ipapi.co/json/', function(err2, j2){
+            if(!err2 && j2 && (j2.city || j2.region)){
+                show({city:j2.city, region:j2.region, country:j2.country_name, latitude:j2.latitude, longitude:j2.longitude});
+                return;
+            }
+            getJson('https://api.ip.sb/geoip', function(err3, j3){
+                if(!err3 && j3 && (j3.city || j3.region)){
+                    show({city:j3.city, region:j3.region, country:j3.country, latitude:j3.latitude, longitude:j3.longitude});
+                    return;
+                }
+                settled = true;
+                span.textContent = '📍 未知位置';
+            });
+        });
+    });
+})();
+</script>
+
+<script id="nav-data" type="application/json">
+{
+  "tabs": ["resourse","tools","soft","视频","AIGC","AI","ai","AI大语言","AI声音","反推提示词","YouTube","Google","电影","身份","壁纸","API-VPS","AI-3D","APK-Proxy","Nano Banana","Blog","mail"],
+  "cats": {
+    "resourse":[
+      {"t":"doyoudo官网","u":"https://www.doyoudo.com/","h":"在线设计与视频制作学习平台"},
+      {"t":"Panzoid","u":"https://panzoid.com/","h":"在线视频动画制作平台"},
+      {"t":"耳聆网-音效素材库","u":"https://www.ear0.com/","h":"免费音效素材库"},
+      {"t":"免费字体","u":"https://www.hellofont.cn/","h":"中文字体服务平台"},
+      {"t":"矢量图标库","u":"https://www.iconfont.cn/","h":"阿里巴巴矢量图标库"},
+      {"t":"大众脸影视后期特效","u":"https://www.lookae.com/","h":"影视后期资源网站"},
+      {"t":"台词找影片素材","u":"https://33tc.net/","h":"通过影视台词搜索影片片段"},
+      {"t":"找台词","u":"http://www.zhaotaici.cn/","h":"影视台词搜索网站"},
+      {"t":"AE脚本/扩展-捡屁笑","u":"https://jpsmile.com/","h":"AE脚本、插件、扩展工具"},
+      {"t":"用户脚本","u":"https://greasyfork.org/zh-CN/scripts","h":"用户脚本分享平台"}
+    ],
+    "tools":[
+      {"t":"字幕- SubHD","u":"https://subhd.tv/","h":"字幕资源搜索与下载网站"},
+      {"t":"免费字体","u":"https://www.maoken.com/","h":"猫啃网免费字体资源"},
+      {"t":"Magic Studio","u":"https://magicstudio.com/zh/","h":"AI 图像处理平台"},
+      {"t":"书法欣赏","u":"http://www.yac8.com/","h":"中国书法作品展示和资料查询"},
+      {"t":"大叔汁源","u":"https://www.kdocs.cn/l/ceZS4cRWJBxs","h":"资源分享链接集合"},
+      {"t":"欢迎使用Colab","u":"https://colab.research.google.com/","h":"Google 云端 Python 编程环境"}
+    ],
+    "soft":[
+      {"t":"万能命令","u":"https://wannengrun.com/zh/","h":"在线工具导航平台"},
+      {"t":"3D模型","u":"http://www.gfxcamp.com/","h":"CG资源分享网站"},
+      {"t":"文件共享","u":"https://blaze.vercel.app/","h":"在线文件共享工具"},
+      {"t":"3D Models","u":"https://www.artec3d.com/","h":"高精度三维扫描和3D模型"},
+      {"t":"3D模型","u":"https://3dmodels.org/zh/","h":"3D模型资源网站"},
+      {"t":"3D People Models","u":"https://renderpeople.com/","h":"专业3D人物模型资源平台"},
+      {"t":"AE模板免费","u":"https://www.newcger.com/","h":"CG资源分享网站"},
+      {"t":"100font","u":"https://www.100font.com/","h":"免费字体资源网站"},
+      {"t":"哔哩视频解析","u":"https://weibo.iiilab.com/","h":"微博视频解析工具"},
+      {"t":"佛系软件","u":"https://foxirj.com/","h":"软件分享网站"},
+      {"t":"3322软件","u":"http://www.32r.com/","h":"软件下载平台"},
+      {"t":"实用的应用","u":"http://www.zuijiastore.com/","h":"应用资源网站"},
+      {"t":"狐狸-AE模板","u":"https://fox-studio.net/","h":"AE模板和影视后期资源网站"},
+      {"t":"CG插件","u":"https://www.cgown.com/","h":"CG资源网站"},
+      {"t":"分秒帧","u":"https://app.mediatrack.cn/","h":"在线视频审片和媒体协作平台"}
+    ],
+    "视频":[
+      {"t":"快手","u":"https://www.kuaishou.com/new-reco","h":"短视频和直播平台"},
+      {"t":"小红书","u":"https://www.xiaohongshu.com/","h":"生活方式内容社区"},
+      {"t":"哔哩哔哩","u":"https://www.bilibili.com/","h":"综合视频社区"},
+      {"t":"X.COM","u":"https://x.com/xuxk17125","h":"全球社交信息平台"},
+      {"t":"西瓜创作平台","u":"https://studio.ixigua.com/","h":"字节跳动视频创作者后台"},
+      {"t":"今日头条","u":"https://www.toutiao.com/","h":"资讯内容平台"},
+      {"t":"好看视频","u":"https://haokan.baidu.com/","h":"百度旗下短视频平台"},
+      {"t":"老王导航","u":"https://nav.eooce.com/","h":"网址导航站"},
+      {"t":"科技lion导航","u":"https://dh.kejilion.pro/","h":"科技类网址导航平台"},
+      {"t":"TikTok","u":"https://www.tiktok.com/en/","h":"国际版短视频平台"},
+      {"t":"百家号","u":"https://baijiahao.baidu.com/","h":"百度旗下内容创作平台"},
+      {"t":"Product Hunt","u":"https://www.producthunt.com/?bc=1","h":"新产品发现社区"},
+      {"t":"芭提雅","u":"https://ioc.pattaya.go.th/","h":"泰国芭提雅地区公共信息服务"},
+      {"t":"泰国海滩监控","u":"https://www.thailandnomads.com/","h":"泰国海滩实时摄像头信息"},
+      {"t":"热门网络摄像头","u":"https://www.camscape.com/","h":"全球网络摄像头目录"},
+      {"t":"破解APK","u":"https://liteapks.com/","h":"安卓APK资源网站"}
+    ],
+    "AIGC":[
+      {"t":"GitHub","u":"https://github.com/","h":"全球最大代码托管和开源协作平台"},
+      {"t":"模型库-魔搭社区","u":"https://modelscope.cn/models","h":"阿里AI模型开放平台"},
+      {"t":"Hugging Face","u":"https://huggingface.co/","h":"AI模型和数据集共享平台"},
+      {"t":"Hugging Face-Mirror","u":"https://hf-mirror.com/","h":"Hugging Face镜像访问服务"},
+      {"t":"NovelAI.Dev","u":"https://novelai.dev/","h":"围绕NovelAI和AI绘画资源的网站"},
+      {"t":"Civitai Models","u":"https://civitai.com/models","h":"AI绘画模型分享社区"},
+      {"t":"LiblibAI","u":"https://www.liblib.art/","h":"国内AI绘画模型分享平台"},
+      {"t":"SD法术解析","u":"https://spell.novelai.dev/","h":"SD参数和提示词解析工具"},
+      {"t":"cobalt","u":"https://cobalt.tools/","h":"开源媒体下载工具"},
+      {"t":"PaywallBuster","u":"https://paywallbuster.com/","h":"帮助访问付费墙内容的工具"},
+      {"t":"中等","u":"https://medium.com/","h":"在线内容发布平台"},
+      {"t":"FMHY","u":"https://fmhy.net/","h":"综合资源导航社区"},
+      {"t":"巨量创意","u":"https://cc.oceanengine.com/","h":"字节跳动广告创意平台"},
+      {"t":"AIGC工具收集","u":"https://lilac-guilty-188.notion.site/155afebca4c7804b9c14d485c15ae191","h":"人工智能工具整理页面"},
+      {"t":"艾文AIGC工具库","u":"https://tauacgr5lqv.feishu.cn/docx/VCB6dsoxGoqhClxgDDocl0ignwd","h":"AI工具资源整理文档"},
+      {"t":"艾文AIGC知识库","u":"https://tauacgr5lqv.feishu.cn/docx/ZnPedHE3loaQ5MxwE7TctC6PnNh","h":"人工智能学习资料库"}
+    ],
+    "AI":[
+      {"t":"硅基","u":"https://cloud.siliconflow.cn/","h":"AI模型服务平台"},
+      {"t":"蓝鲸","u":"https://lanjing.ai/","h":"人工智能工具和服务平台"},
+      {"t":"AI 智慧岛","u":"https://chat.lify.vip/chat","h":"AI聊天助手平台"},
+      {"t":"TransPixar AI","u":"https://transpixarai.org/","h":"AI透明视觉处理工具"},
+      {"t":"AI Plus","u":"https://www.yixiaai.com/","h":"人工智能应用平台"},
+      {"t":"星火绘镜","u":"https://typemovie.art/","h":"科大讯飞AI视频创作工具"},
+      {"t":"开拍","u":"https://www.kaipai.com/","h":"AI视频创作工具"},
+      {"t":"NovelAI.Dev","u":"https://novelai.dev/","h":"围绕NovelAI和AI绘画资源的网站"},
+      {"t":"deforum","u":"https://deforum.art/","h":"SD视频生成项目"},
+      {"t":"AI工具集官网","u":"https://ai-bot.cn/","h":"AI工具导航网站"},
+      {"t":"抠抠图","u":"https://www.koukoutu.com/","h":"在线AI图片处理工具"},
+      {"t":"AI技术社区","u":"https://www.aibl.vip/","h":"人工智能交流平台"},
+      {"t":"长视频分割","u":"https://app.ssemble.com/signup","h":"AI视频处理服务"}
+    ],
+    "ai":[
+      {"t":"Invideo AI","u":"https://invideo.io/","h":"AI视频创作平台"},
+      {"t":"AI艺术生成器","u":"https://nsfwaiartgenerator.io/","h":"在线AI艺术图片生成工具"},
+      {"t":"维希尔","u":"https://vheer.com/","h":"在线AI图像生成与编辑平台"},
+      {"t":"GenTube","u":"https://www.gentube.app/","h":"AI图像生成平台"},
+      {"t":"Fliki","u":"https://fliki.ai/","h":"AI视频制作工具"},
+      {"t":"www.krea.ai","u":"https://www.krea.ai/home","h":"实时AI创作平台"},
+      {"t":"Raphael","u":"https://raphael.app/zh","h":"免费AI图像生成工具"},
+      {"t":"Viggle AI","u":"https://viggle.ai/home","h":"AI视频生成和动作控制平台"},
+      {"t":"PixVerse-AI","u":"https://app.pixverse.ai/onboard","h":"AI视频生成平台"},
+      {"t":"RenderNet AI","u":"https://rendernet.ai/","h":"AI人物和图像生成平台"},
+      {"t":"AI办公智能体","u":"https://skywork.ai/home","h":"AI办公智能体平台"},
+      {"t":"视频变成短片","u":"https://klap.app/","h":"AI视频剪辑工具"},
+      {"t":"AI 视频套件 AKOOL","u":"https://akool.com/zh-cn","h":"AI视频创作套件"},
+      {"t":"SJinn","u":"https://sjinn.ai/","h":"AI创作平台"}
+    ],
+    "API-VPS":[
+      {"t":"OpenRouter","u":"https://openrouter.ai/","h":"AI模型API聚合平台"},
+      {"t":"ClawCloud Run","u":"https://us-east-1.run.claw.cloud/","h":"云端应用运行平台"},
+      {"t":"智谱API","u":"https://bigmodel.cn/usercenter/proj-mgmt/apikeys","h":"智谱AI大语言模型开放接口"},
+      {"t":"阿里云百炼平台API","u":"https://bailian.console.aliyun.com/cn-beijing/","h":"阿里云生成式AI应用开发平台"},
+      {"t":"鑫源API","u":"https://xinyuanai666.com/login","h":"人工智能接口服务平台"},
+      {"t":"阶跃星辰API","u":"https://platform.stepfun.com/","h":"阶跃星辰大模型开放平台"},
+      {"t":"智谱-国际","u":"https://z.ai/subscribe","h":"智谱AI面向海外用户服务"},
+      {"t":"HubuHost.com","u":"https://hubuhost.com/","h":"虚拟主机和服务器服务平台"}
+    ],
+    "AI-3D":[
+      {"t":"HYPER-3D","u":"https://hyper3d.ai/","h":"人工智能3D内容生成工具"},
+      {"t":"AI 3D模型生成器","u":"https://www.meshy.ai/","h":"Meshy 3D模型生成服务"},
+      {"t":"用于角色动画的AI-3D","u":"https://www.kinetix.tech/","h":"AI角色动画生成平台"},
+      {"t":"腾讯混元3D","u":"https://3d.hunyuan.tencent.com/","h":"腾讯AI三维内容生成平台"},
+      {"t":"免费下载3D模型","u":"https://makerworld.com/zh","h":"3D打印模型分享平台"},
+      {"t":"Rendair","u":"https://app.rendair.ai/chat/821421","h":"AI 3D内容生成和设计辅助平台"},
+      {"t":"Meshy-3D","u":"https://www.meshy.ai/","h":"Meshy 3D模型生成服务"},
+      {"t":"NexodusAI","u":"https://nexodusai.com/","h":"图片转3D模型的人工智能工具"}
+    ],
+    "AI大语言":[
+      {"t":"通义tongyi.ai","u":"https://tongyi.aliyun.com/","h":"阿里云大模型AI平台"},
+      {"t":"OpenAI","u":"https://openai.com/","h":"人工智能研究与产品开发机构"},
+      {"t":"百灵大模型","u":"https://ling.tbox.cn/chat","h":"AI对话服务"},
+      {"t":"文心一言","u":"https://yiyan.baidu.com/","h":"百度生成式AI助手"},
+      {"t":"跃问","u":"https://yuewen.cn/chats/new","h":"阶跃星辰AI助手平台"},
+      {"t":"Cici","u":"https://www.cici.com/chat/","h":"字节跳动海外AI助手"},
+      {"t":"HyperAI超神经","u":"https://hyper.ai/cn","h":"人工智能资讯与资源平台"},
+      {"t":"bolt.new","u":"https://bolt.new/","h":"AI编程开发平台"},
+      {"t":"ChatAI","u":"https://ybb.chatleft.com/","h":"在线AI聊天工具"},
+      {"t":"灵光","u":"https://www.lingguang.com/chat","h":"AI助手平台"},
+      {"t":"Pinterest-pose","u":"https://www.pinterest.com/","h":"图片灵感和视觉收藏平台"},
+      {"t":"PoseMy","u":"https://posemy.art/","h":"3D人体姿势参考工具"},
+      {"t":"Quick-poses","u":"https://quickposes.com/en","h":"绘画训练姿势素材网站"},
+      {"t":"Magic Poser Web","u":"https://webapp.magicposer.com/","h":"在线3D人体姿态设计工具"},
+      {"t":"云原生运维圈镜像站","u":"http://dockerimage.gbfeng.com/","h":"Docker镜像资源镜像服务"}
+    ],
+    "APK-Proxy":[
+      {"t":"APP的收入","u":"https://www.paywallscreens.com/","h":"分析移动应用付费墙设计"},
+      {"t":"Android应用商店","u":"https://cn.aptoide.com/","h":"Android应用分发平台"},
+      {"t":"APKPure","u":"https://apkpure.com/cn/","h":"Android APK下载平台"},
+      {"t":"Free APK Downloads","u":"https://www.apkmirror.com/","h":"APKMirror APK文件下载网站"},
+      {"t":"APKCombo","u":"https://apkcombo.com/zh/","h":"Android应用资源下载平台"},
+      {"t":"Free Proxy","u":"https://openproxylist.com/","h":"免费代理服务器查询网站"},
+      {"t":"测速","u":"https://www.itdog.cn/ping/","h":"ITDOG网络检测工具平台"},
+      {"t":"DNS查询网站","u":"https://dnschecker.org/","h":"在线DNS查询和解析检测工具"}
+    ],
+    "AI声音":[
+      {"t":"Logic Intelligence","u":"https://luoji.cn/","h":"逻辑智能英文平台"},
+      {"t":"Claw Cloud","u":"https://us-east-1.run.claw.cloud/","h":"云端应用运行平台"},
+      {"t":"AI声音生成","u":"https://musichero.ai/zh-CN/sound-effect","h":"在线AI音效生成工具"},
+      {"t":"Audio — Stability AI","u":"https://stability.ai/stable-audio","h":"Stable Audio AI音频生成服务"},
+      {"t":"labs.google/fx","u":"https://labs.google/fx","h":"Google Labs FX AI实验平台"},
+      {"t":"Beatoven.ai","u":"https://www.beatoven.ai/","h":"AI背景音乐生成平台"},
+      {"t":"Free TTS","u":"https://freetts.com/text-to-speech","h":"在线文字转语音工具"},
+      {"t":"海豚Ai","u":"https://www.ttson.cn/","h":"AI语音处理平台"},
+      {"t":"马克配音","u":"https://ttsmaker.cn/","h":"在线AI配音平台"},
+      {"t":"Online Audio Converter","u":"https://onlineaudioconverter.com/","h":"在线音频格式转换工具"},
+      {"t":"Fish Audio","u":"https://fish.audio/zh-CN/","h":"AI语音生成平台"},
+      {"t":"音乐创作","u":"https://www.mureka.ai/","h":"AI音乐创作平台"},
+      {"t":"AI Music","u":"https://audiomatic.io/","h":"AI音乐生成工具"}
+    ],
+    "反推提示词":[
+      {"t":"视频下载","u":"https://y2mp3.net/","h":"在线视频转换工具"},
+      {"t":"Medio AI","u":"https://medio.cool/en/","h":"AI视频下载和处理工具"},
+      {"t":"去文字-下视频","u":"https://vgo.pub/","h":"在线视频处理工具"},
+      {"t":"小红书下载","u":"https://dy.kukutool.com/xiaohongshu","h":"Kukutool小红书下载工具"},
+      {"t":"视频去水印字幕logo","u":"https://tupian.32cd.com/index.html#/user/login","h":"看往视频处理工具"},
+      {"t":"TikTok水印去除","u":"https://www.watermarkremover.io/zh/videos/tiktok-watermark-removal","h":"AI视频水印去除工具"},
+      {"t":"Tiktok Downloader","u":"https://snaptik.app/en2","h":"SnapTik TikTok视频下载工具"},
+      {"t":"玩转节点","u":"https://wanzhuanmi.com/","h":"网络资源和工具分享平台"},
+      {"t":"米贝分享","u":"https://www.mibei77.com/","h":"资源分享平台"},
+      {"t":"飞影数字人","u":"https://hifly.cc/","h":"AI数字人创作平台"},
+      {"t":"OpenCut","u":"https://opencut.net/","h":"开源AI视频编辑工具"},
+      {"t":"AI 图像生成","u":"https://visuali.io/","h":"AI图像生成和编辑平台"}
+    ],
+    "Nano Banana":[
+      {"t":"Patreon","u":"https://www.patreon.com/document-verification","h":"创作者订阅支持平台"},
+      {"t":"倒计时管理","u":"https://transpilot.cc.cd/countdown-app/mgr_c8f2a1.php","h":"在线倒计时任务管理工具"},
+      {"t":"小云雀网页版","u":"https://xyq.jianying.com/home?tab_name=home","h":"剪映在线AI创作工具平台"},
+      {"t":"小云雀国际版","u":"https://www.pippit.ai/home?","h":"Pippit AI海外内容创作平台"},
+      {"t":"火山方舟管理控制台","u":"https://console.volcengine.com/auth/login","h":"火山引擎AI服务管理平台"},
+      {"t":"LMArena","u":"https://lmarena.ai/","h":"大语言模型评测对比平台"},
+      {"t":"Nano Banana Free","u":"https://nanobananafree.ai/","h":"AI图像生成在线工具"},
+      {"t":"RunningHub","u":"https://www.runninghub.cn/quick-create","h":"云端AI工作流创作平台"},
+      {"t":"Vibe Banana","u":"https://intent.app/banana/","h":"AI图像创作工具"},
+      {"t":"iMini超级AI智能体","u":"https://imini.com/zh","h":"AI助手平台"},
+      {"t":"Opal-VEO","u":"https://opal.withgoogle.com/?mode=canvas","h":"Google Opal AI创作工具"},
+      {"t":"ego","u":"https://lite.ego.app/","h":"AI应用和智能助手平台"}
+    ],
+    "Blog":[
+      {"t":"IP地址查询","u":"https://ip.sb/","h":"IP地址查询工具"},
+      {"t":"IP风险度查询","u":"https://ping0.cc/","h":"IP风险度查询工具"},
+      {"t":"Windsurf","u":"https://windsurf.com/account/register","h":"AI编程开发工具平台"},
+      {"t":"Fast.com","u":"https://fast.com/zh/cn","h":"Netflix网络速度测试网站"},
+      {"t":"果汁排行榜","u":"http://www.guozhivip.com/rank/","h":"综合榜单信息网站"},
+      {"t":"85LA_节点","u":"https://www.85la.com/","h":"网络节点订阅资源网站"},
+      {"t":"85LA-节点","u":"https://sub.85la.com/","h":"85LA节点管理订阅入口"},
+      {"t":"Dashboard - Tally","u":"https://tally.so/dashboard","h":"在线表单工具管理后台"},
+      {"t":"AI雇佣人类","u":"https://rentahuman.ai/dashboard","h":"连接AI任务和人工服务平台"},
+      {"t":"My IP Address","u":"https://whatismyipaddress.com/","h":"IP地址查询网站"},
+      {"t":"ManyChat","u":"https://manychat.com/","h":"聊天机器人和自动化营销平台"},
+      {"t":"Scamalytics","u":"https://scamalytics.com/","h":"IP风险检测平台"}
+    ],
+    "YouTube":[
+      {"t":"FMHY","u":"https://fmhy.pages.dev/","h":"Free Media Heck Yeah资源导航"},
+      {"t":"SkyReels","u":"https://www.skyreels.ai/home/","h":"AI视频生成平台"},
+      {"t":"相逢解析站","u":"https://pan.xfyzyyb.xyz/user/parse","h":"网盘资源解析工具"},
+      {"t":"相逢储物站","u":"https://pan.xfyzyyb.xyz/ms.html","h":"网盘资源管理辅助页面"},
+      {"t":"百度网盘不限速","u":"https://jyjc.cloudns.org/bdwpbxs_1","h":"百度网盘文件下载加速"},
+      {"t":"一致性","u":"https://ideogram.ai/character","h":"Ideogram AI角色一致性功能"},
+      {"t":"无版权图-声音-视频-3D","u":"https://pixabay.com/","h":"综合免费素材库"},
+      {"t":"PS-key","u":"https://gen.paramore.su/","h":"Photoshop相关资源页面"},
+      {"t":"Animagraffs","u":"https://animagraffs.com/","h":"动画信息图网站"},
+      {"t":"Adobe Photoshop","u":"https://photoshop.adobe.com/","h":"Adobe专业图像编辑软件"}
+    ],
+    "mail":[
+      {"t":"One.IDkey","u":"https://one.idkey.cc/","h":"身份验证服务平台"},
+      {"t":"CoPaw","u":"https://copaw.agentscope.io/","h":"AI智能体平台"},
+      {"t":"MoeMail","u":"https://moemail.app/zh-CN","h":"在线邮箱服务平台"},
+      {"t":"Outlook","u":"https://outlook.live.com/mail/","h":"微软电子邮件和日程管理服务"},
+      {"t":"临时邮箱","u":"https://linshiyouxiang.net/","h":"一次性邮箱地址在线服务"},
+      {"t":"临时Gmail","u":"https://emailtick.com/zh","h":"临时邮箱相关服务网站"},
+      {"t":"网易数帆","u":"https://console.163yun.com/","h":"网易云服务管理入口"},
+      {"t":"icon","u":"https://www.base64-image.de/","h":"在线图片转换工具"},
+      {"t":"icon-cn","u":"https://tool.chinaz.com/tools/imgtobase","h":"站长工具图片转Base64"},
+      {"t":"1.1.1.1-WARP","u":"https://one.one.one.one/","h":"Cloudflare网络连接服务"}
+    ],
+    "Google":[
+      {"t":"google安全性","u":"https://myaccount.google.com/security","h":"Google账号安全管理中心"},
+      {"t":"谷歌NotebookLM","u":"https://notebooklm.google.com/","h":"Google AI笔记和研究助手"},
+      {"t":"更改gmail所在地","u":"https://policies.google.com/country-association-form","h":"申请修改Google账号地区"},
+      {"t":"Genie 3","u":"https://deepmind.google/models/genie/","h":"Google DeepMind AI世界模型"},
+      {"t":"Imagen","u":"https://deepmind.google/models/imagen/","h":"Google DeepMind图像生成模型"},
+      {"t":"Disco","u":"https://labs.google/disco","h":"Google Labs实验性AI工具"},
+      {"t":"账号关联地区请求","u":"https://policies.google.com/country-association-form","h":"申请修改Google账号地区"},
+      {"t":"Firebase Studio","u":"https://idx.google.com/","h":"谷歌AI辅助应用开发环境"},
+      {"t":"Opal","u":"https://opal.google/?mode=canvas","h":"Google Labs AI应用实验工具"},
+      {"t":"OpenCode","u":"https://opencode.ai/","h":"开源AI编程代理工具"},
+      {"t":"OpenRouter","u":"https://openrouter.ai/","h":"AI模型API聚合平台"},
+      {"t":"Stitch","u":"https://stitch.withgoogle.com/","h":"Google AI设计工具"},
+      {"t":"运动定格-Higgsfield","u":"https://higgsfield.ai/","h":"AI视频生成和动态效果制作平台"},
+      {"t":"Facebook","u":"https://www.facebook.com/","h":"社交网络平台"},
+      {"t":"Coze-扣子","u":"https://www.coze.com/","h":"字节AI智能体开发平台"},
+      {"t":"OpenAI API","u":"https://platform.openai.com/docs/overview","h":"开发者接口平台"},
+      {"t":"Intangible Studio","u":"https://studio.intangible.ai/","h":"AI创意工具平台"}
+    ],
+    "电影":[
+      {"t":"奈飞工厂","u":"https://www.netflixgc.com/","h":"影视在线播放聚合网站"},
+      {"t":"音范丝","u":"https://www.yinfans.net/","h":"高清影视资源整理"},
+      {"t":"低端影视","u":"https://www.hjdpj.com/","h":"影视内容在线播放平台"},
+      {"t":"低端影视-","u":"https://www.iqingtun.com/","h":"影视播放网站"},
+      {"t":"大米星球","u":"https://www.5zsz.net/","h":"在线视频影视资源站"},
+      {"t":"剧圈圈","u":"https://www.jqqzx.me/","h":"影视播放与资源整理网站"},
+      {"t":"南瓜影院","u":"http://www.tjwqjz.com/","h":"在线视频影视平台"},
+      {"t":"Flixbaba","u":"https://flixbaba.tv/","h":"免费在线视频观看网站"}
+    ],
+    "身份":[
+      {"t":"Cloudflare IP Batch","u":"http://ip.flares.cloud/","h":"IP优选Cloudflare测试工具"},
+      {"t":"fofa.info","u":"https://fofa.info/","h":"网络空间搜索引擎"},
+      {"t":"5订单","u":"https://5sim.net/zh/login","h":"在线短信验证码服务"},
+      {"t":"Psiphon","u":"https://psiphon.ca/zh/","h":"开源网络代理工具"},
+      {"t":"nthLink","u":"https://www.nthlink.com/zh/","h":"网络连接工具"},
+      {"t":"ip优选","u":"http://ip.flares.cloud/","h":"Cloudflare IP测试筛选工具"},
+      {"t":"全球主机监控","u":"https://stock.hostmonit.com/CloudFlareYes","h":"监控全球服务器节点状态"}
+    ],
+    "壁纸":[
+      {"t":"FARFETCH","u":"https://www.farfetch.com/","h":"全球奢侈时尚电商平台"},
+      {"t":"VOGU","u":"https://www.vogue.com.cn/","h":"时尚资讯平台"},
+      {"t":"免费素材图片","u":"https://www.pexels.com/zh-cn/","h":"免费图片和视频素材平台"},
+      {"t":"壁纸3","u":"https://unsplash.com/","h":"免费高质量图片素材平台"},
+      {"t":"壁纸1","u":"https://wallhaven.cc/","h":"高清壁纸资源网站"},
+      {"t":"壁纸2","u":"https://wallpaperscraft.com/","h":"壁纸下载网站"},
+      {"t":"自由皮克","u":"https://www.freepik.com/","h":"综合设计素材平台"},
+      {"t":"奢侈品牌","u":"https://www.mytheresa.com/cn/zh","h":"国际奢侈品电商平台"},
+      {"t":"位图转矢量图","u":"https://vectorizer.ai/","h":"在线位图转矢量图工具"}
+    ]
+  }
+}
+</script>
+
+<!-- 主程序（ES5） -->
+<script>
+(function(){
+    var DATA;
+    try {
+        DATA = JSON.parse(document.getElementById('nav-data').textContent);
+    } catch(e) {
+        document.getElementById('content').innerHTML = '<div style="text-align:center;color:#6b7884;padding:60px 0">数据解析失败: ' + e.message + '</div>';
+        return;
+    }
+    var TABS = DATA.tabs;
+    var CATS = DATA.cats;
+    var tabsEl = document.getElementById('tabs');
+    var contentEl = document.getElementById('content');
+    var searchEl = document.getElementById('search');
+    var suggestEl = document.getElementById('suggest');
+    var engineRowEl = document.getElementById('engineRow');
+
+    /* 搜索引擎：Google / Bing / AI */
+    var ENGINES = [
+        {name:'Google', placeholder:'Google 搜索',           url:'https://www.google.com/search?q='},
+        {name:'Bing',   placeholder:'微软Bing搜索',          url:'https://www.bing.com/search?q='},
+        {name:'AI',     placeholder:'AI 搜索（Perplexity）', url:'https://www.perplexity.ai/search?q='}
+    ];
+    var currentEngine = 'Google';
+
+    function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function getHost(url){ try { var a = document.createElement('a'); a.href = url; return a.hostname; } catch(e){ return ''; } }
+    function favicon(url){ var h = getHost(url); return h ? ('https://www.google.com/s2/favicons?domain=' + h + '&sz=64') : ''; }
+    function trim(s){ return String(s||'').replace(/^\s+|\s+$/g,''); }
+
+    function buildCard(item){
+        var card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = (function(url){ return function(){ window.open(url, '_blank'); }; })(item.u);
+        var iconUrl = favicon(item.u);
+        var first = escHtml((item.t || '?').charAt(0).toUpperCase());
+        var iconHtml = iconUrl
+            ? '<img src="' + iconUrl + '" onerror="this.style.visibility=\'hidden\'" alt="">'
+            : '<span class="card-fallback">' + first + '</span>';
+        card.innerHTML =
+            '<div class="card-icon">' + iconHtml + '</div>' +
+            '<div class="card-body">' +
+                '<div class="card-title">' + escHtml(item.t) + '</div>' +
+                '<div class="card-desc">' + escHtml(item.h || '') + '</div>' +
+            '</div>' +
+            '<span class="more">+</span>';
+        return card;
+    }
+
+    function buildTabs(){
+        tabsEl.innerHTML = '';
+        for(var i=0; i<TABS.length; i++){
+            (function(cat, idx){
+                var t = document.createElement('div');
+                t.className = 'tab' + (idx === 0 ? ' active' : '');
+                t.setAttribute('data-cat', cat);
+                t.textContent = cat;
+                t.onclick = function(){ selectTab(cat); };
+                tabsEl.appendChild(t);
+            })(TABS[i], i);
+        }
+    }
+
+    function renderEngineRow(){
+        var html = '';
+        for(var i=0; i<ENGINES.length; i++){
+            var e = ENGINES[i];
+            html += '<a data-engine="' + e.name + '" class="' + (e.name === currentEngine ? 'active' : '') + '">' + e.name + '</a>';
+        }
+        engineRowEl.innerHTML = html;
+        var links = engineRowEl.querySelectorAll('a[data-engine]');
+        for(var j=0; j<links.length; j++){
+            (function(el){
+                el.onclick = function(){
+                    currentEngine = el.getAttribute('data-engine');
+                    for(var k=0; k<ENGINES.length; k++){
+                        if(ENGINES[k].name === currentEngine) searchEl.placeholder = ENGINES[k].placeholder;
+                    }
+                    renderEngineRow();
+                };
+            })(links[j]);
+        }
+    }
+
+    function renderTab(catName){
+        contentEl.innerHTML = '';
+        var items = CATS[catName];
+        if(!items || !items.length){
+            contentEl.innerHTML = '<div style="text-align:center;color:#6b7884;padding:60px 0">「' + escHtml(catName) + '」分类下还没有内容</div>';
+            return;
+        }
+        var sec = document.createElement('div');
+        sec.className = 'section';
+        sec.innerHTML = '<div class="section-title">' + escHtml(catName) + ' <span class="count">' + items.length + ' 个</span></div>';
+        var grid = document.createElement('div');
+        grid.className = 'card-grid';
+        for(var i=0; i<items.length; i++) grid.appendChild(buildCard(items[i]));
+        sec.appendChild(grid);
+        contentEl.appendChild(sec);
+    }
+
+    function renderSearch(q){
+        contentEl.innerHTML = '';
+        var query = trim(q).toLowerCase();
+        if(!query){ renderTab(TABS[0]); return; }
+        var total = 0;
+        var matched = {};
+        var catNames = Object.keys(CATS);
+        for(var c=0; c<catNames.length; c++){
+            var cat = catNames[c];
+            var items = CATS[cat];
+            for(var i=0; i<items.length; i++){
+                var it = items[i];
+                var t = (it.t||'').toLowerCase();
+                var h = (it.h||'').toLowerCase();
+                var u = (it.u||'').toLowerCase();
+                if(t.indexOf(query) !== -1 || h.indexOf(query) !== -1 || u.indexOf(query) !== -1){
+                    if(!matched[cat]) matched[cat] = [];
+                    matched[cat].push(it);
+                    total++;
+                }
+            }
+        }
+        var tip = document.createElement('div');
+        tip.style.cssText = 'color:#8fa3a8;font-size:13px;margin-bottom:14px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)';
+        tip.textContent = '找到 ' + total + ' 条匹配 "' + q + '" 的结果';
+        contentEl.appendChild(tip);
+        if(!total){
+            var empty = document.createElement('div');
+            empty.style.cssText = 'text-align:center;color:#6b7884;padding:60px 0';
+            empty.textContent = '未找到匹配结果';
+            contentEl.appendChild(empty);
+            return;
+        }
+        for(var m=0; m<catNames.length; m++){
+            var cn = catNames[m];
+            if(!matched[cn]) continue;
+            var sec = document.createElement('div');
+            sec.className = 'section';
+            sec.innerHTML = '<div class="section-title">' + escHtml(cn) + ' <span class="count">' + matched[cn].length + '</span></div>';
+            var grid = document.createElement('div');
+            grid.className = 'card-grid';
+            for(var n=0; n<matched[cn].length; n++) grid.appendChild(buildCard(matched[cn][n]));
+            sec.appendChild(grid);
+            contentEl.appendChild(sec);
+        }
+    }
+
+    function showSuggest(q){
+        var query = trim(q).toLowerCase();
+        suggestEl.innerHTML = '';
+        if(!query){ suggestEl.className = 'search-suggest'; return; }
+        var list = [];
+        var catNames = Object.keys(CATS);
+        for(var c=0; c<catNames.length; c++){
+            var cat = catNames[c];
+            var items = CATS[cat];
+            for(var i=0; i<items.length; i++){
+                var it = items[i];
+                if((it.t||'').toLowerCase().indexOf(query) !== -1 || (it.h||'').toLowerCase().indexOf(query) !== -1){
+                    list.push(it);
+                }
+            }
+        }
+        if(!list.length){ suggestEl.className = 'search-suggest'; return; }
+        suggestEl.className = 'search-suggest show';
+        var top = list.slice(0, 8);
+        for(var j=0; j<top.length; j++){
+            (function(it){
+                var div = document.createElement('div');
+                div.className = 'item';
+                div.textContent = it.t;
+                div.onclick = function(){
+                    window.open(it.u, '_blank');
+                    searchEl.value = it.t;
+                    renderSearch(it.t);
+                    suggestEl.className = 'search-suggest';
+                };
+                suggestEl.appendChild(div);
+            })(top[j]);
+        }
+    }
+
+    function selectTab(name){
+        var all = tabsEl.querySelectorAll('.tab');
+        for(var i=0; i<all.length; i++){
+            if(all[i].getAttribute('data-cat') === name) all[i].className = 'tab active';
+            else all[i].className = 'tab';
+        }
+        searchEl.value = '';
+        suggestEl.className = 'search-suggest';
+        renderTab(name);
+    }
+
+    function doSearchJump(){
+        var q = trim(searchEl.value);
+        if(!q) return;
+        for(var i=0; i<ENGINES.length; i++){
+            if(ENGINES[i].name === currentEngine){
+                window.open(ENGINES[i].url + encodeURIComponent(q), '_blank');
+                return;
+            }
+        }
+    }
+
+    /* 事件 */
+    searchEl.addEventListener('input', function(e){
+        var v = e.target.value;
+        showSuggest(v);
+        if(!trim(v)) selectTab(TABS[0]);
+        else renderSearch(v);
+    });
+    searchEl.addEventListener('keydown', function(e){
+        if(e.key === 'Enter') doSearchJump();
+    });
+    searchEl.addEventListener('focus', function(){ if(searchEl.value) showSuggest(searchEl.value); });
+    document.getElementById('searchIcon').onclick = doSearchJump;
+    document.addEventListener('click', function(e){
+        var wrap = document.querySelector('.search-wrap');
+        if(wrap && !wrap.contains(e.target)) suggestEl.className = 'search-suggest';
+    });
+
+    /* 右侧工具 */
+    document.getElementById('rtSearch').onclick = function(){ searchEl.focus(); };
+    document.getElementById('rtTop').onclick = function(){ window.scrollTo(0, 0); };
+    document.getElementById('rtBell').onclick = function(){ alert('🔔 暂无新消息'); };
+
+    buildTabs();
+    renderEngineRow();
+    selectTab(TABS[0]);
+})();
+</script>
+
+<script data-tabbit-widget-diagnostics="true">
+(function(){
+  if (window.__tabbitWidgetDiagnosticsInstalled) return;
+  window.__tabbitWidgetDiagnosticsInstalled = true;
+  window.__TABBIT_WIDGET_ERRORS__ = window.__TABBIT_WIDGET_ERRORS__ || [];
+  function emit(level, args) {
+    var payload = {
+      type: "tabbit_widget_diagnostics",
+      level: level,
+      message: Array.prototype.slice.call(args || []).map(function(item) {
+        if (item && item.stack) return item.stack;
+        if (typeof item === "string") return item;
+        try { return JSON.stringify(item); } catch (_) { return String(item); }
+      }).join(" "),
+      timestamp: Date.now()
+    };
+    window.__TABBIT_WIDGET_ERRORS__.push(payload);
+    try { window.parent && window.parent.postMessage(payload, "*"); } catch (_) {}
+  }
+  var originalError = console.error;
+  console.error = function() {
+    emit("error", arguments);
+    return originalError && originalError.apply(console, arguments);
+  };
+  window.addEventListener("error", function(event) {
+    emit("error", [event.message || "Script error", event.filename || "", event.lineno || ""]);
+  });
+  window.addEventListener("unhandledrejection", function(event) {
+    emit("unhandledrejection", [event.reason || "Unhandled promise rejection"]);
+  });
+})();
+</script>
+
+</body>
+</html>

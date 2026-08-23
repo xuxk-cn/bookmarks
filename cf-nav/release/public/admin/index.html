@@ -260,6 +260,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <div class="field" style="display:flex;align-items:center;gap:.5rem">
         <input type="checkbox" id="s-weather" style="width:16px;height:16px"><label for="s-weather" style="margin:0;font-size:.875rem">天气联动（欢迎语显示天气）</label>
       </div>
+      <div class="field" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="s-noborder" style="width:16px;height:16px"><label for="s-noborder" style="margin:0;font-size:.875rem">去除链接卡片四周黑框</label>
+      </div>
       <div style="margin-top:.75rem">
         <button class="btn-primary" onclick="saveBeauty()">保存美化设置</button>
       </div>
@@ -741,6 +744,7 @@ async function loadBeauty() {
   chk('s-search', s.searchFx);
   chk('s-welcome', s.welcome);
   chk('s-weather', s.weather);
+  chk('s-noborder', s.noLinkBorder);
 }
 
 async function saveBeauty() {
@@ -754,6 +758,7 @@ async function saveBeauty() {
     searchFx:  document.getElementById('s-search').checked,
     welcome:   document.getElementById('s-welcome').checked,
     weather:   document.getElementById('s-weather').checked,
+    noLinkBorder: document.getElementById('s-noborder').checked,
   }});
   toast('美化设置已保存（刷新前台首页生效）');
 }

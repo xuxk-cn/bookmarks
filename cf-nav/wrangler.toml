@@ -4,4 +4,4 @@ pages_build_output_dir = "public"
 
 [[kv_namespaces]]
 binding = "NAV_KV"
-id = "placeholder"
+id = "44c04fb82fc14159b2a3796f07b46f1d"

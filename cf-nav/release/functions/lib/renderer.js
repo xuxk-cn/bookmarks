@@ -14,6 +14,7 @@ export function renderHome(templateHtml, navData, settings) {
       searchFx:  settings.searchFx,
       welcome:   settings.welcome,
       weather:   settings.weather,
+      noLinkBorder: settings.noLinkBorder,
     }).replace(/</g, '\\u003c');
   } catch (e) { beautyJson = '{}'; }
 
