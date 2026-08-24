@@ -15,9 +15,22 @@ const CF_API = 'https://api.cloudflare.com/client/v4';
 const COMPAT_DATE = '2024-09-23';
 const KV_BINDING = 'NAV_KV';
 // 获取最新 commit SHA（避免 CDN 缓存）
+// 优先走 git 协议 refs 端点（无速率限制），失败再退回 GitHub API
 async function getLatestCommitSha() {
+  // 方案1: git info/refs —— 不占 API 配额
+  try {
+    const res = await fetch('https://github.com/xuxk-cn/bookmarks.git/info/refs?service=git-upload-pack', {
+      headers: { 'User-Agent': 'cf-nav-deployer' }
+    });
+    if (res.ok) {
+      const text = await res.text();
+      const m = text.match(/([0-9a-f]{40}) refs\/heads\/master/);
+      if (m) return m[1];
+    }
+  } catch {}
+  // 方案2: GitHub API（匿名 60 次/小时/IP，可能 403）
   const res = await fetch('https://api.github.com/repos/xuxk-cn/bookmarks/commits/master', {
-    headers: { 
+    headers: {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'cf-nav-deployer'
     }
