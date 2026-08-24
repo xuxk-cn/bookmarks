@@ -37,10 +37,10 @@ async function loadAccounts() {
 
 // ─── 部署 ────────────────────────────────────────────────────────
 // 与 cf-nav/release/public 下需部署的静态文件清单保持一致
-// 三个 CDN 镜像按优先级尝试，避免单一来源被限流。
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release'; // 末位回退
-const CDN_BASE        = 'https://cdn.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';         // 主：jsdelivr
-const CDN_BASE_ALT    = 'https://fastly.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';     // 备：fastly 镜像
+// 文件内容一律从 raw.githubusercontent.com@<commitSha> 拉取：
+// SHA 固定不可变，任何 CDN 都不会返回旧版本（jsDelivr @master 有缓存且忽略参数，已弃用）
+const REPO = 'xuxk-cn/bookmarks';
+let SRC_BASE = ''; // deploy() 里由 prepare 返回的 commitSha 填充
 const PUBLIC_FILES = [
   '_headers',
   'admin/index.html',
@@ -107,6 +107,10 @@ async function deploy() {
     log('\n[1/3] 准备环境...');
     const prepare = await post('/api/deploy/prepare', basePayload);
     (prepare.logs || []).forEach(log);
+
+    if (!prepare.commitSha) throw new Error('prepare 未返回 commitSha');
+    SRC_BASE = `https://raw.githubusercontent.com/${REPO}/${prepare.commitSha}/cf-nav/release`;
+    log(`代码源: GitHub raw @ ${prepare.commitSha.slice(0, 10)}`);
 
     const { accountId, projectName, jwt } = prepare;
     const manifest = {};
@@ -181,35 +185,22 @@ async function fetchBatchBase64(paths) {
   return out;
 }
 
-// 带重试的 CDN 拉取：依次尝试 jsdelivr(主)、jsdelivr(gh)、raw 退避回退
+// 带重试的拉取：raw@SHA 内容不可变，失败按指数退避重试 3 次
 async function fetchWithRetry(path) {
-  const urls = [
-    `${CDN_BASE}/public/${path}`,
-    `${CDN_BASE_ALT}/public/${path}`,
-    `${GITHUB_RAW_BASE}/public/${path}`,
-  ];
+  const url = `${SRC_BASE}/public/${path}`;
   const backoffs = [0, 600, 2500];
   let lastErr = null;
-  for (let i = 0; i < urls.length; i++) {
-    // 等待退避
-    if (backoffs[i] > 0) await sleep(backoffs[i]);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const resp = await fetch(urls[i], { cache: 'no-cache' });
-        if (resp.ok) return await resp.arrayBuffer();
-        if (resp.status === 404) throw new Error(`拉取 ${path} 失败: 404 (文件不存在)`);
-        if (resp.status === 429 || resp.status >= 500) {
-          // 限流或服务端错误，退避重试
-          lastErr = new Error(`拉取 ${path} 失败: ${resp.status}`);
-          await sleep(500 * Math.pow(2, attempt));
-          continue;
-        }
-        throw new Error(`拉取 ${path} 失败: ${resp.status}`);
-      } catch (e) {
-        if (String(e.message).includes('404')) throw e;
-        lastErr = e;
-        await sleep(500 * Math.pow(2, attempt));
-      }
+  for (let attempt = 0; attempt < backoffs.length; attempt++) {
+    if (backoffs[attempt] > 0) await sleep(backoffs[attempt]);
+    try {
+      const resp = await fetch(url, { cache: 'no-cache' });
+      if (resp.ok) return await resp.arrayBuffer();
+      if (resp.status === 404) throw new Error(`拉取 ${path} 失败: 404 (文件不存在)`);
+      lastErr = new Error(`拉取 ${path} 失败: ${resp.status}`);
+      await sleep(500 * Math.pow(2, attempt));
+    } catch (e) {
+      if (String(e.message).includes('404')) throw e;
+      lastErr = e;
     }
   }
   throw lastErr || new Error(`拉取 ${path} 失败`);

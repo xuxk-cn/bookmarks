@@ -241,11 +241,12 @@ async function handleDeployPrepare(data) {
   // 4. 创建 Pages 项目
   await createPagesProject(creds, accountId, projectName, kv.id, log);
 
-  // 5. 获取 upload-token
-  const { jwt } = await cfApi(creds,
-    `/accounts/${accountId}/pages/projects/${encodeURIComponent(projectName)}/upload-token`
-  );
-  log('准备阶段完成，获取上传 token');
+  // 5. 获取 upload-token + 最新 commit SHA（前端用 raw@SHA 拉文件，绕开 CDN 缓存）
+  const [{ jwt }, commitSha] = await Promise.all([
+    cfApi(creds, `/accounts/${accountId}/pages/projects/${encodeURIComponent(projectName)}/upload-token`),
+    getLatestCommitSha()
+  ]);
+  log(`准备阶段完成（commit ${String(commitSha).slice(0,10)}）`);
 
   return jsonResp(200, {
     ok: true,
@@ -254,6 +255,7 @@ async function handleDeployPrepare(data) {
     kvTitle,
     kvId: kv.id,
     jwt,
+    commitSha,
     logs
   });
 }
