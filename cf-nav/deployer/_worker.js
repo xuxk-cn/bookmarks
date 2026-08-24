@@ -64,7 +64,7 @@ const PUBLIC_FILES = [
   'css/beauty.css',
   'css/styles01.css','css/styles02.css','css/styles03.css',
   'index.html',
-  'js/background.js','js/beauty.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
+  'js/background.js','js/beauty.js','js/hover-module.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
   'style-preview.html',
 ];
 
