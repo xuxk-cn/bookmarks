@@ -1,4 +1,4 @@
-/**
+﻿/**
  * cf-nav Worker 入口文件
  * 把所有 Pages Functions 路由整合成单个 Worker（用于 Direct Upload 部署）
  */
@@ -13,9 +13,10 @@ import { onRequestGet as categoriesGet, onRequestPost as categoriesPost, onReque
 import { onRequestGet as settingsGet, onRequestPost as settingsPost, onRequestGetPublic as settingsGetPublic } from './api/settings.js';
 import { onRequestPost as importPost } from './api/import.js';
 import { onRequestGet as exportGet } from './api/export.js';
-import { onRequestGet as pendingGet, onRequestPostSubmit as pendingPostSubmit, onRequestPut as pendingPut, onRequestDelete as pendingDelete } from './api/pending.js';
+import { onRequestGet as pendingGet, onRequestPost as pendingPostSubmit, onRequestPut as pendingPut, onRequestDelete as pendingDelete } from './api/pending.js';
 import { onRequestPost as aiPost } from './api/ai.js';
 import { onRequestPost as faviconPost } from './api/favicon.js';
+import { onRequestPost as hoverPost } from './api/hover.js';
 import { onRequestGet as stylesGet } from './styles/[id].js';
 
 export default {
@@ -112,10 +113,15 @@ async function routeRequest(request, env, ctx, url, path, method) {
     if (method === 'GET') return exportGet(make());
   }
 
+  if (path === '/api/pending/submit' && method === 'POST') return pendingPostSubmit(make());
+
   if (path.startsWith('/api/pending')) {
+    const m = path.match(/^\/api\/pending\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === 'GET') return pendingGet(make());
-    if (method === 'POST') return pendingPost(make());
-    if (method === 'DELETE') return pendingDelete(make());
+    if (method === 'POST') return pendingPostSubmit(make());
+    if (method === 'PUT') return pendingPut(make(p));
+    if (method === 'DELETE') return pendingDelete(make(p));
   }
 
   if (path === '/api/ai') {
@@ -124,6 +130,10 @@ async function routeRequest(request, env, ctx, url, path, method) {
 
   if (path === '/api/favicon') {
     if (method === 'POST') return faviconPost(make());
+  }
+
+  if (path === '/api/hover') {
+    if (method === 'POST') return hoverPost(make());
   }
 
   // ── styles/[id] ───────────────────────────────────────────────

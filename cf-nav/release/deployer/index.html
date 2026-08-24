@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cf-nav 一键部署器</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Cloudflare Pages 部署工具</p>
+        <h1>cf-nav<br>部署器</h1>
+        <p class="summary">填写 Cloudflare 凭据和管理员账号，点一次自动完成 KV 创建、书签导入、Pages 部署。</p>
+      </div>
+      <div class="status-card">
+        <span class="status-dot"></span>
+        <strong>凭据不会持久化</strong>
+        <p>密钥仅用于转发 Cloudflare API 请求，不存储在服务器端。</p>
+      </div>
+    </section>
+
+    <!-- 步骤 1：CF 凭据 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>1. Cloudflare 凭据</h2>
+          <p>需要 Global API Key（不是 API Token）。</p>
+        </div>
+        <button id="btnLoadAccounts" class="secondary">验证并加载账户</button>
+      </div>
+      <div class="grid two">
+        <label>
+          <span>邮箱</span>
+          <input id="email" type="email" autocomplete="username" placeholder="you@cloudflare.com" />
+        </label>
+        <label>
+          <span>Global API Key</span>
+          <input id="apiKey" type="password" autocomplete="current-password" placeholder="在 CF 个人资料 → API Tokens 获取" />
+        </label>
+        <label>
+          <span>Account</span>
+          <select id="accountId"><option value="">验证后自动加载</option></select>
+        </label>
+        <label>
+          <span>可选：绑定域名的 Zone</span>
+          <select id="zoneId"><option value="">不绑定自定义域名</option></select>
+        </label>
+      </div>
+      <div id="credStatus" class="result mt">等待验证</div>
+    </section>
+
+    <!-- 步骤 2：部署配置 -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>2. 部署配置</h2>
+          <p>设置你的导航站信息和管理员账号。</p>
+        </div>
+        <button id="btnRandNames" class="secondary">随机项目名</button>
+      </div>
+      <div class="grid two">
+        <label>
+          <span>Pages 项目名</span>
+          <input id="projectName" placeholder="nav-xxxxxxxx（自动随机）" />
+        </label>
+        <label>
+          <span>KV 命名空间名</span>
+          <input id="kvTitle" placeholder="nav-kv-xxxxxxxx（自动随机）" />
+        </label>
+        <label>
+          <span>站点名称</span>
+          <input id="siteName" value="我的导航" />
+        </label>
+        <label>
+          <span>可选：自定义域名</span>
+          <input id="hostname" placeholder="nav.yourdomain.com" />
+        </label>
+        <label>
+          <span>管理员用户名</span>
+          <input id="adminUsername" value="admin" />
+        </label>
+        <label>
+          <span>管理员密码 <span class="required">*</span></span>
+          <input id="adminPassword" type="password" placeholder="请设置登录密码" />
+        </label>
+      </div>
+    </section>
+
+    <!-- 步骤 3：书签导入（可选） -->
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>3. 导入书签（可选）</h2>
+          <p>上传浏览器导出的书签 HTML 文件，自动解析后写入 KV。</p>
+        </div>
+      </div>
+      <label class="file-label">
+        <span>书签 HTML 文件</span>
+        <input id="bookmarksFile" type="file" accept=".html,.htm" />
+      </label>
+      <div id="bookmarksStatus" class="result mt">未选择文件</div>
+    </section>
+
+    <!-- 部署按钮 -->
+    <section class="panel deploy-panel">
+      <button id="btnDeploy" class="primary">一键部署</button>
+      <div id="deployResult" class="result">等待部署</div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="panel logs-panel">
+      <div class="panel-head compact">
+        <h2>日志</h2>
+        <button id="btnClearLogs" class="secondary small">清空</button>
+      </div>
+      <pre id="logs"></pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

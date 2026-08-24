@@ -28,6 +28,8 @@ cf-nav 官方部署脚本（安全：重部署永不覆盖书签 / 密码 / 设�
 import os
 import sys
 import json
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 import hashlib
 import base64
 import requests
@@ -243,25 +245,32 @@ def submit_deployment(jwt, manifest):
     log("[3] 提交部署 ...")
     with open(WORKER_FILE, "rb") as f:
         worker_bytes = f.read()
-    meta = json.dumps({"main_module": "_worker.js", "compatibility_date": COMPAT_DATE})
-    inner = "inner" + hashlib.md5(worker_bytes[:32]).hexdigest()[:16]
+    # 与 deployer 的 buildWorkerBundle 完全一致：
+    # metadata 无 Content-Type；模块名 worker.js；类型 application/javascript+module
+    meta = json.dumps({"main_module": "worker.js", "compatibility_date": COMPAT_DATE})
+    inner = "----WebKitFormBoundary" + hashlib.md5(worker_bytes[:32]).hexdigest()[:16]
 
-    def build_inner():
-        b = b""
-        b += f"--{inner}\r\n".encode()
-        b += b'Content-Disposition: form-data; name="metadata"\r\n'
-        b += b"Content-Type: application/json\r\n\r\n"
-        b += meta.encode() + b"\r\n"
-        b += f"--{inner}\r\n".encode()
-        b += b'Content-Disposition: form-data; name="_worker.js"; filename="_worker.js"\r\n'
-        b += b"Content-Type: application/javascript+module\r\n\r\n"
-        b += worker_bytes + b"\r\n"
-        b += f"--{inner}--\r\n".encode()
-        return b
+    def part(name, value, ct=None, fn=None, headers_only_ct=True):
+        p = f"--{inner}\r\n".encode()
+        if fn:
+            p += f'Content-Disposition: form-data; name="{name}"; filename="{fn}"\r\n'.encode()
+        else:
+            p += f'Content-Disposition: form-data; name="{name}"\r\n'.encode()
+        if ct and headers_only_ct:
+            p += f"Content-Type: {ct}\r\n".encode()
+        p += b"\r\n"
+        p += value if isinstance(value, bytes) else value.encode()
+        p += b"\r\n"
+        return p
 
-    bundle = build_inner()
+    bundle = b""
+    bundle += part("metadata", meta)                      # FormData 字符串字段不带 Content-Type
+    bundle += part("worker.js", worker_bytes,
+                   ct="application/javascript+module", fn="worker.js")
+    bundle += f"--{inner}--\r\n".encode()
     bct = f"multipart/form-data; boundary={inner}"
-    outer = "outer9876543210fedcba"
+
+    outer = "----cfnavdeploy" + hashlib.md5(os.urandom(16)).hexdigest()
 
     def add(name, value, ct=None, fn=None):
         p = f"--{outer}\r\n".encode()
@@ -276,8 +285,7 @@ def submit_deployment(jwt, manifest):
         p += b"\r\n"
         return p
 
-    body = b""
-    body += add("manifest", json.dumps(manifest), ct="application/json")
+    body  = add("manifest", json.dumps(manifest), ct="application/json")
     body += add("branch", "main")
     body += add("commit_dirty", "true")
     body += add("commit_message", "deploy cf-nav")

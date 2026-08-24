@@ -98,7 +98,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
       <button class="btn-primary" onclick="openAddBookmark()">+ 新增书签</button>
       <button class="btn-sec" onclick="batchAiSelected()">🤖 AI补选中</button>
       <button class="btn-sec" onclick="batchFaviconSelected()">🖼 抓取图标</button>
+      <button class="btn-sec" onclick="batchHoverSelected()">📝 抓取悬停</button>
       <button class="btn-sec" onclick="fetchAllFavicons()">🖼 批量抓取全部</button>
+      <button class="btn-sec" onclick="fetchAllHovers()">📝 批量抓取悬停</button>
       <button class="btn-sec" id="select-all-btn" onclick="toggleSelectAll()">全选</button>
       <input type="text" id="bm-search" placeholder="搜索..." style="margin-left:auto;width:180px" oninput="filterBookmarks()">
     </div>
@@ -316,6 +318,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   </div>
 </div>
 <div id="toast"></div>
+
+<script type="module" src="/js/hover-module.js"></script>
 
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';

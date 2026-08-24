@@ -5,6 +5,7 @@ import { err } from './lib/utils.js';
 const PUBLIC_PATHS = [
   '/api/settings/public',
   '/api/submit',
+  '/api/pending/submit',
   '/api/backgrounds',
 ];
 

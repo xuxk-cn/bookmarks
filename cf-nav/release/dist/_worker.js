@@ -1,3 +1,28 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// functions/worker-entry.js
+var worker_entry_exports = {};
+__export(worker_entry_exports, {
+  default: () => worker_entry_default
+});
+module.exports = __toCommonJS(worker_entry_exports);
+
 // functions/constants.js
 var KV = {
   DATA: "nav_data",
@@ -117,6 +142,7 @@ function err(msg, status = 400) {
 var PUBLIC_PATHS = [
   "/api/settings/public",
   "/api/submit",
+  "/api/pending/submit",
   "/api/backgrounds"
 ];
 async function onRequest({ request, env, next }) {
@@ -668,6 +694,47 @@ async function onRequestGet9({ env }) {
   const list = await getPending(env);
   return json(list);
 }
+async function onRequestPostSubmit({ request, env }) {
+  const settings = await getSettings(env);
+  if (!settings.enableSubmit) return err("\u6295\u7A3F\u529F\u80FD\u5DF2\u5173\u95ED", 403);
+  const body = await request.json().catch(() => null);
+  if (!body?.title || !body?.url) return err("\u7F3A\u5C11\u6807\u9898\u6216\u94FE\u63A5");
+  const url = sanitizeUrl(body.url);
+  if (!url) return err("\u65E0\u6548\u7684 URL");
+  const list = await getPending(env);
+  list.push({
+    id: crypto.randomUUID(),
+    title: String(body.title).trim(),
+    url,
+    hover: String(body.hover || "").trim(),
+    category: String(body.category || "").trim(),
+    createdAt: Date.now()
+  });
+  await putPending(env, list);
+  return json({ ok: true });
+}
+async function onRequestPut3({ env, params }) {
+  const id = params.id;
+  const list = await getPending(env);
+  const idx = list.findIndex((i) => i.id === id);
+  if (idx === -1) return err("\u6295\u7A3F\u4E0D\u5B58\u5728");
+  const submission = list[idx];
+  const data = await getData(env);
+  let cat = data.categories.find((c) => c.title === submission.category);
+  if (!cat) {
+    cat = { title: submission.category || "\u672A\u5206\u7C7B", items: [] };
+    data.categories.push(cat);
+  }
+  cat.items.push({
+    title: submission.title,
+    url: submission.url,
+    icon: "",
+    hover: submission.hover
+  });
+  list.splice(idx, 1);
+  await Promise.all([putData(env, data), putPending(env, list)]);
+  return json({ ok: true });
+}
 async function onRequestDelete3({ env, params }) {
   const id = params.id;
   const list = await getPending(env);
@@ -857,6 +924,98 @@ async function onRequestPost8({ request, env }) {
   return json({ ok: true, updated, total: targets.length });
 }
 
+// functions/lib/hover.js
+async function extractDescription(html2) {
+  const metaDesc = html2.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const ogDesc = html2.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const twitterDesc = html2.match(/<meta\s+name=["']twitter:description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const title = html2.match(/<title>([^<]+)<\/title>/i)?.[1];
+  return (metaDesc || ogDesc || twitterDesc || title || "").trim().slice(0, 500);
+}
+async function fetchHover(url) {
+  const parsed = new URL(url);
+  const origin = parsed.origin;
+  const urlsToTry = [origin, url];
+  for (const tryUrl of urlsToTry) {
+    try {
+      const res = await fetch(tryUrl, {
+        cf: { cacheTtl: 3600 },
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; cf-nav-hover-bot/1.0)"
+        }
+      });
+      if (res.ok) {
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("text/html")) {
+          const html2 = await res.text();
+          const desc = await extractDescription(html2);
+          if (desc && desc.length > 5) {
+            return desc;
+          }
+        }
+      }
+    } catch {
+    }
+  }
+  return "";
+}
+async function fetchHovers(urls, concurrency = 5) {
+  const results = {};
+  const chunks = [];
+  for (let i = 0; i < urls.length; i += concurrency) {
+    chunks.push(urls.slice(i, i + concurrency));
+  }
+  for (const chunk of chunks) {
+    await Promise.all(chunk.map(async (url) => {
+      results[url] = await fetchHover(url);
+    }));
+  }
+  return results;
+}
+
+// functions/api/hover.js
+async function onRequestPost9({ request, env }) {
+  const body = await request.json().catch(() => null);
+  if (!body?.urls?.length && body?.all !== true && body?.catIndex == null) {
+    return err("\u7F3A\u5C11 urls / all / catIndex \u5B57\u6BB5");
+  }
+  const data = await getData(env);
+  let targets = [];
+  if (body.all) {
+    data.categories.forEach((cat, ci) => {
+      cat.items.forEach((item, ii) => {
+        if (!item.hover || !item.hover.trim()) targets.push({ ci, ii, url: item.url });
+      });
+    });
+  } else if (body.catIndex != null) {
+    const cat = data.categories[body.catIndex];
+    if (!cat) return err("\u5206\u7C7B\u4E0D\u5B58\u5728");
+    cat.items.forEach((item, ii) => {
+      if (!item.hover || !item.hover.trim()) targets.push({ ci: body.catIndex, ii, url: item.url });
+    });
+  } else {
+    targets = body.urls.map((url) => {
+      for (let ci = 0; ci < data.categories.length; ci++) {
+        const ii = data.categories[ci].items.findIndex((i) => i.url === url);
+        if (ii !== -1) return { ci, ii, url };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+  if (!targets.length) return json({ ok: true, updated: 0, message: "\u6CA1\u6709\u9700\u8981\u6293\u53D6\u7684\u60AC\u505C\u4ECB\u7ECD" });
+  const urls = [...new Set(targets.map((t) => t.url))];
+  const hoverMap = await fetchHovers(urls, 5);
+  let updated = 0;
+  targets.forEach(({ ci, ii, url }) => {
+    if (hoverMap[url]) {
+      data.categories[ci].items[ii].hover = hoverMap[url];
+      updated++;
+    }
+  });
+  if (updated > 0) await putData(env, data);
+  return json({ ok: true, updated, total: targets.length });
+}
+
 // functions/styles/[id].js
 function onRequestGet10() {
   return new Response(
@@ -940,16 +1099,23 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (path === "/api/export") {
     if (method === "GET") return onRequestGet8(make());
   }
+  if (path === "/api/pending/submit" && method === "POST") return onRequestPostSubmit(make());
   if (path.startsWith("/api/pending")) {
+    const m = path.match(/^\/api\/pending\/(.+)$/);
+    const p = m ? { id: m[1] } : {};
     if (method === "GET") return onRequestGet9(make());
-    if (method === "POST") return pendingPost(make());
-    if (method === "DELETE") return onRequestDelete3(make());
+    if (method === "POST") return onRequestPostSubmit(make());
+    if (method === "PUT") return onRequestPut3(make(p));
+    if (method === "DELETE") return onRequestDelete3(make(p));
   }
   if (path === "/api/ai") {
     if (method === "POST") return onRequestPost7(make());
   }
   if (path === "/api/favicon") {
     if (method === "POST") return onRequestPost8(make());
+  }
+  if (path === "/api/hover") {
+    if (method === "POST") return onRequestPost9(make());
   }
   const stylesMatch = path.match(/^\/api\/styles\/(.+)$/);
   if (stylesMatch) {
@@ -958,6 +1124,3 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (env?.ASSETS?.fetch) return env.ASSETS.fetch(request);
   return new Response("Not Found", { status: 404 });
 }
-export {
-  worker_entry_default as default
-};
