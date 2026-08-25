@@ -72,6 +72,8 @@ const PUBLIC_FILES = [
 const BATCH_SIZE = 8;          // 每批从 GitHub 拉取并上传的文件数（控制单请求 body 体积）
 const FETCH_CONCURRENCY = 4;   // 单批内的并发 fetch 数
 
+const EXPECTED_FILES = 76; // 与下方清单严格一致；不符说明加载了旧版脚本
+if (PUBLIC_FILES.length !== EXPECTED_FILES) { alert('部署器版本异常: 清单 '+PUBLIC_FILES.length+'/'+EXPECTED_FILES+'，请 Ctrl+F5 强制刷新'); return; }
 async function deploy() {
   const adminPass = $('adminPassword').value.trim();
   if (!adminPass) { setResult('请先设置管理员密码', 'error'); return; }
