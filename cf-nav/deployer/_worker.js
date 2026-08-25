@@ -95,7 +95,16 @@ export default {
     // 静态资源交给 ASSETS 绑定处理
     const staticResp = serveStatic(path);
     if (staticResp) return staticResp;
-    if (env?.ASSETS?.fetch) return env.ASSETS.fetch(request);
+    if (env?.ASSETS?.fetch) {
+      const r = await env.ASSETS.fetch(request);
+      // js/css 禁缓存：部署器更新后普通刷新即可生效，避免浏览器用旧前端
+      if (/\.(js|css)$/i.test(path)) {
+        const h = new Headers(r.headers);
+        h.set('Cache-Control', 'no-cache, must-revalidate');
+        return new Response(r.body, { status: r.status, headers: h });
+      }
+      return r;
+    }
     return new Response('Not Found', { status: 404 });
   }
 };
