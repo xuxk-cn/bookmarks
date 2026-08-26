@@ -98,7 +98,7 @@
       </div>
       <label class="file-label">
         <span>书签 HTML 文件</span>
-        <input id="bookmarksFile" type="file" accept=".html,.htm" />
+        <input id="bookmarksFile" type="file" accept=".html,.htm" onchange="var f=this.files[0];var el=document.getElementById('bookmarksStatus');if(el){el.textContent=f?('已选择: '+f.name+' ('+(f.size/1024).toFixed(1)+' KB)'):'未选择文件';}" />
       </label>
       <div id="bookmarksStatus" class="result mt">未选择文件</div>
     </section>
