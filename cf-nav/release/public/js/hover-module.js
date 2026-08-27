@@ -4,8 +4,6 @@
  * 提供：batchHoverSelected, fetchAllHovers, batchHoverCategory
  */
 
-import { fetchHovers } from '/lib/hover.js';
-
 // 批量抓取选中书签的悬停介绍
 export async function batchHoverSelected() {
   const checked = [...document.querySelectorAll('#bm-tbody input[type=checkbox]:checked')];
