@@ -592,6 +592,30 @@ function __applyToNav__() {
 }
 </script>
 
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='h'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
+
 <!-- BG_PARAM_PERSIST -->
 <script>
 (function(){
