@@ -1,7 +1,0 @@
-{
-  "api_url": "http://127.0.0.1:8081/v1/chat/completions",
-  "max_workers": 4,
-  "timeout_seconds": 60,
-  "max_text_length": 4000,
-  "prompt_template": "你是一个高效的书签导航助手。请根据下面给出的网页文本片段，用一句精炼的中文（15到35个字以内）总结这个网站的核心功能、定位或主要内容。切记：不要包含任何多余的引言、解释、标点前缀或换行，直接输出总结结果。\n\n网页文本如下：\n{text}"
-}
