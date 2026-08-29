@@ -1,0 +1,721 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雨夜玻璃效果控制台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #050505; }
+        #glcanvas { width: 100%; height: 100%; display: block; }
+        
+        /* Glassmorphism Panel */
+        .glass-panel {
+            background: rgba(20, 20, 25, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #60a5fa;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+        input[type=range]:focus { outline: none; }
+
+        /* Custom Checkbox */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #60a5fa;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #60a5fa;
+        }
+
+        /* Animations */
+        .content-transition {
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+        .collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            border-top: none !important;
+        }
+        
+        /* Error Screen */
+        #error-screen { display: none; }
+    </style>
+</head>
+<body class="text-gray-100 font-sans">
+
+    <!-- WebGL Canvas -->
+    <canvas id="glcanvas"></canvas>
+
+    <!-- Fallback Error Screen -->
+    <div id="error-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-50">
+        <svg class="w-16 h-16 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <h2 class="text-2xl font-bold mb-2">不支持 WebGL2</h2>
+        <p class="text-gray-400">您的浏览器或设备不支持此效果所需的 WebGL2 环境。</p>
+    </div>
+
+    <!-- 【修改点1】：加上 opacity: 0; pointer-events: none; 实现默认隐藏，并保留丝滑淡入动画 -->
+    <div id="control-panel" class="glass-panel absolute top-4 right-4 w-80 rounded-xl flex flex-col z-10 transition-opacity duration-300 select-none" style="opacity: 0; pointer-events: none; left: auto; top: 16px;">
+        
+        <!-- Drag Header -->
+        <div id="panel-header" class="flex justify-between items-center p-4 cursor-move rounded-t-xl hover:bg-white/5 transition-colors">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <h3 class="font-semibold tracking-wide text-sm">参数控制台 <span class="text-xs text-gray-400 ml-1 font-normal">(Alt+N 隐藏)</span></h3>
+            </div>
+            <button id="toggle-btn" class="p-1 hover:bg-white/10 rounded transition-colors" title="折叠/展开">
+                <svg id="chevron-icon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+        </div>
+
+        <!-- Collapsible Content -->
+        <div id="panel-content" class="content-transition max-height-[600px] px-5 pb-5 border-t border-white/10">
+            
+            <div class="space-y-6 pt-4">
+                <!-- Checkboxes -->
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">爱心剧情模式</span>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="chk-heart" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-gray-600 appearance-none cursor-pointer z-10" checked/>
+                            <label for="chk-heart" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm">开启后期处理 (色彩/闪电)</span>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="chk-post" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-gray-600 appearance-none cursor-pointer z-10" checked/>
+                            <label for="chk-post" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-white/10">
+
+                <!-- Sliders -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-gray-400"><span>时间流速</span><span id="val-speed">1.0x</span></div>
+                    <input type="range" id="sl-speed" min="0.1" max="3.0" step="0.1" value="1.0">
+                </div>
+                
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-gray-400"><span>降雨量</span><span id="val-rain">自动</span></div>
+                    <input type="range" id="sl-rain" min="0.0" max="1.5" step="0.05" value="0.75">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-gray-400"><span>玻璃模糊度倍率</span><span id="val-blur">1.0</span></div>
+                    <input type="range" id="sl-blur" min="0.0" max="3.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-gray-400"><span>闪电强度倍率</span><span id="val-lightning">1.0</span></div>
+                    <input type="range" id="sl-lightning" min="0.0" max="3.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs text-gray-400"><span>画面缩放</span><span id="val-zoom">1.0</span></div>
+                    <input type="range" id="sl-zoom" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                
+            </div>
+            
+            <div class="mt-6 text-xs text-gray-500 text-center">
+                Shader origin by BigWIngs
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            hasHeart: true,
+            usePost: true,
+            speed: 1.0,
+            rain: 0.75, // 0.75 represents 'auto' logic roughly in shader
+            blur: 1.0,
+            lightning: 1.0,
+            zoom: 1.0,
+            panelVisible: false, // 【修改点2】：初始状态改为 false，与 HTML 标签上的默认隐藏保持一致
+            panelCollapsed: false
+        };
+
+        // DOM Elements
+        const panel = document.getElementById('control-panel');
+        const header = document.getElementById('panel-header');
+        const content = document.getElementById('panel-content');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const chevronIcon = document.getElementById('chevron-icon');
+
+        // UI Binding Setup
+        function bindSlider(id, stateKey, displayId, formatFn) {
+            const el = document.getElementById(id);
+            const displayEl = document.getElementById(displayId);
+            el.addEventListener('input', (e) => {
+                state[stateKey] = parseFloat(e.target.value);
+                if(displayEl) displayEl.innerText = formatFn ? formatFn(state[stateKey]) : state[stateKey].toFixed(2);
+            });
+        }
+
+        bindSlider('sl-speed', 'speed', 'val-speed', v => v.toFixed(1) + 'x');
+        bindSlider('sl-rain', 'rain', 'val-rain', v => v.toFixed(2));
+        bindSlider('sl-blur', 'blur', 'val-blur', v => v.toFixed(1));
+        bindSlider('sl-lightning', 'lightning', 'val-lightning', v => v.toFixed(1));
+        bindSlider('sl-zoom', 'zoom', 'val-zoom', v => v.toFixed(1));
+
+        document.getElementById('chk-heart').addEventListener('change', (e) => {
+            state.hasHeart = e.target.checked;
+            recompileShader();
+        });
+        document.getElementById('chk-post').addEventListener('change', (e) => {
+            state.usePost = e.target.checked;
+            recompileShader();
+        });
+
+        // Panel Toggle Logic
+        toggleBtn.addEventListener('click', () => {
+            state.panelCollapsed = !state.panelCollapsed;
+            if (state.panelCollapsed) {
+                content.classList.add('collapsed');
+                chevronIcon.style.transform = 'rotate(-90deg)';
+            } else {
+                content.classList.remove('collapsed');
+                chevronIcon.style.transform = 'rotate(0deg)';
+            }
+        });
+
+        // Alt+N Shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
+                state.panelVisible = !state.panelVisible;
+                panel.style.opacity = state.panelVisible ? '1' : '0';
+                panel.style.pointerEvents = state.panelVisible ? 'auto' : 'none';
+            }
+        });
+
+        // Dragging Logic
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking the toggle button
+            if (e.target.closest('#toggle-btn')) return;
+            isDragging = true;
+            const rect = panel.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            document.body.style.userSelect = 'none'; // Prevent text selection
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
+            
+            // Keep within bounds
+            const maxX = window.innerWidth - panel.offsetWidth;
+            const maxY = window.innerHeight - panel.offsetHeight;
+            
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+
+            panel.style.left = `${newX}px`;
+            panel.style.top = `${newY}px`;
+            panel.style.right = 'auto'; // Clear flex right positioning
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.body.style.userSelect = 'auto';
+        });
+
+
+        // WebGL Setup
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl2');
+
+        if (!gl) {
+            document.getElementById('error-screen').style.display = 'flex';
+            throw new Error("WebGL2 not supported");
+        }
+
+        let program = null;
+        let ext = gl.getExtension("OES_texture_float_linear"); // Good to have
+        
+        // Texture Loading
+        let backgroundTexture = gl.createTexture();
+        let textureLoaded = false;
+
+        function loadDefaultTexture() {
+            gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+            // Fallback pattern while loading or if fails
+            const pixels = new Uint8Array([
+                20, 20, 30, 255,   40, 40, 60, 255,
+                40, 40, 60, 255,   20, 20, 30, 255
+            ]);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            // A beautiful street/city lights image for reflection
+            img.src = 'https://images.unsplash.com/photo-1517685352821-92cf88aee5a5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1024&q=80';
+            
+            img.onload = () => {
+                gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.generateMipmap(gl.TEXTURE_2D); // Crucial for textureLod in shader
+                // Set parameters to allow mipmap usage
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+                textureLoaded = true;
+            };
+            img.onerror = () => {
+                console.warn("Failed to load image texture, using fallback.");
+                // Ensure fallback works with mipmap requests even if it looks blocky
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            }
+        }
+        loadDefaultTexture();
+
+
+        const vertexShaderSource = `#version 300 es
+        in vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+        `;
+
+        function getFragmentShaderSource() {
+            // Construct definitions based on UI state
+            let defines = "";
+            if (state.hasHeart) defines += "#define HAS_HEART\n";
+            if (state.usePost) defines += "#define USE_POST_PROCESSING\n";
+
+            return `#version 300 es
+            precision highp float;
+            out vec4 fragColor;
+            
+            uniform vec2 iResolution;
+            uniform float iTime;
+            uniform sampler2D iChannel0;
+            
+            // Custom Uniforms from UI
+            uniform float u_rainAmount;
+            uniform float u_blurMult;
+            uniform float u_lightningMult;
+            uniform float u_zoom;
+
+            ${defines}
+            
+            // Original Shader Math adapted for Uniforms
+            #define S(a, b, t) smoothstep(a, b, t)
+            #define CHEAP_NORMALS
+
+            vec3 N13(float p) {
+                vec3 p3 = fract(vec3(p) * vec3(.1031,.11369,.13787));
+                p3 += dot(p3, p3.yzx + 19.19);
+                return fract(vec3((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y, (p3.y+p3.z)*p3.x));
+            }
+
+            vec4 N14(float t) {
+                return fract(sin(t*vec4(123., 1024., 1456., 264.))*vec4(6547., 345., 8799., 1564.));
+            }
+            
+            float N(float t) {
+                return fract(sin(t*12345.564)*7658.76);
+            }
+
+            float Saw(float b, float t) {
+                return S(0., b, t)*S(1., b, t);
+            }
+
+            vec2 DropLayer2(vec2 uv, float t) {
+                vec2 UV = uv;
+                uv.y += t*0.75;
+                vec2 a = vec2(6., 1.);
+                vec2 grid = a*2.;
+                vec2 id = floor(uv*grid);
+                
+                float colShift = N(id.x); 
+                uv.y += colShift;
+                
+                id = floor(uv*grid);
+                vec3 n = N13(id.x*35.2+id.y*2376.1);
+                vec2 st = fract(uv*grid)-vec2(.5, 0);
+                
+                float x = n.x-.5;
+                float y = UV.y*20.;
+                float wiggle = sin(y+sin(y));
+                x += wiggle*(.5-abs(x))*(n.z-.5);
+                x *= .7;
+                float ti = fract(t+n.z);
+                y = (Saw(.85, ti)-.5)*.9+.5;
+                vec2 p = vec2(x, y);
+                
+                float d = length((st-p)*a.yx);
+                float mainDrop = S(.4, .0, d);
+                
+                float r = sqrt(S(1., y, st.y));
+                float cd = abs(st.x-x);
+                float trail = S(.23*r, .15*r*r, cd);
+                float trailFront = S(-.02, .02, st.y-y);
+                trail *= trailFront*r*r;
+                
+                y = UV.y;
+                float trail2 = S(.2*r, .0, cd);
+                float droplets = max(0., (sin(y*(1.-y)*120.)-st.y))*trail2*trailFront*n.z;
+                y = fract(y*10.)+(st.y-.5);
+                float dd = length(st-vec2(x, y));
+                droplets = S(.3, 0., dd);
+                float m = mainDrop+droplets*r*trailFront;
+                
+                return vec2(m, trail);
+            }
+
+            float StaticDrops(vec2 uv, float t) {
+                uv *= 40.;
+                vec2 id = floor(uv);
+                uv = fract(uv)-.5;
+                vec3 n = N13(id.x*107.45+id.y*3543.654);
+                vec2 p = (n.xy-.5)*.7;
+                float d = length(uv-p);
+                
+                float fade = Saw(.025, fract(t+n.z));
+                float c = S(.3, 0., d)*fract(n.z*10.)*fade;
+                return c;
+            }
+
+            vec2 Drops(vec2 uv, float t, float l0, float l1, float l2) {
+                float s = StaticDrops(uv, t)*l0; 
+                vec2 m1 = DropLayer2(uv, t)*l1;
+                vec2 m2 = DropLayer2(uv*1.85, t)*l2;
+                
+                float c = s+m1.x+m2.x;
+                c = S(.3, 1., c);
+                
+                return vec2(c, max(m1.y*l0, m2.y*l1));
+            }
+
+            void main() {
+                vec2 fragCoord = gl_FragCoord.xy;
+                vec2 uv = (fragCoord.xy-.5*iResolution.xy) / iResolution.y;
+                vec2 UV = fragCoord.xy/iResolution.xy;
+                
+                float T = iTime;
+                
+                #ifdef HAS_HEART
+                T = mod(iTime, 102.);
+                // Removed mouse override for timeline to prefer slider
+                #endif
+                
+                float t = T*.2;
+                
+                // Override rain amount with uniform slider
+                float rainAmount = u_rainAmount; 
+                
+                // Apply blur multiplier from UI
+                float maxBlur = mix(3., 6., rainAmount) * u_blurMult;
+                float minBlur = 2. * u_blurMult;
+                
+                float story = 0.;
+                float heart = 0.;
+                
+                #ifdef HAS_HEART
+                story = S(0., 70., T);
+                
+                t = min(1., T/70.);						
+                t = 1.-t;
+                t = (1.-t*t)*70.;
+                
+                float zoom= mix(.3, 1.2, story);		
+                uv *= zoom;
+                minBlur = (4.+S(.5, 1., story)*3.) * u_blurMult;		
+                maxBlur = (6.+S(.5, 1., story)*1.5) * u_blurMult;
+                
+                vec2 hv = uv-vec2(.0, -.1);				
+                hv.x *= .5;
+                float s = S(110., 70., T);				
+                hv.y-=sqrt(abs(hv.x))*.5*s;
+                heart = length(hv);
+                heart = S(.4*s, .2*s, heart)*s;
+                rainAmount = heart;						
+                
+                maxBlur-=heart;							
+                uv *= 1.5;								
+                t *= .25;
+                #else
+                float zoom = -cos(T*.2);
+                uv *= (.7+zoom*.3);
+                #endif
+                
+                // Apply User Zoom
+                uv /= max(0.1, u_zoom);
+                UV = (UV-.5)*((.9+zoom*.1) / max(0.1, u_zoom))+.5;
+                
+                float staticDrops = S(-.5, 1., rainAmount)*2.;
+                float layer1 = S(.25, .75, rainAmount);
+                float layer2 = S(.0, .5, rainAmount);
+                
+                vec2 c = Drops(uv, t, staticDrops, layer1, layer2);
+                
+                #ifdef CHEAP_NORMALS
+                    vec2 n = vec2(dFdx(c.x), dFdy(c.x));
+                #else
+                    vec2 e = vec2(.001, 0.);
+                    float cx = Drops(uv+e, t, staticDrops, layer1, layer2).x;
+                    float cy = Drops(uv+e.yx, t, staticDrops, layer1, layer2).x;
+                    vec2 n = vec2(cx-c.x, cy-c.x);		
+                #endif
+                
+                #ifdef HAS_HEART
+                n *= 1.-S(60., 85., T);
+                c.y *= 1.-S(80., 100., T)*.8;
+                #endif
+                
+                float focus = mix(maxBlur-c.y, minBlur, S(.1, .2, c.x));
+                // textureLod requires mipmaps to be generated!
+                vec3 col = textureLod(iChannel0, UV+n, focus).rgb;
+                
+                #ifdef USE_POST_PROCESSING
+                t = (T+3.)*.5;										
+                float colFade = sin(t*.2)*.5+.5+story;
+                col *= mix(vec3(1.), vec3(.8, .9, 1.3), colFade);	
+                float fade = S(0., 10., T);							
+                float lightning = sin(t*sin(t*10.));				
+                lightning *= pow(max(0., sin(t+sin(t))), 10.);		
+                
+                // Apply Lightning Multiplier from UI
+                col *= 1. + (lightning * u_lightningMult) * fade * mix(1., .1, story*story);	
+                col *= 1.-dot(UV-=.5, UV);							
+                                                            
+                #ifdef HAS_HEART
+                    col = mix(pow(col, vec3(1.2)), col, heart);
+                    fade *= S(102., 97., T);
+                #endif
+                
+                col *= fade;										
+                #endif
+                
+                fragColor = vec4(col, 1.);
+            }`;
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error("Shader Compile Error:", gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        // Geometry (Full screen quad)
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+        let uniforms = {};
+
+        function recompileShader() {
+            if (program) gl.deleteProgram(program);
+            
+            const vs = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+            const fs = createShader(gl, gl.FRAGMENT_SHADER, getFragmentShaderSource());
+            
+            program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error("Program Link Error:", gl.getProgramInfoLog(program));
+                return;
+            }
+            
+            gl.useProgram(program);
+            
+            // Setup Geometry Attributes
+            const positionLocation = gl.getAttribLocation(program, "a_position");
+            gl.enableVertexAttribArray(positionLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Cache Uniform Locations
+            uniforms = {
+                iResolution: gl.getUniformLocation(program, "iResolution"),
+                iTime: gl.getUniformLocation(program, "iTime"),
+                iChannel0: gl.getUniformLocation(program, "iChannel0"),
+                u_rainAmount: gl.getUniformLocation(program, "u_rainAmount"),
+                u_blurMult: gl.getUniformLocation(program, "u_blurMult"),
+                u_lightningMult: gl.getUniformLocation(program, "u_lightningMult"),
+                u_zoom: gl.getUniformLocation(program, "u_zoom")
+            };
+        }
+
+        // Initial compile
+        recompileShader();
+
+        let startTime = performance.now();
+        let logicalTime = 0;
+        let lastRealTime = performance.now();
+
+        function resizeCanvasToDisplaySize() {
+            const displayWidth  = canvas.clientWidth;
+            const displayHeight = canvas.clientHeight;
+            if (canvas.width  !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width  = displayWidth;
+                canvas.height = displayHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function render(now) {
+            resizeCanvasToDisplaySize();
+
+            // Calculate custom time based on UI speed slider
+            const deltaTime = (now - lastRealTime) / 1000.0;
+            lastRealTime = now;
+            logicalTime += deltaTime * state.speed;
+
+            gl.clearColor(0, 0, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            if (program) {
+                gl.useProgram(program);
+
+                // Set Uniforms
+                gl.uniform2f(uniforms.iResolution, canvas.width, canvas.height);
+                gl.uniform1f(uniforms.iTime, logicalTime);
+                
+                // Texture mapping
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, backgroundTexture);
+                gl.uniform1i(uniforms.iChannel0, 0);
+
+                // UI Uniforms
+                gl.uniform1f(uniforms.u_rainAmount, state.rain);
+                gl.uniform1f(uniforms.u_blurMult, state.blur);
+                gl.uniform1f(uniforms.u_lightningMult, state.lightning);
+                gl.uniform1f(uniforms.u_zoom, state.zoom);
+
+                // Draw
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a21.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
+
+<!-- BG_PARAM_PERSIST -->
+<script>
+(function(){
+  var FILE = 'a21.html';
+  var KEY = 'bgParams:' + FILE;
+  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
+  function serialize(){
+    var d = {}, els = allControls();
+    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
+    return d;
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
+  function restore(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      Object.keys(d).forEach(function(id){
+        var el = document.getElementById(id); if(!el) return;
+        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
+        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+      });
+    }catch(e){}
+  }
+  document.addEventListener('input', save, true);
+  document.addEventListener('change', save, true);
+  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
+})();
+</script>
+
+</body>
+</html>

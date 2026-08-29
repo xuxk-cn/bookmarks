@@ -1,0 +1,445 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>木星与木卫一 Shader 渲染</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050508; /* 更深的宇宙黑 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(25, 25, 30, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 10;
+        }
+
+        #control-panel.hidden-by-hotkey {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+
+        #panel-header {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            user-select: none;
+        }
+
+        #panel-header:active { cursor: grabbing; }
+        #panel-title { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+
+        #collapse-btn {
+            background: none; border: none; color: #aaa; font-size: 20px;
+            cursor: pointer; line-height: 1; padding: 0; transition: color 0.2s, transform 0.3s;
+        }
+        #collapse-btn:hover { color: #fff; }
+        .collapsed #collapse-btn { transform: rotate(-180deg); }
+
+        #panel-content {
+            padding: 15px; overflow: hidden; transition: max-height 0.4s ease; max-height: 500px;
+        }
+        .collapsed #panel-content { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+
+        .control-group { margin-bottom: 15px; }
+        .control-group:last-child { margin-bottom: 0; }
+        .control-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #ccc; }
+
+        input[type="range"] {
+            width: 100%; -webkit-appearance: none; background: rgba(255, 255, 255, 0.1);
+            height: 6px; border-radius: 3px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px; background: #4facfe;
+            border-radius: 50%; cursor: pointer; transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        .hint { font-size: 12px; color: #777; text-align: center; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="glcanvas"></canvas>
+
+    <div id="control-panel" class="hidden-by-hotkey">
+        <div id="panel-header">
+            <span id="panel-title">设置面板</span>
+            <button id="collapse-btn" title="折叠/展开">▲</button>
+        </div>
+        <div id="panel-content">
+            <div class="control-group">
+                <div class="control-label"><span>木星 X 轴自转 (Pitch)</span><span id="val-jupiter-x">-0.20</span></div>
+                <input type="range" id="jupiter-x" min="-3.14" max="3.14" step="0.01" value="-0.2">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>木星 Y 轴自转 (Roll)</span><span id="val-jupiter-y">0.30</span></div>
+                <input type="range" id="jupiter-y" min="-3.14" max="3.14" step="0.01" value="0.3">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>木卫一 X 位置</span><span id="val-io-x">-0.32</span></div>
+                <input type="range" id="io-x" min="-1.0" max="1.0" step="0.01" value="-0.32">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>木卫一 Y 位置</span><span id="val-io-y">-0.20</span></div>
+                <input type="range" id="io-y" min="-1.0" max="1.0" step="0.01" value="-0.20">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>星云红色基调 (R)</span><span id="val-nebula-r">0.90</span></div>
+                <input type="range" id="nebula-r" min="0" max="1" step="0.01" value="0.9">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>星云绿色基调 (G)</span><span id="val-nebula-g">0.30</span></div>
+                <input type="range" id="nebula-g" min="0" max="1" step="0.01" value="0.3">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>星云蓝色基调 (B)</span><span id="val-nebula-b">0.40</span></div>
+                <input type="range" id="nebula-b" min="0" max="1" step="0.01" value="0.4">
+            </div>
+            <div class="hint">提示: 按 <b>Alt + H</b> 隐藏或显示面板</div>
+        </div>
+    </div>
+
+    <script>
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+        `;
+
+        const fragmentShaderSource = `
+            precision highp float;
+            
+            uniform vec2 iResolution;
+            uniform float iTime;
+            uniform float u_jupiterRotX;
+            uniform float u_jupiterRotY;
+            uniform float u_ioPosX;
+            uniform float u_ioPosY;
+            uniform vec3 u_nebulaTint;
+
+            float hash(vec2 p) {
+                p = fract(p * vec2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return fract(p.x * p.y);
+            }
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return mix(mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
+                           mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+            }
+            float fbm(vec2 p) {
+                float v = 0.0; float a = 0.5; vec2 shift = vec2(100.0);
+                for (int i = 0; i < 6; ++i) {
+                    v += a * noise(p); p = p * 2.0 + shift; a *= 0.5;
+                }
+                return v;
+            }
+
+            vec4 generateSphereSurfaceWithMask(vec2 uv, float radius) {
+                float radiusSquared = radius * radius;
+                float uvLengthSquared = dot(uv, uv);
+                float uvLength = sqrt(uvLengthSquared);
+                float mask = step(uvLength, radius);
+                vec3 surface = vec3(0.0, 0.0, 0.0);
+                if(mask > 0.0) surface = vec3(uv / radius, sqrt(radiusSquared - uvLengthSquared));
+                else surface = vec3(uv / uvLength, uvLength - radius);
+                return vec4(surface, mask);
+            }
+
+            vec2 generateSphericalUV(vec3 position, float spin) {
+                float width = sqrt(max(1.0 - position.y * position.y, 0.0001));
+                float generatrixX = clamp(position.x / width, -1.0, 1.0);
+                vec2 generatrix = vec2(generatrixX, position.y);
+                return asin(generatrix) / 3.14159 + vec2(0.5 + spin, 0.5);  
+            }
+
+            mat3 createRotationMatrix(float pitch, float roll) {
+                float cP = cos(pitch), sP = sin(pitch), cR = cos(roll), sR = sin(roll);
+                return mat3(cR, -sR * cP, sR * sP, sR, cR * cP, -cR * sP, 0.0, sP, cP);
+            }
+
+            vec4 atmosphere( vec4 surf, vec3 lightDir, vec3 atmCol, float haloW, float minA, float maxA, float falloff) {
+                vec3 absrb = vec3(2.0, 3.0, 4.0);
+                float invW = 1.0 / haloW;
+                float fresnel = pow(1.0 - surf.z, falloff);
+                float amount = mix(minA, maxA, fresnel);
+                vec3 n = surf.xyz;
+                if(surf.w < 0.5) {
+                    amount = pow(max(1.0 - surf.z*invW, 0.0), 5.0) * maxA;
+                    n = vec3(surf.xy, 0.0);
+                }
+                float light = max((dot(n, lightDir)+0.3)/1.3, 0.0);
+                return vec4(vec3(pow(light, absrb.x), pow(light, absrb.y), pow(light, absrb.z)) * atmCol, amount);
+            }
+
+            void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+                float shorterSide = min(iResolution.x, iResolution.y);
+                float aspectRatio = iResolution.x / iResolution.y;
+                vec2 offset = iResolution.x > iResolution.y ? vec2(aspectRatio, 1.0) * 0.5 : vec2(1.0, 1.0/aspectRatio) * 0.5;
+                vec2 uv = (fragCoord / shorterSide - offset );
+                vec2 aspectFactor = iResolution.x > iResolution.y ? vec2(iResolution.x/iResolution.y, 1.0) : vec2(1.0, iResolution.y/iResolution.x);
+                vec3 lightDirection = normalize(vec3(1.0, 1.0, 0.8));
+
+                // ---------- 绝对静止、随机大小/远近/明暗的深邃星空 ----------
+                vec3 stars = vec3(0.0);
+                // 生成 4 层不同密度的星空，模拟极致的宇宙深度
+                for(int i = 0; i < 4; i++) {
+                    float scale = 150.0 + float(i) * 250.0; // 越远的层，网格越密
+                    vec2 starUV = uv * scale;
+                    vec2 id = floor(starUV);
+                    vec2 gv = fract(starUV) - 0.5;
+                    
+                    float n = hash(id + float(i) * 12.345);
+                    float threshold = 0.97 - float(i) * 0.015; // 远处的星星更多
+                    
+                    if(n > threshold) {
+                        // 完全随机的网格内偏移
+                        vec2 offset = vec2(hash(id + 1.23), hash(id + 4.56)) - 0.5;
+                        float dist = length(gv - offset);
+                        
+                        // 随机大小：近处的星星大，远处的星星小
+                        float baseSize = 0.018 - float(i) * 0.004;
+                        float size = baseSize + hash(id + 7.89) * 0.012; 
+                        
+                        // 随机明暗：使用 pow 让大部分星星暗淡，极少数极其明亮
+                        float brightness = pow(hash(id + 3.21), 3.0) * (2.5 - float(i)*0.4);
+                        
+                        // 核心发光 (绝对静止，不闪烁)
+                        float star = smoothstep(size, 0.0, dist) * brightness;
+                        
+                        // 真实光晕 (Halo)
+                        float halo = smoothstep(size * 6.0, 0.0, dist) * brightness * 0.15;
+                        star += halo;
+                        
+                        // 真实的恒星色温分布
+                        float temp = hash(id + 9.87);
+                        vec3 starColor;
+                        if(temp < 0.15) starColor = vec3(0.6, 0.8, 1.0);       // 蓝白巨星
+                        else if(temp < 0.6) starColor = vec3(1.0, 0.95, 0.9);   // 黄白主序星
+                        else if(temp < 0.85) starColor = vec3(1.0, 0.8, 0.6);   // 橙黄星
+                        else starColor = vec3(1.0, 0.4, 0.3);                  // 红矮星
+                        
+                        stars += star * starColor;
+                    }
+                }
+                
+                // ---------- 绝对静止的宇宙尘埃/星云 ----------
+                // 移除所有 iTime，让它像一幅静止的深空摄影作品
+                vec2 nebulaUV = uv * 1.5;
+                float n1 = fbm(nebulaUV * 4.0 + 10.0);
+                float n2 = fbm(nebulaUV * 8.0 + 20.0);
+                float nebulaTexture = pow(n1 * n2, 1.2);
+                
+                // 形成一条横向的银河系尘埃带
+                float nabulaFade = smoothstep(0.8, 0.0, abs(uv.y + 0.1)) * 0.4;
+                vec3 nebula = vec3(nebulaTexture) * nabulaFade * u_nebulaTint;
+                stars += nebula;
+                
+                // ---------- Jupiter ----------
+                vec4 jSurf = generateSphereSurfaceWithMask(uv + vec2(0.2, 0.15), 0.6);
+                float jLight = pow(max(dot(lightDirection, jSurf.xyz), 0.0), 0.8);
+                vec4 jAtm = atmosphere(jSurf, lightDirection, vec3(1.0, 0.7, 0.4) * 3.0, 0.2, 0.05, 0.6, 2.0);
+                float jMask = clamp(jSurf.w, 0.0, 1.0);
+                vec3 rotJ = createRotationMatrix(u_jupiterRotX, u_jupiterRotY) * (jSurf.xyz * jMask);
+                vec2 jUV = generateSphericalUV(rotJ, iTime*0.02);
+                vec2 jTexUV = (jUV*2.2 + vec2(0.0, 0.8)) * aspectFactor;
+                float jNoise = fbm(vec2(jTexUV.x * 20.0, jTexUV.y * 60.0) + fbm(jTexUV * 5.0) * 3.0);
+                vec3 jTex = vec3(jNoise * 0.7 + 0.3); 
+                jTex = vec3(pow(jTex.x, 3.5), pow(jTex.y, 6.0), pow(jTex.z, 8.0))*3.5;
+                
+                // ---------- Io ----------
+                vec4 iSurf = generateSphereSurfaceWithMask(uv + vec2(u_ioPosX, u_ioPosY), 0.07);
+                float iLight = pow(max(dot(lightDirection, iSurf.xyz), 0.0), 0.4);
+                vec4 iAtm = atmosphere(iSurf, lightDirection, vec3(1.0, 0.9, 0.8) * 1.5, 0.06, 0.03, 1.0, 4.0);
+                float iMask = clamp(iSurf.w, 0.0, 1.0);
+                vec3 rotI = createRotationMatrix(0.4, -0.1) * (iSurf.xyz * iMask);
+                vec2 iUV = generateSphericalUV(rotI, -iTime*0.05);
+                vec2 iTexUV = (iUV + vec2(0.0, 0.8)) * aspectFactor;
+                float iNoise = fbm(iTexUV * 30.0);
+                vec3 iTex = vec3(min(pow(1.0 - iNoise, 5.5)*2.0, 1.0));
+                
+                // ---------- Combining ----------
+                vec3 col = mix(stars, jTex * jLight, jMask);
+                col = mix(col, jAtm.xyz, jAtm.w);
+                col = mix(col, iTex * iLight, iMask);
+                col = mix(col, iAtm.xyz, iAtm.w);
+                
+                fragColor = vec4(col, 1.0);
+            }
+
+            void main() { mainImage(gl_FragColor, gl_FragCoord.xy); }
+        `;
+
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) alert('Your browser does not support WebGL');
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, createShader(gl, gl.VERTEX_SHADER, vertexShaderSource));
+        gl.attachShader(program, createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource));
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(program));
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+
+        const posLoc = gl.getAttribLocation(program, "a_position");
+        const resLoc = gl.getUniformLocation(program, "iResolution");
+        const timeLoc = gl.getUniformLocation(program, "iTime");
+        const jXLoc = gl.getUniformLocation(program, "u_jupiterRotX");
+        const jYLoc = gl.getUniformLocation(program, "u_jupiterRotY");
+        const ioXLoc = gl.getUniformLocation(program, "u_ioPosX");
+        const ioYLoc = gl.getUniformLocation(program, "u_ioPosY");
+        const nebLoc = gl.getUniformLocation(program, "u_nebulaTint");
+
+        const panel = document.getElementById('control-panel');
+        document.getElementById('collapse-btn').addEventListener('click', () => panel.classList.toggle('collapsed'));
+        document.addEventListener('keydown', (e) => { if (e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); panel.classList.toggle('hidden-by-hotkey'); }});
+
+        let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+        const header = document.getElementById('panel-header');
+        header.addEventListener('mousedown', (e) => { isDragging = true; const r = panel.getBoundingClientRect(); dragOffsetX = e.clientX - r.left; dragOffsetY = e.clientY - r.top; });
+        document.addEventListener('mousemove', (e) => { if (!isDragging) return; let l = e.clientX - dragOffsetX, t = e.clientY - dragOffsetY; l = Math.max(0, Math.min(l, window.innerWidth - panel.offsetWidth)); t = Math.max(0, Math.min(t, window.innerHeight - panel.offsetHeight)); panel.style.left = l + 'px'; panel.style.top = t + 'px'; panel.style.right = 'auto'; });
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        const params = { jupiterX: -0.2, jupiterY: 0.3, ioX: -0.32, ioY: -0.2, nebulaR: 0.9, nebulaG: 0.3, nebulaB: 0.4 };
+        function bindSlider(id, key) {
+            const s = document.getElementById(id), v = document.getElementById('val-' + id);
+            s.addEventListener('input', (e) => { params[key] = parseFloat(e.target.value); v.textContent = params[key].toFixed(2); });
+        }
+        bindSlider('jupiter-x', 'jupiterX'); bindSlider('jupiter-y', 'jupiterY');
+        bindSlider('io-x', 'ioX'); bindSlider('io-y', 'ioY');
+        bindSlider('nebula-r', 'nebulaR'); bindSlider('nebula-g', 'nebulaG'); bindSlider('nebula-b', 'nebulaB');
+
+        let startTime = performance.now();
+        function render(time) {
+            const dw = canvas.clientWidth, dh = canvas.clientHeight;
+            if (canvas.width !== dw || canvas.height !== dh) { canvas.width = dw; canvas.height = dh; }
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.useProgram(program);
+            gl.enableVertexAttribArray(posLoc);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+            gl.uniform2f(resLoc, canvas.width, canvas.height);
+            gl.uniform1f(timeLoc, (time - startTime) * 0.001);
+            gl.uniform1f(jXLoc, params.jupiterX); gl.uniform1f(jYLoc, params.jupiterY);
+            gl.uniform1f(ioXLoc, params.ioX); gl.uniform1f(ioYLoc, params.ioY);
+            gl.uniform3f(nebLoc, params.nebulaR, params.nebulaG, params.nebulaB);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a16.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  // keydown 已由主脚本处理
+})();
+</script>
+
+<!-- BG_PARAM_PERSIST -->
+<script>
+(function(){
+  var FILE = 'a16.html';
+  var KEY = 'bgParams:' + FILE;
+  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
+  function serialize(){
+    var d = {}, els = allControls();
+    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
+    return d;
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
+  function restore(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      Object.keys(d).forEach(function(id){
+        var el = document.getElementById(id); if(!el) return;
+        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
+        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+      });
+    }catch(e){}
+  }
+  document.addEventListener('input', save, true);
+  document.addEventListener('change', save, true);
+  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
+})();
+</script>
+
+</body>
+</html>

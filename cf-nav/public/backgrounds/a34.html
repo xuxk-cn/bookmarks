@@ -1,0 +1,702 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN" class="h-full w-full overflow-hidden select-none">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL 流体物理仿真控制台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050508;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        /* Glassmorphic Panel Styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Scrollbar for Panel */
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.4); }
+
+        /* Range Slider Custom Styling */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 6px; cursor: pointer; background: rgba(255, 255, 255, 0.15); border-radius: 3px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 16px; width: 16px; border-radius: 50%; background: #6366f1; cursor: pointer;
+            -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+            transition: transform 0.1s ease, background-color 0.1s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); background: #818cf8; }
+
+        /* 【新增】丝滑的显隐过渡动画类 */
+        #control-panel.panel-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-20px) scale(0.98);
+        }
+    </style>
+</head>
+<body class="relative w-full h-full">
+
+    <!-- WebGL Canvas Context -->
+    <canvas id="glcanvas"></canvas>
+
+    <!-- Floating Quick Hint Toast -->
+    <div id="shortcut-toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-40 glass-panel px-4 py-2 rounded-full text-xs text-slate-300 pointer-events-none flex items-center gap-2 transition-opacity duration-500 opacity-90 border border-indigo-500/30">
+        <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+        </div>
+
+    <!-- 【修改点1】：加上 panel-hidden 类名实现默认隐藏，并保留 transition-all 支持动画 -->
+    <div id="control-panel" class="fixed top-6 left-6 z-50 w-80 sm:w-88 glass-panel rounded-2xl text-slate-200 transition-all duration-300 flex flex-col max-h-[90vh] panel-hidden">
+        
+        <!-- Drag Header Bar -->
+        <div id="panel-header" class="p-3.5 px-4 flex items-center justify-between border-b border-slate-700/50 cursor-grab active:cursor-grabbing select-none">
+            <div class="flex items-center gap-2.5">
+                <div class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                </div>
+                <h2 class="font-semibold text-sm text-slate-100 tracking-wide">流体仿真着色器控制台</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button id="btn-collapse" title="折叠/展开" class="p-1 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-colors">
+                    <svg id="icon-collapse" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <button id="btn-close" title="隐藏 (Alt+N)" class="p-1 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel Body -->
+        <div id="panel-body" class="p-4 space-y-4 overflow-y-auto custom-scrollbar transition-all duration-300">
+            
+            <div class="space-y-3">
+                <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>显示与着色器参数</span>
+                    <span class="text-[10px] text-slate-400 font-normal">mainImage 公式调节</span>
+                </div>
+                
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-ink" class="text-slate-300">墨水显示浓度除数 (c.w / N)</label>
+                        <span id="val-ink" class="font-mono text-indigo-300">5.0</span>
+                    </div>
+                    <input type="range" id="slider-ink" min="0.5" max="20.0" step="0.1" value="5.0" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-density" class="text-slate-300">流体高亮密度除数 (c.z / N)</label>
+                        <span id="val-density" class="font-mono text-indigo-300">10.0</span>
+                    </div>
+                    <input type="range" id="slider-density" min="1.0" max="50.0" step="0.5" value="10.0" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-color-freq" class="text-slate-300">速度角度颜色频率</label>
+                        <span id="val-color-freq" class="font-mono text-indigo-300">6.3</span>
+                    </div>
+                    <input type="range" id="slider-color-freq" min="1.0" max="15.0" step="0.1" value="6.3" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-offset-r" class="text-slate-300">红色相位偏移 (Offset X)</label>
+                        <span id="val-offset-r" class="font-mono text-indigo-300">0.0</span>
+                    </div>
+                    <input type="range" id="slider-offset-r" min="0.0" max="30.0" step="0.5" value="0.0" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-offset-g" class="text-slate-300">绿色相位偏移 (Offset Y)</label>
+                        <span id="val-offset-g" class="font-mono text-indigo-300">23.0</span>
+                    </div>
+                    <input type="range" id="slider-offset-g" min="0.0" max="30.0" step="0.5" value="23.0" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-offset-b" class="text-slate-300">蓝色相位偏移 (Offset Z)</label>
+                        <span id="val-offset-b" class="font-mono text-indigo-300">21.0</span>
+                    </div>
+                    <input type="range" id="slider-offset-b" min="0.0" max="30.0" step="0.5" value="21.0" class="w-full">
+                </div>
+            </div>
+
+            <hr class="border-slate-700/50 my-2">
+
+            <div class="space-y-3">
+                <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">流体物理动力学</div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-vel-diss" class="text-slate-300">速度保留率 (低=粘稠/高=流动)</label>
+                        <span id="val-vel-diss" class="font-mono text-indigo-300">0.985</span>
+                    </div>
+                    <input type="range" id="slider-vel-diss" min="0.900" max="0.999" step="0.001" value="0.985" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-ink-diss" class="text-slate-300">墨水保留率 (淡化速度)</label>
+                        <span id="val-ink-diss" class="font-mono text-indigo-300">0.970</span>
+                    </div>
+                    <input type="range" id="slider-ink-diss" min="0.850" max="0.999" step="0.001" value="0.970" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-radius" class="text-slate-300">鼠标注入半径 (Radius)</label>
+                        <span id="val-radius" class="font-mono text-indigo-300">0.005</span>
+                    </div>
+                    <input type="range" id="slider-radius" min="0.001" max="0.020" step="0.001" value="0.005" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-force" class="text-slate-300">鼠标推动力强度 (Force)</label>
+                        <span id="val-force" class="font-mono text-indigo-300">1200</span>
+                    </div>
+                    <input type="range" id="slider-force" min="200" max="5000" step="100" value="1200" class="w-full">
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs">
+                        <label for="slider-pressure" class="text-slate-300">压力求解迭代次数 (Incompressibility)</label>
+                        <span id="val-pressure" class="font-mono text-indigo-300">24</span>
+                    </div>
+                    <input type="range" id="slider-pressure" min="5" max="60" step="1" value="24" class="w-full">
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-700/50 space-y-2">
+                <div class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">一键控制与预设</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-preset-default" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg transition-colors border border-slate-700">默认参数</button>
+                    <button id="btn-preset-neon" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg transition-colors border border-slate-700">彩虹云雾</button>
+                    <button id="btn-preset-silk" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg transition-colors border border-slate-700">丝绸极光</button>
+                    <button id="btn-preset-highp" class="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg transition-colors border border-slate-700">高压流体</button>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button id="btn-clear" class="flex-1 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs rounded-lg transition-colors border border-red-500/30 flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        清空画面
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="p-2.5 bg-slate-900/60 rounded-b-2xl border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between items-center px-4">
+            <span>状态: <span class="text-emerald-400">运行中</span></span>
+            <span>按 <code class="text-indigo-300 font-mono">Alt+N</code> 开关控制台</span>
+        </div>
+    </div>
+
+    <script>
+        const baseVS = `#version 300 es
+        in vec2 a_position;
+        out vec2 v_uv;
+        void main() {
+            v_uv = a_position * 0.5 + 0.5;
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }`;
+
+        const advectFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D u_source;
+        uniform vec2 u_texelSize;
+        uniform float u_dt;
+        uniform float u_velDissipation;
+        uniform float u_inkDissipation;
+        void main() {
+            vec2 vel = texture(u_source, v_uv).xy;
+            vec2 pastCoord = v_uv - u_dt * vel * u_texelSize;
+            vec4 result = texture(u_source, pastCoord);
+            result.xy *= u_velDissipation;
+            result.w *= u_inkDissipation;
+            fragColor = result;
+        }`;
+
+        const splatFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D u_source;
+        uniform vec2 u_point;
+        uniform vec2 u_force;
+        uniform float u_radius;
+        uniform float u_aspect;
+        void main() {
+            vec4 base = texture(u_source, v_uv);
+            vec2 p = v_uv - u_point;
+            p.x *= u_aspect;
+            float distSq = dot(p, p);
+            float splat = exp(-distSq / u_radius);
+            base.xy += u_force * splat;
+            base.z += splat * 1.8; 
+            base.w += length(u_force) * splat * 0.05; 
+            fragColor = base;
+        }`;
+
+        const divergenceFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D u_velocity;
+        uniform vec2 u_texelSize;
+        void main() {
+            float L = texture(u_velocity, v_uv - vec2(u_texelSize.x, 0.0)).x;
+            float R = texture(u_velocity, v_uv + vec2(u_texelSize.x, 0.0)).x;
+            float B = texture(u_velocity, v_uv - vec2(0.0, u_texelSize.y)).y;
+            float T = texture(u_velocity, v_uv + vec2(0.0, u_texelSize.y)).y;
+            float div = 0.5 * (R - L + T - B);
+            fragColor = vec4(div, 0.0, 0.0, 1.0);
+        }`;
+
+        const jacobiFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D u_pressure;
+        uniform sampler2D u_divergence;
+        uniform vec2 u_texelSize;
+        void main() {
+            float L = texture(u_pressure, v_uv - vec2(u_texelSize.x, 0.0)).x;
+            float R = texture(u_pressure, v_uv + vec2(u_texelSize.x, 0.0)).x;
+            float B = texture(u_pressure, v_uv - vec2(0.0, u_texelSize.y)).y;
+            float T = texture(u_pressure, v_uv + vec2(0.0, u_texelSize.y)).y;
+            float div = texture(u_divergence, v_uv).x;
+            float p = (L + R + B + T - div) * 0.25;
+            fragColor = vec4(p, 0.0, 0.0, 1.0);
+        }`;
+
+        const gradSubtractFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D u_source;
+        uniform sampler2D u_pressure;
+        uniform vec2 u_texelSize;
+        void main() {
+            float L = texture(u_pressure, v_uv - vec2(u_texelSize.x, 0.0)).x;
+            float R = texture(u_pressure, v_uv + vec2(u_texelSize.x, 0.0)).x;
+            float B = texture(u_pressure, v_uv - vec2(0.0, u_texelSize.y)).y;
+            float T = texture(u_pressure, v_uv + vec2(0.0, u_texelSize.y)).y;
+            vec2 grad = vec2(R - L, T - B) * 0.5;
+            vec4 state = texture(u_source, v_uv);
+            state.xy -= grad;
+            state.z = texture(u_pressure, v_uv).x;
+            fragColor = state;
+        }`;
+
+        const displayFS = `#version 300 es
+        precision highp float;
+        in vec2 v_uv;
+        out vec4 fragColor;
+        uniform sampler2D iChannel0;
+        uniform vec2 iResolution;
+        uniform float u_inkDivisor;
+        uniform float u_densityDivisor;
+        uniform vec3 u_colorOffset;
+        uniform float u_colorFreq;
+        #define PI 3.141592653589793
+        void mainImage(out vec4 o, in vec2 p) {
+            vec4 c = texture(iChannel0, p.xy / iResolution.xy);
+            o.rgb = .6 + .6 * cos(u_colorFreq * atan(c.y,c.x)/(2.*PI) + u_colorOffset); 
+            o.rgb *= c.w / u_inkDivisor; 
+            o.rgb += clamp(c.z - 1., 0., 1.) / u_densityDivisor; 
+            o.a = 1.;
+        }
+        void main() {
+            mainImage(fragColor, gl_FragCoord.xy);
+        }`;
+
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl2', { alpha: false, depth: false, antialias: false });
+        if (!gl) alert("您的浏览器不支持 WebGL 2，请更新或更换现代浏览器！");
+
+        const ext = gl.getExtension('EXT_color_buffer_float');
+        if (!ext) console.warn("EXT_color_buffer_float 不受支持，尝试继续");
+
+        const params = {
+            inkDivisor: 5.0, densityDivisor: 10.0, colorFreq: 6.3,
+            offsetR: 0.0, offsetG: 23.0, offsetB: 21.0,
+            velDissipation: 0.985, inkDissipation: 0.970,
+            radius: 0.005, force: 1200.0, pressureIterations: 24
+        };
+
+        function createProgram(vsSource, fsSource) {
+            const vs = gl.createShader(gl.VERTEX_SHADER);
+            gl.shaderSource(vs, vsSource); gl.compileShader(vs);
+            const fs = gl.createShader(gl.FRAGMENT_SHADER);
+            gl.shaderSource(fs, fsSource); gl.compileShader(fs);
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+            return prog;
+        }
+
+        const progAdvect = createProgram(baseVS, advectFS);
+        const progSplat = createProgram(baseVS, splatFS);
+        const progDivergence = createProgram(baseVS, divergenceFS);
+        const progJacobi = createProgram(baseVS, jacobiFS);
+        const progGradSubtract = createProgram(baseVS, gradSubtractFS);
+        const progDisplay = createProgram(baseVS, displayFS);
+
+        const quadBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+        function setupAttribute(prog) {
+            const loc = gl.getAttribLocation(prog, "a_position");
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+        }
+
+        let simWidth = 0, simHeight = 0;
+        function createFBO(w, h) {
+            const tex = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            const fbo = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+            return { fbo, tex, w, h };
+        }
+
+        function createDoubleFBO(w, h) {
+            let fbo1 = createFBO(w, h), fbo2 = createFBO(w, h);
+            return {
+                get read() { return fbo1; }, get write() { return fbo2; },
+                swap() { const tmp = fbo1; fbo1 = fbo2; fbo2 = tmp; }
+            };
+        }
+
+        let stateFBO, divergenceFBO, pressureFBO;
+        function initFramebuffers() {
+            simWidth = Math.max(128, Math.floor(window.innerWidth * 0.5));
+            simHeight = Math.max(128, Math.floor(window.innerHeight * 0.5));
+            stateFBO = createDoubleFBO(simWidth, simHeight);
+            divergenceFBO = createFBO(simWidth, simHeight);
+            pressureFBO = createDoubleFBO(simWidth, simHeight);
+        }
+
+        const pointer = { x: 0, y: 0, dx: 0, dy: 0, down: false, moved: false, isInside: false, lastActiveTime: 0 };
+        function updatePointer(clientX, clientY) {
+            const nx = clientX / window.innerWidth;
+            const ny = 1.0 - clientY / window.innerHeight;
+            pointer.dx = nx - pointer.x; pointer.dy = ny - pointer.y;
+            pointer.x = nx; pointer.y = ny;
+            pointer.moved = true; pointer.lastActiveTime = performance.now(); pointer.isInside = true;
+        }
+
+        window.addEventListener('mousemove', e => { updatePointer(e.clientX, e.clientY); if (e.buttons === 1) pointer.down = true; });
+        window.addEventListener('mousedown', e => { if (e.target.closest('#control-panel')) return; updatePointer(e.clientX, e.clientY); pointer.down = true; });
+        window.addEventListener('mouseup', () => pointer.down = false);
+        window.addEventListener('mouseleave', () => { pointer.isInside = false; pointer.down = false; });
+        window.addEventListener('mouseenter', () => { pointer.isInside = true; });
+        window.addEventListener('touchmove', e => { if (e.touches.length > 0) { updatePointer(e.touches[0].clientX, e.touches[0].clientY); pointer.down = true; } });
+        window.addEventListener('touchend', () => { pointer.down = false; });
+
+        let autoTime = 0;
+        function generateRandomFluidData(dt) {
+            autoTime += dt;
+            const t1 = autoTime * 1.2, t2 = autoTime * 1.8;
+            addSplat(0.5 + Math.sin(t1) * 0.35, 0.5 + Math.cos(t2) * 0.35, Math.cos(t1) * 0.005, -Math.sin(t2) * 0.005);
+            const t3 = autoTime * 0.9;
+            addSplat(0.5 + Math.cos(t3 * 2.0) * 0.3, 0.5 + Math.sin(t3 * 1.3) * 0.3, -Math.sin(t3 * 2.0) * 0.004, Math.cos(t3 * 1.3) * 0.004);
+            if (Math.random() < 0.12) {
+                const angle = Math.random() * Math.PI * 2, speed = 0.003 + Math.random() * 0.007;
+                addSplat(Math.random(), Math.random(), Math.cos(angle) * speed, Math.sin(angle) * speed);
+            }
+        }
+
+        function addSplat(x, y, dx, dy) {
+            gl.useProgram(progSplat); setupAttribute(progSplat);
+            gl.uniform1i(gl.getUniformLocation(progSplat, "u_source"), 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stateFBO.read.tex);
+            gl.uniform2f(gl.getUniformLocation(progSplat, "u_point"), x, y);
+            gl.uniform2f(gl.getUniformLocation(progSplat, "u_force"), dx * params.force, dy * params.force);
+            gl.uniform1f(gl.getUniformLocation(progSplat, "u_radius"), params.radius);
+            gl.uniform1f(gl.getUniformLocation(progSplat, "u_aspect"), window.innerWidth / window.innerHeight);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, stateFBO.write.fbo);
+            gl.viewport(0, 0, simWidth, simHeight);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            stateFBO.swap();
+        }
+
+        function clearFluid() {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, stateFBO.read.fbo); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, stateFBO.write.fbo); gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+
+        let lastTime = performance.now();
+        function render() {
+            const now = performance.now();
+            let dt = Math.min((now - lastTime) / 1000, 0.033);
+            lastTime = now;
+
+            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+                initFramebuffers();
+            }
+
+            const isUserActive = pointer.isInside && (now - pointer.lastActiveTime < 1500);
+            if (isUserActive) {
+                if (pointer.moved && (pointer.down || Math.abs(pointer.dx) > 0.0001 || Math.abs(pointer.dy) > 0.0001)) {
+                    addSplat(pointer.x, pointer.y, pointer.dx, pointer.dy); pointer.moved = false;
+                }
+            } else { generateRandomFluidData(dt); }
+
+            gl.useProgram(progAdvect); setupAttribute(progAdvect);
+            gl.uniform1i(gl.getUniformLocation(progAdvect, "u_source"), 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stateFBO.read.tex);
+            gl.uniform2f(gl.getUniformLocation(progAdvect, "u_texelSize"), 1.0 / simWidth, 1.0 / simHeight);
+            gl.uniform1f(gl.getUniformLocation(progAdvect, "u_dt"), dt);
+            gl.uniform1f(gl.getUniformLocation(progAdvect, "u_velDissipation"), params.velDissipation);
+            gl.uniform1f(gl.getUniformLocation(progAdvect, "u_inkDissipation"), params.inkDissipation);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, stateFBO.write.fbo); gl.viewport(0, 0, simWidth, simHeight);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); stateFBO.swap();
+
+            gl.useProgram(progDivergence); setupAttribute(progDivergence);
+            gl.uniform1i(gl.getUniformLocation(progDivergence, "u_velocity"), 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stateFBO.read.tex);
+            gl.uniform2f(gl.getUniformLocation(progDivergence, "u_texelSize"), 1.0 / simWidth, 1.0 / simHeight);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, divergenceFBO.fbo); gl.viewport(0, 0, simWidth, simHeight);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            gl.useProgram(progJacobi); setupAttribute(progJacobi);
+            gl.uniform2f(gl.getUniformLocation(progJacobi, "u_texelSize"), 1.0 / simWidth, 1.0 / simHeight);
+            gl.uniform1i(gl.getUniformLocation(progJacobi, "u_divergence"), 1);
+            gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, divergenceFBO.tex);
+            for (let i = 0; i < params.pressureIterations; i++) {
+                gl.uniform1i(gl.getUniformLocation(progJacobi, "u_pressure"), 0);
+                gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, pressureFBO.read.tex);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, pressureFBO.write.fbo); gl.viewport(0, 0, simWidth, simHeight);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); pressureFBO.swap();
+            }
+
+            gl.useProgram(progGradSubtract); setupAttribute(progGradSubtract);
+            gl.uniform1i(gl.getUniformLocation(progGradSubtract, "u_source"), 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stateFBO.read.tex);
+            gl.uniform1i(gl.getUniformLocation(progGradSubtract, "u_pressure"), 1);
+            gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, pressureFBO.read.tex);
+            gl.uniform2f(gl.getUniformLocation(progGradSubtract, "u_texelSize"), 1.0 / simWidth, 1.0 / simHeight);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, stateFBO.write.fbo); gl.viewport(0, 0, simWidth, simHeight);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); stateFBO.swap();
+
+            gl.useProgram(progDisplay); setupAttribute(progDisplay);
+            gl.uniform1i(gl.getUniformLocation(progDisplay, "iChannel0"), 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, stateFBO.read.tex);
+            gl.uniform2f(gl.getUniformLocation(progDisplay, "iResolution"), canvas.width, canvas.height);
+            gl.uniform1f(gl.getUniformLocation(progDisplay, "u_inkDivisor"), params.inkDivisor);
+            gl.uniform1f(gl.getUniformLocation(progDisplay, "u_densityDivisor"), params.densityDivisor);
+            gl.uniform1f(gl.getUniformLocation(progDisplay, "u_colorFreq"), params.colorFreq);
+            gl.uniform3f(gl.getUniformLocation(progDisplay, "u_colorOffset"), params.offsetR, params.offsetG, params.offsetB);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+            requestAnimationFrame(render);
+        }
+
+        initFramebuffers();
+        requestAnimationFrame(render);
+
+        const panel = document.getElementById('control-panel');
+        const header = document.getElementById('panel-header');
+        const body = document.getElementById('panel-body');
+        const btnCollapse = document.getElementById('btn-collapse');
+        const iconCollapse = document.getElementById('icon-collapse');
+        const btnClose = document.getElementById('btn-close');
+
+        let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
+        header.addEventListener('mousedown', e => {
+            if (e.target.closest('button')) return;
+            isDragging = true;
+            dragOffsetX = e.clientX - panel.offsetLeft;
+            dragOffsetY = e.clientY - panel.offsetTop;
+        });
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            let newX = Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, e.clientX - dragOffsetX));
+            let newY = Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, e.clientY - dragOffsetY));
+            panel.style.left = `${newX}px`; panel.style.top = `${newY}px`;
+        });
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        let isCollapsed = false;
+        function toggleCollapse() {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) { body.classList.add('hidden'); iconCollapse.style.transform = 'rotate(-90deg)'; } 
+            else { body.classList.remove('hidden'); iconCollapse.style.transform = 'rotate(0deg)'; }
+        }
+        btnCollapse.addEventListener('click', toggleCollapse);
+
+        // 【修改点2】：使用自定义的 panel-hidden 类，配合 CSS 实现丝滑显隐动画
+        function toggleConsole() {
+            panel.classList.toggle('panel-hidden');
+        }
+        btnClose.addEventListener('click', toggleConsole);
+
+        window.addEventListener('keydown', e => {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyN')) {
+                e.preventDefault();
+                toggleConsole();
+            }
+        });
+
+        function bindSlider(sliderId, valId, paramKey, transform = v => parseFloat(v)) {
+            const slider = document.getElementById(sliderId);
+            const display = document.getElementById(valId);
+            slider.addEventListener('input', e => {
+                const val = transform(e.target.value);
+                params[paramKey] = val;
+                display.innerText = val.toString();
+            });
+        }
+
+        bindSlider('slider-ink', 'val-ink', 'inkDivisor');
+        bindSlider('slider-density', 'val-density', 'densityDivisor');
+        bindSlider('slider-color-freq', 'val-color-freq', 'colorFreq');
+        bindSlider('slider-offset-r', 'val-offset-r', 'offsetR');
+        bindSlider('slider-offset-g', 'val-offset-g', 'offsetG');
+        bindSlider('slider-offset-b', 'val-offset-b', 'offsetB');
+        bindSlider('slider-vel-diss', 'val-vel-diss', 'velDissipation');
+        bindSlider('slider-ink-diss', 'val-ink-diss', 'inkDissipation');
+        bindSlider('slider-radius', 'val-radius', 'radius');
+        bindSlider('slider-force', 'val-force', 'force');
+        bindSlider('slider-pressure', 'val-pressure', 'pressureIterations', v => parseInt(v));
+
+        function updateUI() {
+            document.getElementById('slider-ink').value = params.inkDivisor; document.getElementById('val-ink').innerText = params.inkDivisor;
+            document.getElementById('slider-density').value = params.densityDivisor; document.getElementById('val-density').innerText = params.densityDivisor;
+            document.getElementById('slider-color-freq').value = params.colorFreq; document.getElementById('val-color-freq').innerText = params.colorFreq;
+            document.getElementById('slider-offset-r').value = params.offsetR; document.getElementById('val-offset-r').innerText = params.offsetR;
+            document.getElementById('slider-offset-g').value = params.offsetG; document.getElementById('val-offset-g').innerText = params.offsetG;
+            document.getElementById('slider-offset-b').value = params.offsetB; document.getElementById('val-offset-b').innerText = params.offsetB;
+            document.getElementById('slider-vel-diss').value = params.velDissipation; document.getElementById('val-vel-diss').innerText = params.velDissipation;
+            document.getElementById('slider-ink-diss').value = params.inkDissipation; document.getElementById('val-ink-diss').innerText = params.inkDissipation;
+            document.getElementById('slider-radius').value = params.radius; document.getElementById('val-radius').innerText = params.radius;
+            document.getElementById('slider-force').value = params.force; document.getElementById('val-force').innerText = params.force;
+            document.getElementById('slider-pressure').value = params.pressureIterations; document.getElementById('val-pressure').innerText = params.pressureIterations;
+        }
+
+        document.getElementById('btn-preset-default').addEventListener('click', () => {
+            Object.assign(params, { inkDivisor: 5.0, densityDivisor: 10.0, colorFreq: 6.3, offsetR: 0.0, offsetG: 23.0, offsetB: 21.0, velDissipation: 0.985, inkDissipation: 0.970, radius: 0.005, force: 1200, pressureIterations: 24 }); updateUI();
+        });
+        document.getElementById('btn-preset-neon').addEventListener('click', () => {
+            Object.assign(params, { inkDivisor: 2.5, densityDivisor: 5.0, colorFreq: 12.0, offsetR: 5.0, offsetG: 12.0, offsetB: 28.0, velDissipation: 0.992, inkDissipation: 0.985, radius: 0.008, force: 2000, pressureIterations: 30 }); updateUI();
+        });
+        document.getElementById('btn-preset-silk').addEventListener('click', () => {
+            Object.assign(params, { inkDivisor: 8.0, densityDivisor: 25.0, colorFreq: 4.2, offsetR: 12.0, offsetG: 4.0, offsetB: 18.0, velDissipation: 0.995, inkDissipation: 0.990, radius: 0.003, force: 800, pressureIterations: 40 }); updateUI();
+        });
+        document.getElementById('btn-preset-highp').addEventListener('click', () => {
+            Object.assign(params, { inkDivisor: 1.2, densityDivisor: 3.0, colorFreq: 8.5, offsetR: 0.0, offsetG: 15.0, offsetB: 30.0, velDissipation: 0.960, inkDissipation: 0.920, radius: 0.012, force: 3500, pressureIterations: 50 }); updateUI();
+        });
+        document.getElementById('btn-clear').addEventListener('click', clearFluid);
+    </script>
+
+<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
+
+<script>
+function __applyToNav__() {
+  var file = 'a34.html';
+  localStorage.setItem('bgChoice', file);
+  var btn = document.getElementById('__apply-btn__');
+  btn.textContent = '✔ 已应用！';
+  btn.style.background = '#1a7f37';
+  setTimeout(function() {
+    btn.textContent = '✓ 应用到导航页';
+    btn.style.background = '#238636';
+  }, 2000);
+}
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
+
+<!-- BG_PARAM_PERSIST -->
+<script>
+(function(){
+  var FILE = 'a34.html';
+  var KEY = 'bgParams:' + FILE;
+  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
+  function serialize(){
+    var d = {}, els = allControls();
+    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
+    return d;
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
+  function restore(){
+    try{
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      Object.keys(d).forEach(function(id){
+        var el = document.getElementById(id); if(!el) return;
+        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
+        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+      });
+    }catch(e){}
+  }
+  document.addEventListener('input', save, true);
+  document.addEventListener('change', save, true);
+  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
+})();
+</script>
+
+</body>
+</html>
