@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -141,7 +141,7 @@
 
     <div id="control-panel">
         <div id="panel-header">
-            <span>⚙️ 效果控制台 (Alt+H)</span>
+            <span>⚙️ 效果控制台 (Alt+N)</span>
             <div id="toggle-btn">折叠</div>
         </div>
         <div id="panel-content">
@@ -213,11 +213,11 @@
             }
         });
 
-        // 快捷键隐藏/显示逻辑 (Alt+H)
+        // 快捷键隐藏/显示逻辑 (Alt+N)
         // 【修改2】：初始状态改为 true，与 CSS 中的默认隐藏保持一致
         let isHidden = true;
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 isHidden = !isHidden;
                 panel.style.opacity = isHidden ? '0' : '1';
                 panel.style.pointerEvents = isHidden ? 'none' : 'auto';
@@ -1147,6 +1147,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -510,10 +510,10 @@
                 panel.style.transition = '';
             });
 
-            // 5. Alt+H 隐藏/显示
+            // 5. Alt+N 隐藏/显示
             let isVisible = false; // 默认隐藏
             window.addEventListener('keydown', (e) => {
-                if (e.altKey && e.key.toLowerCase() === 'h') {
+                if (e.altKey && e.key.toLowerCase() === 'n') {
                     e.preventDefault();
                     isVisible = !isVisible;
                     if (isVisible) {
@@ -558,6 +558,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

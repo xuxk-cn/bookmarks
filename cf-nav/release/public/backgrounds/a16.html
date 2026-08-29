@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -340,7 +340,7 @@
 
         const panel = document.getElementById('control-panel');
         document.getElementById('collapse-btn').addEventListener('click', () => panel.classList.toggle('collapsed'));
-        document.addEventListener('keydown', (e) => { if (e.altKey && e.key.toLowerCase() === 'h') { e.preventDefault(); panel.classList.toggle('hidden-by-hotkey'); }});
+        document.addEventListener('keydown', (e) => { if (e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); panel.classList.toggle('hidden-by-hotkey'); }});
 
         let isDragging = false, dragOffsetX = 0, dragOffsetY = 0;
         const header = document.getElementById('panel-header');
@@ -409,7 +409,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

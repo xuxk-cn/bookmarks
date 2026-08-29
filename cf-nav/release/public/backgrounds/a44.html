@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -215,7 +215,7 @@
                 <button id="collapse-btn" class="collapse-btn" title="折叠/展开">
                     <svg id="icon-collapse" style="transition: transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
-                <button id="hide-btn" class="collapse-btn" title="隐藏 (Alt+H)">
+                <button id="hide-btn" class="collapse-btn" title="隐藏 (Alt+N)">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -332,7 +332,7 @@
 
     // Alt + H 快捷键
     window.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key.toLowerCase() === 'h') {
+        if (e.altKey && e.key.toLowerCase() === 'n') {
             e.preventDefault();
             togglePanelVisibility();
         }
@@ -598,7 +598,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

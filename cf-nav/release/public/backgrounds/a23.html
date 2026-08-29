@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -420,7 +420,7 @@
         // 【修改点2】：初始状态改为 true，与 HTML 标签上的默认隐藏保持一致
         let isHidden = true;
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 isHidden = !isHidden;
                 uiContainer.style.opacity = isHidden ? '0' : '1';
                 uiContainer.style.pointerEvents = isHidden ? 'none' : 'auto';
@@ -496,7 +496,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

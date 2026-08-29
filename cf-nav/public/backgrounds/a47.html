@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -152,7 +152,7 @@
                 <input type="range" id="sl-rot-speed" class="control-slider" min="0.0" max="1.5" step="0.01" value="0.05">
             </div>
 
-            <div class="shortcut-hint">按 Alt+H 隐藏/显示控制台</div>
+            <div class="shortcut-hint">按 Alt+N 隐藏/显示控制台</div>
         </div>
     </div>
 
@@ -545,9 +545,9 @@
         toggleBtn.textContent = panel.classList.contains('hidden-panel') ? '▲' : '▼';
     });
 
-    // Alt+H Shortcut to show/hide entire panel
+    // Alt+N Shortcut to show/hide entire panel
     document.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key.toLowerCase() === 'h') {
+        if (e.altKey && e.key.toLowerCase() === 'n') {
             e.preventDefault();
             panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         }

@@ -229,7 +229,7 @@
                 <input type="range" id="sl-light" class="control-slider" min="0.2" max="2.5" step="0.05" value="1.1">
             </div>
 
-            <div class="shortcut-hint">按 Alt + H 隐藏 / 显示控制面板</div>
+            <div class="shortcut-hint">按 Alt + n 隐藏 / 显示控制面板</div>
         </div>
     </div>
 
@@ -925,7 +925,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
             }
@@ -1003,6 +1003,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 </body>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -93,7 +93,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <button id="btn-hide" title="隐藏面板 (Alt+H)" class="p-1 hover:bg-slate-700/60 rounded text-slate-300 hover:text-red-400 transition-colors">
+                <button id="btn-hide" title="隐藏面板 (Alt+N)" class="p-1 hover:bg-slate-700/60 rounded text-slate-300 hover:text-red-400 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -789,7 +789,7 @@
         btnHide.addEventListener('click', togglePanelVisibility);
 
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyN')) {
                 e.preventDefault();
                 togglePanelVisibility();
             }
@@ -891,7 +891,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

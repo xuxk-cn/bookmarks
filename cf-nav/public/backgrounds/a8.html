@@ -346,7 +346,7 @@ FPS：
 
 <span id="fpsText">0</span>
 
-<div style="font-size:11px; color:#888; margin-top:8px; text-align:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">按 Alt + H 隐藏/显示控制台</div>
+<div style="font-size:11px; color:#888; margin-top:8px; text-align:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">按 Alt + N 隐藏/显示控制台</div>
 
 </div>
 
@@ -506,7 +506,7 @@ collapsed?"none":"block";
 
 window.addEventListener("keydown",e=>{
 
-if(e.altKey&&e.key.toLowerCase()=="h"){
+if(e.altKey&&e.key.toLowerCase()=="n"){
 
 panel.classList.toggle("hidden");
 
@@ -913,51 +913,5 @@ requestAnimationFrame(render);
 requestAnimationFrame(render);
 
 </script>
-
-<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
-
-<script>
-function __applyToNav__() {
-  var file = 'a8.html';
-  localStorage.setItem('bgChoice', file);
-  var btn = document.getElementById('__apply-btn__');
-  btn.textContent = '✔ 已应用！';
-  btn.style.background = '#1a7f37';
-  setTimeout(function() {
-    btn.textContent = '✓ 应用到导航页';
-    btn.style.background = '#238636';
-  }, 2000);
-}
-</script>
-
-<!-- BG_PARAM_PERSIST -->
-<script>
-(function(){
-  var FILE = 'a8.html';
-  var KEY = 'bgParams:' + FILE;
-  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
-  function serialize(){
-    var d = {}, els = allControls();
-    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
-    return d;
-  }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
-  function restore(){
-    try{
-      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
-      Object.keys(d).forEach(function(id){
-        var el = document.getElementById(id); if(!el) return;
-        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
-        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
-        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
-      });
-    }catch(e){}
-  }
-  document.addEventListener('input', save, true);
-  document.addEventListener('change', save, true);
-  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
-})();
-</script>
-
 </body>
 </html>

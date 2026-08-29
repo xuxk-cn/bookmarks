@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -584,12 +584,12 @@
             } else {
                 panel.classList.add('panel-hidden');
                 showPanelBtn.classList.remove('btn-hidden');
-                showToast('已隐藏控制面板 (按下 Alt+H 恢复)');
+                showToast('已隐藏控制面板 (按下 Alt+N 恢复)');
             }
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key.toLowerCase() === 'h' || e.code === 'KeyH')) {
+            if (e.altKey && (e.key.toLowerCase() === 'n' || e.code === 'KeyN')) {
                 e.preventDefault();
                 togglePanelVisibility();
             }
@@ -671,7 +671,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

@@ -70,7 +70,11 @@
 
     <!-- Header UI -->
     <header class="absolute top-4 left-4 right-4 flex justify-end items-center pointer-events-none z-10">
-    
+    <div class="flex items-center gap-2 pointer-events-auto">
+        <button id="toggleCodeBtn" class="glass-panel px-3 py-2 rounded-lg text-xs font-medium hover:bg-white/10 transition-all flex items-center gap-2 text-gray-200">
+            
+        </button>
+    </div>
 </header>
 
     <!-- Right Control Panel (Console) Rebuilt based on reference image -->
@@ -149,7 +153,7 @@
             
             <div class="mt-1 text-[10px] text-gray-500/80 text-center leading-relaxed">
                 *在屏幕上拖拽鼠标可旋转视角<br>
-                按 Alt + H 隐藏 / 显示控制面板
+                按 Alt + N 隐藏 / 显示控制面板
             </div>
         </div>
     </aside>
@@ -505,9 +509,9 @@
                 // 默认隐藏控制台
                 p.style.display = 'none';
 
-                // Alt + H 切换显示 / 隐藏
+                // Alt + N 切换显示 / 隐藏
                 document.addEventListener('keydown', function (e) {
-                    if (e.altKey && e.key.toLowerCase() === 'h') {
+                    if (e.altKey && e.key.toLowerCase() === 'n') {
                         e.preventDefault();
                         p.style.display = (p.style.display === 'none') ? 'flex' : 'none';
                     }
@@ -515,52 +519,5 @@
             }
         });
     </script>
-
-    <!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
-    
-
-    <script>
-        function __applyToNav__() {
-            var file = 'a2.html';
-            localStorage.setItem('bgChoice', file);
-            var btn = document.getElementById('__apply-btn__');
-            btn.textContent = '✔ 已应用！';
-            btn.style.background = '#1a7f37';
-            setTimeout(function () {
-                btn.textContent = '✓ 应用到导航页';
-                btn.style.background = '#238636';
-            }, 2000);
-        }
-    </script>
-
-<!-- BG_PARAM_PERSIST -->
-<script>
-(function(){
-  var FILE = 'a2.html';
-  var KEY = 'bgParams:' + FILE;
-  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
-  function serialize(){
-    var d = {}, els = allControls();
-    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
-    return d;
-  }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
-  function restore(){
-    try{
-      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
-      Object.keys(d).forEach(function(id){
-        var el = document.getElementById(id); if(!el) return;
-        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
-        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
-        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
-      });
-    }catch(e){}
-  }
-  document.addEventListener('input', save, true);
-  document.addEventListener('change', save, true);
-  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
-})();
-</script>
-
 </body>
 </html>

@@ -79,7 +79,7 @@
                     </svg>
                 </button>
                 <!-- Close / Hide Button -->
-                <button id="btn-close" title="隐藏控制台 (Alt+H)" class="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
+                <button id="btn-close" title="隐藏控制台 (Alt+N)" class="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -536,14 +536,14 @@
                 showToast('控制台已显示');
             } else {
                 ui.panel.classList.add('opacity-0', 'pointer-events-none');
-                showToast('控制台已隐藏 (按 Alt+H 重新显示)');
+                showToast('控制台已隐藏 (按 Alt+N 重新显示)');
             }
         }
 
         ui.btnClose.addEventListener('click', togglePanelVisibility);
 
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.keyCode === 72)) {
+            if (e.altKey && (e.key === 'n' || e.key === 'N' || e.keyCode === 78)) {
                 e.preventDefault();
                 togglePanelVisibility();
             }
@@ -676,52 +676,5 @@
         syncUI();
         requestAnimationFrame(render);
     </script>
-
-<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
-
-<script>
-function __applyToNav__() {
-  // 【修改点2】：修正文件名为 a29.html
-  var file = 'a29.html';
-  localStorage.setItem('bgChoice', file);
-  var btn = document.getElementById('__apply-btn__');
-  btn.textContent = '✔ 已应用！';
-  btn.style.background = '#1a7f37';
-  setTimeout(function() {
-    btn.textContent = '✓ 应用到导航页';
-    btn.style.background = '#238636';
-  }, 2000);
-}
-</script>
-
-<!-- BG_PARAM_PERSIST -->
-<script>
-(function(){
-  var FILE = 'a29.html';
-  var KEY = 'bgParams:' + FILE;
-  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
-  function serialize(){
-    var d = {}, els = allControls();
-    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
-    return d;
-  }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
-  function restore(){
-    try{
-      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
-      Object.keys(d).forEach(function(id){
-        var el = document.getElementById(id); if(!el) return;
-        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
-        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
-        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
-      });
-    }catch(e){}
-  }
-  document.addEventListener('input', save, true);
-  document.addEventListener('change', save, true);
-  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
-})();
-</script>
-
 </body>
 </html>

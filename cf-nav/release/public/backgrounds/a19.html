@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -195,7 +195,7 @@
     <!-- 画布组件 -->
     <canvas id="glcanvas"></canvas>
 
-    <!-- 【修改点】：加上 class="hidden" 实现默认隐藏，Alt+H 呼出 -->
+    <!-- 【修改点】：加上 class="hidden" 实现默认隐藏，Alt+N 呼出 -->
     <div id="ui-panel" class="hidden">
         <div id="ui-header">
             <span>运动模糊 (Elevated Terrain) 控制台</span>
@@ -779,7 +779,7 @@
 
         // 快捷键 Alt + H 隐藏 / 显示面板
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 panel.classList.toggle('hidden');
             }
@@ -869,7 +869,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

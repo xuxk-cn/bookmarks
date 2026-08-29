@@ -229,7 +229,7 @@
                 <input type="range" id="sl-light" class="control-slider" min="0.2" max="2.5" step="0.05" value="1.1">
             </div>
 
-            <div class="shortcut-hint">按 Alt + H 隐藏 / 显示控制面板</div>
+            <div class="shortcut-hint">按 Alt + n 隐藏 / 显示控制面板</div>
         </div>
     </div>
 
@@ -925,7 +925,7 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
             }
@@ -1019,7 +1019,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

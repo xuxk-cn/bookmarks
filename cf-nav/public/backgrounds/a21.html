@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -90,7 +90,7 @@
         <div id="panel-header" class="flex justify-between items-center p-4 cursor-move rounded-t-xl hover:bg-white/5 transition-colors">
             <div class="flex items-center gap-2">
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                <h3 class="font-semibold tracking-wide text-sm">参数控制台 <span class="text-xs text-gray-400 ml-1 font-normal">(Alt+H 隐藏)</span></h3>
+                <h3 class="font-semibold tracking-wide text-sm">参数控制台 <span class="text-xs text-gray-400 ml-1 font-normal">(Alt+N 隐藏)</span></h3>
             </div>
             <button id="toggle-btn" class="p-1 hover:bg-white/10 rounded transition-colors" title="折叠/展开">
                 <svg id="chevron-icon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -213,9 +213,9 @@
             }
         });
 
-        // Alt+H Shortcut
+        // Alt+N Shortcut
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 state.panelVisible = !state.panelVisible;
                 panel.style.opacity = state.panelVisible ? '1' : '0';
                 panel.style.pointerEvents = state.panelVisible ? 'auto' : 'none';
@@ -662,6 +662,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

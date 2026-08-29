@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -279,7 +279,7 @@
         </div>
     </div>
     
-    <div id="toast">控制台已隐藏，按 Alt+H 恢复显示</div>
+    <div id="toast">控制台已隐藏，按 Alt+N 恢复显示</div>
 
     <script>
         // --- 顶点着色器 ---
@@ -1213,9 +1213,9 @@
             toggleBtn.textContent = uiBody.classList.contains('collapsed') ? '+' : '-';
         });
 
-        // 快捷键隐藏显示 (Alt+H)
+        // 快捷键隐藏显示 (Alt+N)
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 const isHidden = uiPanel.classList.toggle('hidden');
                 
@@ -1447,7 +1447,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

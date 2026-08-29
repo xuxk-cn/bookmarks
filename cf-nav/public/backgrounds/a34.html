@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" class="h-full w-full overflow-hidden select-none">
 <head>
     <meta charset="UTF-8">
@@ -85,7 +85,7 @@
                 <button id="btn-collapse" title="折叠/展开" class="p-1 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-colors">
                     <svg id="icon-collapse" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
-                <button id="btn-close" title="隐藏 (Alt+H)" class="p-1 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
+                <button id="btn-close" title="隐藏 (Alt+N)" class="p-1 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -216,7 +216,7 @@
 
         <div class="p-2.5 bg-slate-900/60 rounded-b-2xl border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between items-center px-4">
             <span>状态: <span class="text-emerald-400">运行中</span></span>
-            <span>按 <code class="text-indigo-300 font-mono">Alt+H</code> 开关控制台</span>
+            <span>按 <code class="text-indigo-300 font-mono">Alt+N</code> 开关控制台</span>
         </div>
     </div>
 
@@ -572,7 +572,7 @@
         btnClose.addEventListener('click', toggleConsole);
 
         window.addEventListener('keydown', e => {
-            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyN')) {
                 e.preventDefault();
                 toggleConsole();
             }
@@ -643,6 +643,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

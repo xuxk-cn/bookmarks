@@ -89,8 +89,7 @@
     <!-- Hotkey Notice Banner -->
     <div id="hotkey-toast" class="fixed bottom-4 left-4 glass-panel px-4 py-2.5 rounded-xl text-xs text-gray-300 flex items-center space-x-2 z-40 transition-opacity duration-500 pointer-events-none">
         <i class="fa-solid fa-keyboard text-amber-500"></i>
-        <span>提示：按 <kbd class="px-1.5 py-0.5 bg-gray-800 border border-gray-600 rounded text-amber-400 font-mono">Alt + H</kbd> 可隐藏/显示控制面板</span>
-    </div>
+            </div>
 
     <!-- Floating Draggable & Collapsible Control Panel -->
     <div id="control-panel" class="fixed top-6 right-6 w-80 glass-panel rounded-2xl z-50 text-white shadow-2xl transition-all duration-200">
@@ -104,7 +103,7 @@
                 <button id="toggle-collapse-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="折叠/展开">
                     <i class="fa-solid fa-minus text-xs"></i>
                 </button>
-                <button id="toggle-hide-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="隐藏控制面板 (Alt+H)">
+                <button id="toggle-hide-btn" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title="隐藏控制面板 (Alt+N)">
                     <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
@@ -641,9 +640,9 @@
             toggleHideBtn.addEventListener('click', () => togglePanelVisibility(false));
             showPanelBtn.addEventListener('click', () => togglePanelVisibility(true));
 
-            // Hotkey Listener (Alt + H)
+            // Hotkey Listener (Alt + N)
             window.addEventListener('keydown', (e) => {
-                if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+                if (e.altKey && (e.key === 'n' || e.key === 'N')) {
                     e.preventDefault();
                     const isHidden = panel.classList.contains('hidden');
                     togglePanelVisibility(isHidden);
@@ -707,51 +706,5 @@
             animate();
         };
     </script>
-
-<!-- 应用到导航页 悬浮按钮（由 inject_apply_button.py 注入） -->
-
-<script>
-function __applyToNav__() {
-  var file = 'a53.html';
-  localStorage.setItem('bgChoice', file);
-  var btn = document.getElementById('__apply-btn__');
-  btn.textContent = '✔ 已应用！';
-  btn.style.background = '#1a7f37';
-  setTimeout(function() {
-    btn.textContent = '✓ 应用到导航页';
-    btn.style.background = '#238636';
-  }, 2000);
-}
-</script>
-
-<!-- BG_PARAM_PERSIST -->
-<script>
-(function(){
-  var FILE = 'a7.html';
-  var KEY = 'bgParams:' + FILE;
-  function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
-  function serialize(){
-    var d = {}, els = allControls();
-    els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
-    return d;
-  }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
-  function restore(){
-    try{
-      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
-      Object.keys(d).forEach(function(id){
-        var el = document.getElementById(id); if(!el) return;
-        if(el.type==='checkbox'||el.type==='radio') el.checked = !!d[id]; else el.value = d[id];
-        try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
-        try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
-      });
-    }catch(e){}
-  }
-  document.addEventListener('input', save, true);
-  document.addEventListener('change', save, true);
-  window.addEventListener('load', function(){ restore(); setTimeout(restore, 700); setTimeout(restore, 1700); });
-})();
-</script>
-
 </body>
 </html>

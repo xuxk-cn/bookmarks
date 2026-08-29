@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -584,12 +584,12 @@
             } else {
                 panel.classList.add('panel-hidden');
                 showPanelBtn.classList.remove('btn-hidden');
-                showToast('已隐藏控制面板 (按下 Alt+H 恢复)');
+                showToast('已隐藏控制面板 (按下 Alt+N 恢复)');
             }
         }
 
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key.toLowerCase() === 'h' || e.code === 'KeyH')) {
+            if (e.altKey && (e.key.toLowerCase() === 'n' || e.code === 'KeyN')) {
                 e.preventDefault();
                 togglePanelVisibility();
             }
@@ -655,6 +655,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

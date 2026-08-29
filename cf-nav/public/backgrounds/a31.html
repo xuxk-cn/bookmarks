@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -99,7 +99,7 @@
                 </svg>
                 <h3 class="font-bold text-sm text-slate-100 tracking-wide flex items-center gap-2">
                     <span>FXAA 控制台</span>
-                    <span class="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono">Alt+H</span>
+                    <span class="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono">Alt+N</span>
                 </h3>
             </div>
             <div class="flex items-center space-x-1.5">
@@ -108,7 +108,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 </button>
-                <button id="btn-close" class="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors" title="隐藏控制台 (Alt+H)">
+                <button id="btn-close" class="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors" title="隐藏控制台 (Alt+N)">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -634,7 +634,7 @@
             btnClose.addEventListener('click', toggleConsole);
 
             window.addEventListener('keydown', (e) => {
-                if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+                if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyN')) {
                     e.preventDefault();
                     toggleConsole();
                 }
@@ -761,6 +761,30 @@ function __applyToNav__() {
     btn.style.background = '#238636';
   }, 2000);
 }
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->

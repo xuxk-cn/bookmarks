@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -25,23 +25,6 @@
             display: block;
         }
         /* 底部提示文字 */
-        #ui-hint {
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
-            pointer-events: none;
-            letter-spacing: 1px;
-            transition: opacity 0.3s ease;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            background: rgba(0, 0, 0, 0.45);
-            padding: 8px 18px;
-            border-radius: 20px;
-            backdrop-filter: blur(6px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
         .hidden {
             opacity: 0;
             pointer-events: none !important;
@@ -95,7 +78,7 @@
 </head>
 <body>
     <div id="canvas-container"></div>
-    <div id="ui-hint">💡 提示：按 <b>Alt + H</b> 显示/隐藏中文控制台</div>
+
 
     <!-- 可拖拽现代化控制台面板 -->
     <div id="gui-container" class="hidden fixed top-6 right-6 w-80 bg-slate-950/75 backdrop-blur-xl text-slate-100 rounded-2xl border border-white/15 shadow-2xl z-50 select-none overflow-hidden transition-opacity duration-200">
@@ -539,7 +522,6 @@
         const guiContainer = document.getElementById('gui-container');
         const guiHeader = document.getElementById('gui-header');
         const guiCloseBtn = document.getElementById('gui-close-btn');
-        const uiHint = document.getElementById('ui-hint');
 
         let isGuiVisible = false;
 
@@ -573,17 +555,15 @@
             isGuiVisible = !isGuiVisible;
             if (isGuiVisible) {
                 guiContainer.classList.remove('hidden');
-                uiHint.classList.add('hidden');
             } else {
                 guiContainer.classList.add('hidden');
-                uiHint.classList.remove('hidden');
             }
         }
 
         guiCloseBtn.addEventListener('click', toggleGui);
 
         window.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key === 'h' || e.key === 'H' || e.code === 'KeyH')) {
+            if (e.altKey && (e.key === 'n' || e.key === 'N' || e.code === 'KeyN')) {
                 toggleGui();
                 e.preventDefault();
             }
@@ -660,6 +640,30 @@
 
         animate();
     </script>
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
+
 <!-- BG_PARAM_PERSIST -->
 <script>
 (function(){

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -84,7 +84,7 @@
         <div id="panel-body" class="p-4 space-y-5">
             <div class="text-xs text-slate-400 flex flex-col gap-1.5 border-b border-slate-700/50 pb-3 mb-1">
                 <div class="flex items-center gap-1">
-                    💡 <kbd class="bg-slate-700 px-1.5 py-0.5 rounded shadow-sm text-slate-200">Alt+H</kbd> 隐藏/显示面板
+                    💡 <kbd class="bg-slate-700 px-1.5 py-0.5 rounded shadow-sm text-slate-200">Alt+N</kbd> 隐藏/显示面板
                 </div>
                 <div class="flex items-center gap-1">
                     🖱️ 在画面上<span class="text-sky-300">拖拽鼠标</span>可旋转视角
@@ -222,9 +222,9 @@
         document.addEventListener('touchmove', (e) => onPanelDrag(e.touches[0].clientX, e.touches[0].clientY), {passive: true});
         document.addEventListener('touchend', endPanelDrag);
 
-        // 快捷键 Alt+H
+        // 快捷键 Alt+N
         document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'h') {
+            if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 const isHidden = panel.style.opacity === '0';
                 panel.style.opacity = isHidden ? '1' : '0';
@@ -605,6 +605,30 @@
       }, 2000);
     }
     </script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
 
 <!-- BG_PARAM_PERSIST -->
 <script>

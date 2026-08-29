@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -474,7 +474,7 @@
 
             let isVisible = false; // 默认隐藏
             window.addEventListener('keydown', (e) => {
-                if (e.altKey && e.key.toLowerCase() === 'h') {
+                if (e.altKey && e.key.toLowerCase() === 'n') {
                     e.preventDefault();
                     isVisible = !isVisible;
                     if (isVisible) {
@@ -535,7 +535,7 @@ function __applyToNav__() {
   }
   var _panel=null;
   document.addEventListener('keydown', function(ev){
-    if(ev.altKey && ev.key.toLowerCase()==='h'){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
       ev.preventDefault();
       var p=_panel||findPanel(); if(!p) return; _panel=p;
       var cur=p.style.display||getComputedStyle(p).display;

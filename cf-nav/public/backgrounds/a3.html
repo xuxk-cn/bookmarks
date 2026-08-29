@@ -163,7 +163,7 @@
             <div class="mt-2 text-[10px] text-gray-400 text-center leading-relaxed border-t border-white/5 pt-3">
                 * 在 Viewport 拖拽鼠标可微调流体中心偏置<br>
                 * 支持移动端触摸平移与动态响应<br>
-                * 按 Alt + H 隐藏 / 显示控制台
+                * 按 Alt + n 隐藏 / 显示控制台
             </div>
         </div>
     </aside>
@@ -564,7 +564,7 @@
         }
     </script>
 
-    <!-- 控制台默认隐藏 + Alt + H 快捷键开关 -->
+    <!-- 控制台默认隐藏 + Alt + n 快捷键开关 -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var p = document.getElementById('controlConsole');
@@ -572,9 +572,9 @@
                 // 默认隐藏控制台
                 p.style.display = 'none';
 
-                // Alt + H 切换显示 / 隐藏
+                // Alt + n 切换显示 / 隐藏
                 document.addEventListener('keydown', function (e) {
-                    if (e.altKey && e.key.toLowerCase() === 'h') {
+                    if (e.altKey && e.key.toLowerCase() === 'n') {
                         e.preventDefault();
                         p.style.display = (p.style.display === 'none') ? 'flex' : 'none';
                     }
@@ -598,6 +598,30 @@
       }, 2000);
     }
     </script>
+
+<script>
+/* UNIFORM_ALT_n */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
+</script>
 
 <!-- BG_PARAM_PERSIST -->
 <script>

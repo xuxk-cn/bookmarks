@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -197,11 +197,11 @@
     gui.add(params, 'mieScattering', 5.0, 100.0).name('雾霾浓度 (Mie)');
     gui.add(params, 'rayleighScattering', 0.1, 5.0).name('天空颜色深度 (Rayleigh)');
 
-    // 默认完全隐藏，按 Alt+H 呼出
+    // 默认完全隐藏，按 Alt+N 呼出
     gui.hide(); 
 
     window.addEventListener('keydown', (e) => {
-        if (e.altKey && e.key.toLowerCase() === 'h') {
+        if (e.altKey && e.key.toLowerCase() === 'n') {
             gui._hidden ? gui.show() : gui.hide();
         }
     });
@@ -714,6 +714,30 @@
 
     requestAnimationFrame(render);
 
+</script>
+
+<script>
+/* UNIFORM_ALT_H */
+(function(){
+  var IDS=['control-panel','console-panel','ui-panel','settings-panel','inspector','panelHeader','panel','gui'];
+  function findPanel(){
+    for(var i=0;i<IDS.length;i++){ var e=document.getElementById(IDS[i]); if(e) return e; }
+    var all=document.querySelectorAll('div');
+    for(var j=0;j<all.length;j++){ var e=all[j]; var s=getComputedStyle(e);
+      if(e.children.length>=2 && (s.position==='absolute'||s.position==='fixed') && e.querySelectorAll('input,select,button,canvas').length>=1)
+        return e; }
+    return null;
+  }
+  var _panel=null;
+  document.addEventListener('keydown', function(ev){
+    if(ev.altKey && ev.key.toLowerCase()==='n'){
+      ev.preventDefault();
+      var p=_panel||findPanel(); if(!p) return; _panel=p;
+      var cur=p.style.display||getComputedStyle(p).display;
+      p.style.display = (cur==='none') ? '' : 'none';
+    }
+  }, true);
+})();
 </script>
 
 <!-- BG_PARAM_PERSIST -->
