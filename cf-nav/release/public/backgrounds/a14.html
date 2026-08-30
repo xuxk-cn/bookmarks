@@ -715,19 +715,31 @@
     requestAnimationFrame(render);
 
 </script>
+
 <!-- BG_PARAM_PERSIST -->
 <script>
 (function(){
   var FILE = 'a14.html';
   var KEY = 'bgParams:' + FILE;
+  var __restoring = false;
+  var __lastSaved = null;
   function allControls(){ return Array.prototype.slice.call(document.querySelectorAll('input,select,textarea')); }
   function serialize(){
     var d = {}, els = allControls();
     els.forEach(function(el){ if(el.id) d[el.id] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value; });
     return d;
   }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
+  function save(){
+    if (__restoring) return;                          // 恢复期间不写，避免触发 storage 死循环
+    try{
+      var s = JSON.stringify(serialize());
+      if (s === __lastSaved) return;                  // 值没变就不写
+      __lastSaved = s;
+      localStorage.setItem(KEY, s);
+    }catch(e){}
+  }
   function restore(){
+    __restoring = true;
     try{
       var d = JSON.parse(localStorage.getItem(KEY) || '{}');
       Object.keys(d).forEach(function(id){
@@ -737,6 +749,7 @@
         try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
       });
     }catch(e){}
+    setTimeout(function(){ __restoring = false; }, 50);
   }
   document.addEventListener('input', save, true);
   document.addEventListener('change', save, true);

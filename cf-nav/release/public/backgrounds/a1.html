@@ -924,13 +924,6 @@
             toggleBtn.textContent = panel.classList.contains('hidden-panel') ? '▲' : '▼';
         });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'n') {
-                e.preventDefault();
-                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-            }
-        });
-
         // Draggable Panel Handler
         let isDragging = false, dragX = 0, dragY = 0;
         header.addEventListener('mousedown', (e) => {
