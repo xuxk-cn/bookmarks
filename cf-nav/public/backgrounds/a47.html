@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超真实 3D 细丝下雨模拟器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body, html { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #080c14; }
+
+    /* 背景图 */
+    #bg-container {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background-size: cover; background-position: center;
+      transition: background-image 0.5s ease-in-out;
+      z-index: 1; filter: brightness(0.85);
+    }
+
+    /* 3D 渲染画布 */
+    #webgl-canvas {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 2; pointer-events: none;
+    }
+
+    /* 阴影雨雾 */
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, rgba(15, 25, 35, 0.1) 0%, rgba(5, 10, 20, 0.6) 100%);
+      z-index: 3; pointer-events: none;
+    }
+
+    /* 快捷键提示条 */
+    #tip {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(0, 0, 0, 0.5); color: rgba(255, 255, 255, 0.85);
+      padding: 8px 14px; font-size: 13px; border-radius: 6px;
+      backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
+      z-index: 10;
+    }
+
+    /* 可拖动控制台 (默认隐藏) */
+    #control-panel {
+      position: absolute;
+      top: 80px; right: 24px; 
+      width: 320px;
+      background: rgba(18, 26, 38, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      color: #fff;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px);
+      z-index: 100;
+      opacity: 1; visibility: visible;
+      transform: scale(1);
+      transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+      overflow: hidden;
+    }
+
+    #control-panel.hidden {
+      opacity: 0; visibility: hidden;
+      transform: scale(0.95) translateY(10px);
+      pointer-events: none;
+    }
+
+    #panel-header {
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: move;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    #panel-header h2 { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
+    #btn-close { cursor: pointer; font-size: 16px; color: rgba(255, 255, 255, 0.6); }
+    #btn-close:hover { color: #fff; }
+
+    #panel-body { padding: 18px; }
+
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: rgba(255, 255, 255, 0.85); }
+    .val-badge { color: #70b7ff; font-family: monospace; }
+
+    select, input[type="range"] { width: 100%; outline: none; }
+    select {
+      background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; cursor: pointer;
+    }
+    select option { background: #192231; color: #fff; }
+
+    input[type="range"] { -webkit-appearance: none; height: 4px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; cursor: pointer; }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+      background: #70b7ff; box-shadow: 0 0 6px rgba(112, 183, 255, 0.6);
+    }
+
+    .audio-hint { font-size: 11px; color: rgba(255, 255, 255, 0.45); text-align: center; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <div id="bg-container"></div>
+  <div id="overlay"></div>
+  <canvas id="webgl-canvas"></canvas>
+
+  <div id="tip">按 <strong>Alt + N</strong> 打开/关闭控制台</div>
+
+  <div id="control-panel" class="hidden">
+    <div id="panel-header">
+      <h2>3D 下雨参数控制</h2>
+      <span id="btn-close" title="关闭 (Alt+N)">✕</span>
+    </div>
+    
+    <div id="panel-body">
+      <div class="form-group">
+        <label>背景画面</label>
+        <select id="bg-select">
+          <option value="https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/fbdb35da628149bcb879341682cf38ac~tplv-tb4s082cfz-aigc_resize:4096:4096.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=nKrUXiZgni9pnBcFCUb%2Fb6h9k0w%3D&format=.webp">静谧成排林荫街道 1 </option>
+          <option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/af2edf0294024951b153755351c97abd~tplv-tb4s082cfz-aigc_resize:4096:4096.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=9GnlsHG5ApOnzIbemWXx3v67rNQ%3D&format=.webp">静谧成排林荫街道 2 
+</option>
+          <option value="https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/1a042c02a2db48a182ed88b94024ffd1~tplv-tb4s082cfz-aigc_resize:4096:4096.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=8Pow1%2FwAxgk%2FJJfP%2FBD%2FzZimRCc%3D&format=.webp">静谧成排林荫街道 3 </option>
+            <option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/a579e8dcb4284bf1978c2826272a06ad~tplv-tb4s082cfz-aigc_resize:4096:4096.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=KeSft4UDmbEBeqnquFfo3s3B%2Fe0%3D&format=.webp">深山树林道路 1 </option>
+
+<option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3c94bd6671284f058707531df58b773c~tplv-tb4s082cfz-aigc_resize:720:720.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=zU90VLRjBTwMI%2FoLMuYj6UsPDd4%3D&format=.webp">湿润沥青小道 1 </option>
+
+<option value="https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3141a7f9652c441a9c0d954c6e888274~tplv-tb4s082cfz-aigc_resize:1080:1080.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=7NCJFghggJgMpEHJAbPWLJ3dkI8%3D&format=.webp">湿润沥青小道 2</option>
+
+<option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/89dea41cbf3a40329d736bb4df19d912~tplv-tb4s082cfz-aigc_resize:720:720.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=jzmTAojN0ic65JrD7pLG5EZFz%2Bk%3D&format=.webp">湿润沥青小道 3 </option>
+
+<option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/e17135a51d5c4c75b19d1a5290e13e28~tplv-tb4s082cfz-aigc_resize:1080:1080.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=jVcT%2Bb9kgvL5E3m8KN%2Brw4LJh5c%3D&format=.webp">幽静林荫石板步道 1 </option>
+
+<option value="https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/73193ae9eef0493ba2e4add7c117bb9f~tplv-tb4s082cfz-aigc_resize:720:720.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=ovH8HxPRc433E2WJp7UM8GPW4S8%3D&format=.webp">幽静林荫石板步道2</option>
+
+<option value="https://p11-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/b79e688791764e95b093d61c9945c989~tplv-tb4s082cfz-aigc_resize:720:720.webp?lk3s=7c3bb0db&x-expires=1789776000&x-signature=PkkFgsTM9I1Mnn088n3HUXzAYZA%3D&format=.webp">幽静林荫石板步道 3 </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>雨量 (雨丝密度)</span>
+          <span class="val-badge" id="val-amount">2500</span>
+        </label>
+        <input type="range" id="slider-amount" min="400" max="8000" step="100" value="2500">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>风向 (倾斜角度)</span>
+          <span class="val-badge" id="val-wind">0.8</span>
+        </label>
+        <input type="range" id="slider-wind" min="-6" max="6" step="0.2" value="0.8">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>下落速度</span>
+          <span class="val-badge" id="val-speed">32</span>
+        </label>
+        <input type="range" id="slider-speed" min="10" max="70" step="1" value="32">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>雨丝长度</span>
+          <span class="val-badge" id="val-length">1.6</span>
+        </label>
+        <input type="range" id="slider-length" min="0.5" max="4.0" step="0.1" value="1.6">
+      </div>
+
+      <div class="form-group">
+        <label>
+          <span>雨声音量</span>
+          <span class="val-badge" id="val-volume">35%</span>
+        </label>
+        <input type="range" id="slider-volume" min="0" max="1" step="0.01" value="0.35">
+      </div>
+
+      <div class="audio-hint">点击屏幕任意区域激活声音引擎</div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    /* ==============================================
+       1. 全局配置与参数
+       ============================================== */
+    const params = {
+      amount: 2500,
+      wind: 0.8,
+      speed: 32,
+      length: 1.6,
+      volume: 0.35,
+      bounds: { x: 160, y: 120, z: 140 } // 空间生成包围盒
+    };
+
+    const panel = document.getElementById('control-panel');
+    const bgContainer = document.getElementById('bg-container');
+    const bgSelect = document.getElementById('bg-select');
+    
+    bgContainer.style.backgroundImage = `url('${bgSelect.value}')`;
+    bgSelect.addEventListener('change', (e) => bgContainer.style.backgroundImage = `url('${e.target.value}')`);
+
+    /* ==============================================
+       2. 控制台拖动逻辑
+       ============================================== */
+    const header = document.getElementById('panel-header');
+    let isDragging = false;
+    let dragOffsetX = 0, dragOffsetY = 0;
+
+    header.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragOffsetX = e.clientX - panel.offsetLeft;
+      dragOffsetY = e.clientY - panel.offsetTop;
+      panel.style.transition = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      let left = Math.max(10, Math.min(window.innerWidth - panel.offsetWidth - 10, e.clientX - dragOffsetX));
+      let top = Math.max(10, Math.min(window.innerHeight - panel.offsetHeight - 10, e.clientY - dragOffsetY));
+      panel.style.left = left + 'px';
+      panel.style.top = top + 'px';
+      panel.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        panel.style.transition = 'opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease';
+      }
+    });
+
+    /* ==============================================
+       3. 3D 细丝线段雨渲染系统 (LineSegments)
+       ============================================== */
+    const canvasWebGL = document.getElementById('webgl-canvas');
+    let scene, camera, renderer;
+    let rainLines, rainGeometry, positions, dropData;
+
+    function initThree() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 500);
+      camera.position.set(0, 0, 75);
+
+      renderer = new THREE.WebGLRenderer({ canvas: canvasWebGL, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      buildRainSystem();
+      animate();
+    }
+
+    function buildRainSystem() {
+      if (rainLines) scene.remove(rainLines);
+
+      // 每根雨丝由 2 个顶点 (起点与终点) 构成
+      const totalVertices = params.amount * 2;
+      positions = new Float32Array(totalVertices * 3);
+      dropData = [];
+
+      for (let i = 0; i < params.amount; i++) {
+        // 初始中心坐标与独立下落权重
+        const x = (Math.random() - 0.5) * params.bounds.x * 2;
+        const y = (Math.random() - 0.5) * params.bounds.y * 2;
+        const z = (Math.random() - 0.5) * params.bounds.z;
+        const speedWeight = 0.75 + Math.random() * 0.5;
+
+        dropData.push({ x, y, z, speedWeight });
+
+        const idx = i * 6;
+        // 顶点 1 (顶部)
+        positions[idx] = x;
+        positions[idx + 1] = y;
+        positions[idx + 2] = z;
+        // 顶点 2 (底部细丝)
+        positions[idx + 3] = x;
+        positions[idx + 4] = y - params.length;
+        positions[idx + 5] = z;
+      }
+
+      rainGeometry = new THREE.BufferGeometry();
+      rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      // 真实半透明轻量材质
+      const rainMaterial = new THREE.LineBasicMaterial({
+        color: 0x9cb8d9,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+      });
+
+      rainLines = new THREE.LineSegments(rainGeometry, rainMaterial);
+      scene.add(rainLines);
+    }
+
+    let lastTime = performance.now();
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const now = performance.now();
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      const pos = rainGeometry.attributes.position.array;
+      const fallSpeed = params.speed * 4;
+      const windSpeed = params.wind * 4;
+
+      for (let i = 0; i < params.amount; i++) {
+        const drop = dropData[i];
+        
+        // 物理位移更新
+        drop.y -= fallSpeed * drop.speedWeight * dt;
+        drop.x += windSpeed * drop.speedWeight * dt;
+
+        // 边界循环：掉出底部或移出两侧时复位
+        if (drop.y < -params.bounds.y) {
+          drop.y = params.bounds.y + (Math.random() * 10);
+          drop.x = (Math.random() - 0.5) * params.bounds.x * 2;
+        }
+        if (drop.x > params.bounds.x) drop.x = -params.bounds.x;
+        if (drop.x < -params.bounds.x) drop.x = params.bounds.x;
+
+        const idx = i * 6;
+        // 雨丝两端计算（产生自然倾斜拉伸）
+        pos[idx] = drop.x;
+        pos[idx + 1] = drop.y;
+        pos[idx + 2] = drop.z;
+
+        pos[idx + 3] = drop.x - (params.wind * 0.15 * params.length);
+        pos[idx + 4] = drop.y - params.length * drop.speedWeight;
+        pos[idx + 5] = drop.z;
+      }
+
+      rainGeometry.attributes.position.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+
+    /* ==============================================
+       4. 无采样循环高保真雨声引擎
+       ============================================== */
+    let audioCtx, masterGain, rainFilter;
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(params.volume, audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+
+      const bufferSize = 4096;
+      const noiseNode = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      
+      noiseNode.onaudioprocess = function(e) {
+        const out = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          out[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.07;
+          b6 = white * 0.115926;
+        }
+      };
+
+      rainFilter = audioCtx.createBiquadFilter();
+      rainFilter.type = 'lowpass';
+      updateAudioParams();
+
+      noiseNode.connect(rainFilter);
+      rainFilter.connect(masterGain);
+
+      // 单击水滴细微声
+      function scheduleDrop() {
+        if (!audioCtx || params.volume < 0.01) { setTimeout(scheduleDrop, 400); return; }
+        const interval = (Math.random() * 120 + 40) / Math.max(0.3, params.amount / 2500);
+        
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.setValueAtTime(Math.random() * 1000 + 500, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.04);
+        
+        g.gain.setValueAtTime(Math.random() * 0.02 * params.volume, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
+        
+        osc.connect(g); g.connect(masterGain);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.045);
+        
+        setTimeout(scheduleDrop, interval);
+      }
+      scheduleDrop();
+    }
+
+    function updateAudioParams() {
+      if (!audioCtx) return;
+      masterGain.gain.setTargetAtTime(params.volume, audioCtx.currentTime, 0.05);
+      const freq = 600 + (params.amount / 8000) * 1800;
+      rainFilter.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+    }
+
+    /* ==============================================
+       5. 交互绑定
+       ============================================== */
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey && (e.key === 'n' || e.key === 'N' || e.code === 'KeyN')) {
+        e.preventDefault();
+        panel.classList.toggle('hidden');
+      }
+    });
+
+    document.getElementById('btn-close').addEventListener('click', () => panel.classList.add('hidden'));
+    
+    window.addEventListener('pointerdown', () => {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }, { once: true });
+
+    window.addEventListener('resize', () => {
+      if (!renderer) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const bindSlider = (id, paramKey, valId, callback) => {
+      const slider = document.getElementById(id);
+      const badge = document.getElementById(valId);
+      slider.addEventListener('input', (e) => {
+        let val = parseFloat(e.target.value);
+        params[paramKey] = val;
+        badge.textContent = paramKey === 'volume' ? Math.round(val * 100) + '%' : val;
+        if (callback) callback();
+      });
+    };
+
+    bindSlider('slider-amount', 'amount', 'val-amount', () => { buildRainSystem(); updateAudioParams(); });
+    bindSlider('slider-wind', 'wind', 'val-wind');
+    bindSlider('slider-speed', 'speed', 'val-speed');
+    bindSlider('slider-length', 'length', 'val-length');
+    bindSlider('slider-volume', 'volume', 'val-volume', updateAudioParams);
+
+    initThree();
+  </script>
+</body>
+</html>
