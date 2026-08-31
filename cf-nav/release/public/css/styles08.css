@@ -1,0 +1,132 @@
+/* ===================================================================
+   风格 8 · 日系木漏（Komorebi · 暖色治愈 lofi）
+   参考：komorebi-startpage（木漏れ日 = 阳光透过树叶）
+   作用对象：public/index.html 真实 DOM
+   机制：:root 变量 + 全局类名覆盖
+   =================================================================== */
+
+:root {
+  --bg:        #f7f3ea;
+  --card-bg:   #fffdf7;
+  --border:    #e6dfd0;
+  --text:      #5a4f3f;
+  --muted:     #a89a86;
+  --accent:    #7d9b6a;
+  --hover-bg:  #f3ede1;
+  --radius:    1rem;
+  --card-radius: 1rem;
+}
+
+body {
+  background:
+    radial-gradient(circle at 82% 8%, rgba(125,155,106,0.12), transparent 35%),
+    radial-gradient(circle at 12% 20%, rgba(232,178,120,0.10), transparent 40%),
+    var(--bg);
+  color: var(--text);
+}
+#app { background: transparent; }
+
+header {
+  background: transparent;
+  text-align: center;
+  padding: 2.4rem 1rem 0.8rem;
+}
+h1 {
+  color: var(--text);
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.site-desc { color: var(--muted); font-size: 0.85rem; }
+.header-settings-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 9999px;
+}
+.header-settings-btn:hover { color: var(--text); border-color: var(--accent); }
+
+.navbar { gap: 0.4rem; padding: 0.9rem; }
+.navbar button {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 9999px;
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  transition: all 0.18s;
+}
+.navbar button:hover { color: var(--text); border-color: var(--accent); }
+.navbar button.active {
+  background: var(--accent);
+  color: #fffdf7;
+  border-color: var(--accent);
+}
+
+.search-wrap input {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 9999px;
+}
+.search-wrap input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(125,155,106,0.18);
+}
+.search-clear { color: var(--muted); }
+.search-info { color: var(--muted); }
+
+.container.cards-style1 .card,
+.container.cards-style2 .card,
+.container.cards-style3 .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: 0 2px 8px rgba(90,79,63,0.05);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.container.cards-style1 .card:hover,
+.container.cards-style2 .card:hover,
+.container.cards-style3 .card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(90,79,63,0.1);
+}
+.container.cards-style1 .card-icon,
+.container.cards-style2 .card-icon,
+.container.cards-style3 .card-icon,
+.container.cards-style1 .card-icon-placeholder,
+.container.cards-style2 .card-icon-placeholder,
+.container.cards-style3 .card-icon-placeholder {
+  background: transparent;
+  border-radius: 0.8rem;
+}
+.container.cards-style1 .card-icon-placeholder,
+.container.cards-style2 .card-icon-placeholder,
+.container.cards-style3 .card-icon-placeholder { background: var(--hover-bg); color: var(--accent); }
+.container.cards-style1 .card-title,
+.container.cards-style2 .card-title,
+.container.cards-style3 .card-title { color: var(--text); }
+
+#tooltip { background: rgba(90,79,63,0.96); color: #fffdf7; border: 1px solid var(--accent); }
+#tooltip .tt-url { color: #cfe0c0; }
+#tooltip .tt-desc { color: #fffdf7; }
+
+.settings-modal { background: rgba(247,243,234,0.6); backdrop-filter: blur(6px); }
+.settings-modal-box { background: var(--card-bg); border: 1px solid var(--border); }
+.settings-modal-header { border-bottom: 1px solid var(--border); color: var(--text); }
+.settings-modal-close { color: var(--muted); }
+.settings-modal-close:hover { color: var(--text); }
+.settings-group-title { color: var(--muted); }
+.settings-label { color: var(--text); }
+.settings-divider { background: var(--border); }
+.settings-select { background: var(--card-bg); border-color: var(--border); color: var(--text); }
+.settings-select:focus { border-color: var(--accent); }
+.settings-music-url input { background: var(--card-bg); border-color: var(--border); color: var(--text); }
+.settings-music-url input:focus { border-color: var(--accent); }
+.settings-console-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); }
+.settings-console-btn:hover { border-color: var(--accent); color: var(--accent); }
+.toggle-track { background: var(--border); }
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+#back-to-nav-btn { background: var(--card-bg); color: var(--accent); border: 1px solid var(--accent); }
+#back-to-nav-btn:hover { background: var(--hover-bg); }

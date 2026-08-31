@@ -61,6 +61,10 @@ const STYLES_MAP = {
   'styles2.html':  '风格 2 · Bento 便当盒',
   'styles3.html':  '风格 3 · 卡片仪表盘',
   'styles4.html':  '风格 4 · 新标签页中性',
+  'styles5.html':  '风格 5 · 赛博霓虹',
+  'styles6.html':  '风格 6 · 东京之夜',
+  'styles7.html':  '风格 7 · 极简瑞士',
+  'styles8.html':  '风格 8 · 日系木漏',
 };
 
 export function onRequestGet() {

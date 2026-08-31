@@ -1,0 +1,132 @@
+/* ===================================================================
+   风格 5 · 赛博霓虹（Cyberpunk Neon · 深黑 + 洋红/青发光）
+   参考：Cyberpunk-Neon
+   作用对象：public/index.html 真实 DOM
+   机制：:root 变量 + 全局类名覆盖
+   =================================================================== */
+
+:root {
+  --bg:        #0a0a0f;
+  --card-bg:   #12121a;
+  --border:    #2a2a3a;
+  --text:      #e6f0ff;
+  --muted:     #7a8baa;
+  --accent:    #ff2a8a;
+  --accent2:   #00f0ff;
+  --hover-bg:  #1b1b28;
+  --radius:    0.4rem;
+  --card-radius: 0.4rem;
+}
+
+body {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,42,138,0.12), transparent 45%),
+    radial-gradient(circle at 80% 10%, rgba(0,240,255,0.10), transparent 45%),
+    var(--bg);
+  color: var(--text);
+}
+#app { background: transparent; }
+
+header {
+  background: transparent;
+  text-align: center;
+  padding: 2rem 1rem 0.6rem;
+}
+h1 {
+  color: var(--text);
+  font-size: 1.8rem;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 12px var(--accent), 0 0 24px rgba(255,42,138,0.5);
+}
+.site-desc { color: var(--muted); font-size: 0.85rem; }
+.header-settings-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--accent);
+  color: var(--accent2);
+  box-shadow: 0 0 10px rgba(0,240,255,0.2);
+}
+.header-settings-btn:hover { border-color: var(--accent2); color: var(--accent); }
+
+.navbar { gap: 0.4rem; padding: 0.8rem; }
+.navbar button {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 0.3rem;
+  padding: 0.35rem 0.9rem;
+  transition: all 0.18s;
+}
+.navbar button:hover { color: var(--accent2); border-color: var(--accent2); }
+.navbar button.active {
+  background: rgba(255,42,138,0.15);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(255,42,138,0.4);
+}
+
+.search-wrap input {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 0.3rem;
+}
+.search-wrap input:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 2px rgba(0,240,255,0.25), 0 0 12px rgba(0,240,255,0.3);
+}
+.search-clear { color: var(--muted); }
+.search-info { color: var(--muted); }
+
+.container.cards-style1 .card,
+.container.cards-style2 .card,
+.container.cards-style3 .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.container.cards-style1 .card:hover,
+.container.cards-style2 .card:hover,
+.container.cards-style3 .card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(255,42,138,0.35);
+  transform: translateY(-2px);
+}
+.container.cards-style1 .card-icon,
+.container.cards-style2 .card-icon,
+.container.cards-style3 .card-icon,
+.container.cards-style1 .card-icon-placeholder,
+.container.cards-style2 .card-icon-placeholder,
+.container.cards-style3 .card-icon-placeholder {
+  background: transparent;
+  border-radius: 0.3rem;
+}
+.container.cards-style1 .card-icon-placeholder,
+.container.cards-style2 .card-icon-placeholder,
+.container.cards-style3 .card-icon-placeholder { background: var(--hover-bg); color: var(--accent2); }
+.container.cards-style1 .card-title,
+.container.cards-style2 .card-title,
+.container.cards-style3 .card-title { color: var(--text); }
+
+#tooltip { background: rgba(10,10,15,0.95); color: var(--text); border: 1px solid var(--accent); }
+#tooltip .tt-url { color: var(--accent2); }
+#tooltip .tt-desc { color: var(--text); }
+
+.settings-modal { background: rgba(10,10,15,0.6); backdrop-filter: blur(6px); }
+.settings-modal-box { background: var(--card-bg); border: 1px solid var(--border); }
+.settings-modal-header { border-bottom: 1px solid var(--border); color: var(--text); }
+.settings-modal-close { color: var(--muted); }
+.settings-modal-close:hover { color: var(--text); }
+.settings-group-title { color: var(--muted); }
+.settings-label { color: var(--text); }
+.settings-divider { background: var(--border); }
+.settings-select { background: var(--card-bg); border-color: var(--border); color: var(--text); }
+.settings-select:focus { border-color: var(--accent); }
+.settings-music-url input { background: var(--card-bg); border-color: var(--border); color: var(--text); }
+.settings-music-url input:focus { border-color: var(--accent); }
+.settings-console-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); }
+.settings-console-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.toggle-track { background: var(--border); }
+.toggle-switch input:checked + .toggle-track { background: var(--accent); }
+#back-to-nav-btn { background: var(--card-bg); color: var(--accent2); border: 1px solid var(--accent2); }
+#back-to-nav-btn:hover { background: var(--hover-bg); }
