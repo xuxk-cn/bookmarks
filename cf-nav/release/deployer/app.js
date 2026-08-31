@@ -37,10 +37,10 @@ async function loadAccounts() {
 
 // ─── 部署 ────────────────────────────────────────────────────────
 // 与 cf-nav/release/public 下需部署的静态文件清单保持一致
-// 三个 CDN 镜像按优先级尝试，避免单一来源被限流。
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/xuxk-cn/bookmarks/master/cf-nav/release'; // 末位回退
-const CDN_BASE        = 'https://cdn.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';         // 主：jsdelivr
-const CDN_BASE_ALT    = 'https://fastly.jsdelivr.net/gh/xuxk-cn/bookmarks@master/cf-nav/release';     // 备：fastly 镜像
+// 文件内容一律从 raw.githubusercontent.com@<commitSha> 拉取：
+// SHA 固定不可变，任何 CDN 都不会返回旧版本（jsDelivr @master 有缓存且忽略参数，已弃用）
+const REPO = 'xuxk-cn/bookmarks';
+let SRC_BASE = ''; // deploy() 里由 prepare 返回的 commitSha 填充
 const PUBLIC_FILES = [
   '_headers',
   'admin/index.html',
@@ -55,25 +55,17 @@ const PUBLIC_FILES = [
   'backgrounds/a33.html','backgrounds/a34.html','backgrounds/a35.html','backgrounds/a36.html',
   'backgrounds/a37.html','backgrounds/a38.html','backgrounds/a39.html','backgrounds/a40.html',
   'backgrounds/a41.html','backgrounds/a42.html','backgrounds/a43.html','backgrounds/a44.html',
-  'backgrounds/a45.html','backgrounds/a46.html',
+  'backgrounds/a45.html','backgrounds/a46.html','backgrounds/a47.html',
+  'backgrounds/three.min.js',
   'backgrounds/aurora.js','backgrounds/forest.js','backgrounds/matrix.js','backgrounds/particles.js',
   'backgrounds/rain.html','backgrounds/rain.js','backgrounds/sakura.js','backgrounds/snow.js',
   'backgrounds/stars.js','backgrounds/stream.js',
-  'backgrounds/styles1.html','backgrounds/styles2.html','backgrounds/styles3.html',
-  'backgrounds/styles4.html','backgrounds/styles5.html','backgrounds/styles6.html',
-  'backgrounds/styles7.html','backgrounds/styles8.html','backgrounds/styles9.html',
-  'backgrounds/styles10.html','backgrounds/styles11.html','backgrounds/styles12.html',
-  'backgrounds/styles13.html','backgrounds/styles14.html','backgrounds/styles15.html',
-  'backgrounds/styles16.html',
   'bg-preview.html',
   'css/main.css',
   'css/beauty.css',
-  'css/styles01.css','css/styles02.css','css/styles03.css','css/styles04.css',
-  'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css',
-  'css/styles09.css','css/styles10.css','css/styles11.css','css/styles12.css',
-  'css/styles13.css','css/styles14.css','css/styles15.css','css/styles16.css',
+  'css/styles01.css','css/styles02.css','css/styles03.css',
   'index.html',
-  'js/background.js','js/beauty.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
+  'js/background.js','js/beauty.js','js/hover-module.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
   'style-preview.html',
 ];
 
@@ -115,6 +107,10 @@ async function deploy() {
     log('\n[1/3] 准备环境...');
     const prepare = await post('/api/deploy/prepare', basePayload);
     (prepare.logs || []).forEach(log);
+
+    if (!prepare.commitSha) throw new Error('prepare 未返回 commitSha');
+    SRC_BASE = `https://raw.githubusercontent.com/${REPO}/${prepare.commitSha}/cf-nav/release`;
+    log(`代码源: GitHub raw @ ${prepare.commitSha.slice(0, 10)}`);
 
     const { accountId, projectName, jwt } = prepare;
     const manifest = {};
@@ -189,35 +185,22 @@ async function fetchBatchBase64(paths) {
   return out;
 }
 
-// 带重试的 CDN 拉取：依次尝试 jsdelivr(主)、jsdelivr(gh)、raw 退避回退
+// 带重试的拉取：raw@SHA 内容不可变，失败按指数退避重试 3 次
 async function fetchWithRetry(path) {
-  const urls = [
-    `${CDN_BASE}/public/${path}`,
-    `${CDN_BASE_ALT}/public/${path}`,
-    `${GITHUB_RAW_BASE}/public/${path}`,
-  ];
+  const url = `${SRC_BASE}/public/${path}`;
   const backoffs = [0, 600, 2500];
   let lastErr = null;
-  for (let i = 0; i < urls.length; i++) {
-    // 等待退避
-    if (backoffs[i] > 0) await sleep(backoffs[i]);
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const resp = await fetch(urls[i], { cache: 'no-cache' });
-        if (resp.ok) return await resp.arrayBuffer();
-        if (resp.status === 404) throw new Error(`拉取 ${path} 失败: 404 (文件不存在)`);
-        if (resp.status === 429 || resp.status >= 500) {
-          // 限流或服务端错误，退避重试
-          lastErr = new Error(`拉取 ${path} 失败: ${resp.status}`);
-          await sleep(500 * Math.pow(2, attempt));
-          continue;
-        }
-        throw new Error(`拉取 ${path} 失败: ${resp.status}`);
-      } catch (e) {
-        if (String(e.message).includes('404')) throw e;
-        lastErr = e;
-        await sleep(500 * Math.pow(2, attempt));
-      }
+  for (let attempt = 0; attempt < backoffs.length; attempt++) {
+    if (backoffs[attempt] > 0) await sleep(backoffs[attempt]);
+    try {
+      const resp = await fetch(url, { cache: 'no-cache' });
+      if (resp.ok) return await resp.arrayBuffer();
+      if (resp.status === 404) throw new Error(`拉取 ${path} 失败: 404 (文件不存在)`);
+      lastErr = new Error(`拉取 ${path} 失败: ${resp.status}`);
+      await sleep(500 * Math.pow(2, attempt));
+    } catch (e) {
+      if (String(e.message).includes('404')) throw e;
+      lastErr = e;
     }
   }
   throw lastErr || new Error(`拉取 ${path} 失败`);

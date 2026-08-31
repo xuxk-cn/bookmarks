@@ -60,7 +60,6 @@ const PUBLIC_FILES = [
   'backgrounds/aurora.js','backgrounds/forest.js','backgrounds/matrix.js','backgrounds/particles.js',
   'backgrounds/rain.html','backgrounds/rain.js','backgrounds/sakura.js','backgrounds/snow.js',
   'backgrounds/stars.js','backgrounds/stream.js',
-  'backgrounds/styles1.html','backgrounds/styles2.html','backgrounds/styles3.html',
   'bg-preview.html',
   'css/main.css',
   'css/beauty.css',

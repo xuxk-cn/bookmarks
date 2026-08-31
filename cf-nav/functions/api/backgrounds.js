@@ -53,12 +53,14 @@ const NAME_MAP = {
 };
 
 // 已重写为"真皮肤 CSS"（基于 index.html 真实 DOM）的风格列表；
-// 只有出现在这里、且 public/css/stylesNN.css 已重写好的风格才会暴露给用户。
-// 后续重写新的 skin CSS 后，往这里加一行即可。
+// 只有出现在这里、且 public/css/stylesNN.css 已写好的风格才会暴露给用户。
+// 扩展接口：新增皮肤 = ①新建 public/css/stylesNN.css（:root 变量 + 类名覆盖）
+//                   ②在此 map 加一行 'stylesN.html': '名字'
 const STYLES_MAP = {
   'styles1.html':  '风格 1 · 经典蓝白',
-  'styles2.html':  '风格 2 · 星河渐变',
-  'styles3.html':  '风格 3 · 黑曜石',
+  'styles2.html':  '风格 2 · Bento 便当盒',
+  'styles3.html':  '风格 3 · 卡片仪表盘',
+  'styles4.html':  '风格 4 · 新标签页中性',
 };
 
 export function onRequestGet() {
