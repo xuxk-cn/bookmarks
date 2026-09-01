@@ -391,8 +391,13 @@ var NAME_MAP = {
 };
 var STYLES_MAP = {
   "styles1.html": "\u98CE\u683C 1 \xB7 \u7ECF\u5178\u84DD\u767D",
-  "styles2.html": "\u98CE\u683C 2 \xB7 \u661F\u6CB3\u6E10\u53D8",
-  "styles3.html": "\u98CE\u683C 3 \xB7 \u9ED1\u66DC\u77F3"
+  "styles2.html": "\u98CE\u683C 2 \xB7 Bento \u4FBF\u5F53\u76D2",
+  "styles3.html": "\u98CE\u683C 3 \xB7 \u5361\u7247\u4EEA\u8868\u76D8",
+  "styles4.html": "\u98CE\u683C 4 \xB7 \u65B0\u6807\u7B7E\u9875\u4E2D\u6027",
+  "styles5.html": "\u98CE\u683C 5 \xB7 \u8D5B\u535A\u9713\u8679",
+  "styles6.html": "\u98CE\u683C 6 \xB7 \u4E1C\u4EAC\u4E4B\u591C",
+  "styles7.html": "\u98CE\u683C 7 \xB7 \u6781\u7B80\u745E\u58EB",
+  "styles8.html": "\u98CE\u683C 8 \xB7 \u65E5\u7CFB\u6728\u6F0F"
 };
 function onRequestGet4() {
   const files = Object.entries(NAME_MAP).map(([file, name]) => ({ file, name }));
