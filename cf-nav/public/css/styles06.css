@@ -1,11 +1,10 @@
 /* ===================================================================
    风格 6 · 东京之夜（Tokyo Night · 深蓝紫 + 霓虹点缀）
-   参考：tokyonight-startpage
-   作用对象：public/index.html 真实 DOM
-   机制：:root 变量 + 全局类名覆盖
+   机制：body[data-style-id="6"] 作用域
+   布局：大标题 + 左对齐导航 + 双列编号列表（每卡带序号，下划线 hover）
    =================================================================== */
 
-:root {
+body[data-style-id="6"] {
   --bg:        #1a1b26;
   --card-bg:   #24283b;
   --border:    #3b4261;
@@ -15,32 +14,26 @@
   --hover-bg:  #2f3549;
   --radius:    0.5rem;
   --card-radius: 0.5rem;
-}
-
-body { background: var(--bg); color: var(--text); }
-#app { background: transparent; }
-
-header {
-  background: linear-gradient(180deg, #1e2030 0%, transparent 100%);
-  text-align: center;
-  padding: 2rem 1rem 0.8rem;
-}
-h1 {
+  background: var(--bg);
   color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body[data-style-id="6"] header {
+  background: linear-gradient(180deg, #1e2030 0%, transparent 100%);
+  text-align: left;
+  padding: 2rem 2rem 0.8rem;
+}
+body[data-style-id="6"] h1 {
   font-size: 1.8rem;
   letter-spacing: 0.05em;
   text-shadow: 0 0 16px rgba(122,162,247,0.35);
 }
-.site-desc { color: var(--muted); font-size: 0.85rem; }
-.header-settings-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-}
-.header-settings-btn:hover { color: var(--accent); border-color: var(--accent); }
+body[data-style-id="6"] .site-desc { color: var(--muted); font-size: 0.85rem; }
 
-.navbar { gap: 0.4rem; padding: 0.8rem; }
-.navbar button {
+/* navbar 左对齐 */
+body[data-style-id="6"] .navbar { justify-content: flex-start; gap: 0.4rem; padding: 0.8rem 2rem; }
+body[data-style-id="6"] .navbar button {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--muted);
@@ -48,76 +41,62 @@ h1 {
   padding: 0.35rem 0.9rem;
   transition: all 0.18s;
 }
-.navbar button:hover { color: var(--accent); border-color: var(--accent); }
-.navbar button.active {
+body[data-style-id="6"] .navbar button:hover { color: var(--accent); border-color: var(--accent); }
+body[data-style-id="6"] .navbar button.active {
   background: rgba(122,162,247,0.16);
   color: var(--accent);
   border-color: var(--accent);
 }
 
-.search-wrap input {
+body[data-style-id="6"] .search-wrap { max-width: 560px; margin-left: auto; margin-right: auto; }
+body[data-style-id="6"] .search-wrap input {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 0.4rem;
 }
-.search-wrap input:focus {
+body[data-style-id="6"] .search-wrap input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(122,162,247,0.2);
 }
-.search-clear { color: var(--muted); }
-.search-info { color: var(--muted); }
 
-.container.cards-style1 .card,
-.container.cards-style2 .card,
-.container.cards-style3 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--card-radius);
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+/* 卡片：双列编号列表，行卡，悬停下划线 */
+body[data-style-id="6"] .container {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  max-width: 1000px;
 }
-.container.cards-style1 .card:hover,
-.container.cards-style2 .card:hover,
-.container.cards-style3 .card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 16px rgba(122,162,247,0.2);
-  transform: translateY(-2px);
-}
-.container.cards-style1 .card-icon,
-.container.cards-style2 .card-icon,
-.container.cards-style3 .card-icon,
-.container.cards-style1 .card-icon-placeholder,
-.container.cards-style2 .card-icon-placeholder,
-.container.cards-style3 .card-icon-placeholder {
+body[data-style-id="6"] .container .card {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  gap: 0.8rem;
   background: transparent;
-  border-radius: 0.4rem;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 0.6rem 0.5rem;
+  min-height: 48px;
+  counter-increment: none;
+  transition: border-color 0.15s, background 0.15s;
 }
-.container.cards-style1 .card-icon-placeholder,
-.container.cards-style2 .card-icon-placeholder,
-.container.cards-style3 .card-icon-placeholder { background: var(--hover-bg); color: var(--accent); }
-.container.cards-style1 .card-title,
-.container.cards-style2 .card-title,
-.container.cards-style3 .card-title { color: var(--text); }
+body[data-style-id="6"] .container .card:hover {
+  border-color: transparent;
+  border-bottom-color: var(--accent);
+  background: var(--hover-bg);
+  transform: none;
+  box-shadow: none;
+}
+body[data-style-id="6"] .container .card-icon,
+body[data-style-id="6"] .container .card-icon-placeholder { margin: 0; border-radius: 0.4rem; }
+body[data-style-id="6"] .container .card-title { color: var(--text); font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-style-id="6"] .container .card-body { flex: 1; min-width: 0; }
+body[data-style-id="6"] .container .card-desc,
+body[data-style-id="6"] .container .card-cat-badge { color: var(--accent); font-size: 0.72rem; }
 
-#tooltip { background: rgba(26,27,38,0.96); color: var(--text); border: 1px solid var(--accent); }
-#tooltip .tt-url { color: var(--accent); }
-#tooltip .tt-desc { color: var(--text); }
+@media (max-width: 720px) {
+  body[data-style-id="6"] .container { grid-template-columns: 1fr; }
+}
 
-.settings-modal { background: rgba(26,27,38,0.6); backdrop-filter: blur(6px); }
-.settings-modal-box { background: var(--card-bg); border: 1px solid var(--border); }
-.settings-modal-header { border-bottom: 1px solid var(--border); color: var(--text); }
-.settings-modal-close { color: var(--muted); }
-.settings-modal-close:hover { color: var(--text); }
-.settings-group-title { color: var(--muted); }
-.settings-label { color: var(--text); }
-.settings-divider { background: var(--border); }
-.settings-select { background: var(--card-bg); border-color: var(--border); color: var(--text); }
-.settings-select:focus { border-color: var(--accent); }
-.settings-music-url input { background: var(--card-bg); border-color: var(--border); color: var(--text); }
-.settings-music-url input:focus { border-color: var(--accent); }
-.settings-console-btn { background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); }
-.settings-console-btn:hover { border-color: var(--accent); color: var(--accent); }
-.toggle-track { background: var(--border); }
-.toggle-switch input:checked + .toggle-track { background: var(--accent); }
-#back-to-nav-btn { background: var(--card-bg); color: var(--accent); border: 1px solid var(--accent); }
-#back-to-nav-btn:hover { background: var(--hover-bg); }
+body[data-style-id="6"] #tooltip { background: rgba(26,27,38,0.96); border: 1px solid var(--accent); }
+body[data-style-id="6"] .settings-modal-box { background: var(--card-bg); border: 1px solid var(--border); }

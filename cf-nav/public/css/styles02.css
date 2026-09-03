@@ -1,160 +1,117 @@
 /* ===================================================================
-   风格 2 · Bento 便当盒（Glassmorphism + Catppuccin Mocha）
-   参考：migueravila/Bento 极简 startpage 的玻璃拟态 + 不规则圆角卡片
-   作用对象：public/index.html 真实 DOM（覆盖 cards-style1/2/3 三套布局）
-   机制：:root 变量 + 全局类名覆盖
+   风格 2 · Bento 便当盒（玻璃拟态 + Catppuccin Mocha）
+   机制：body[data-style-id="2"] 作用域
+   布局：居中大标题 + 悬浮玻璃搜索胶囊 + 卡片网格，圆角大、大小混排
    =================================================================== */
 
-:root {
+body[data-style-id="2"] {
   --bg:        #1e1e2e;
   --card-bg:   rgba(49,50,68,0.55);
   --border:    rgba(203,166,247,0.18);
   --text:      #cdd6f4;
   --muted:     #a6adc8;
   --accent:    #89b4fa;
+  --accent2:   #f5c2e7;
   --hover-bg:  rgba(69,71,90,0.6);
   --radius:    1.25rem;
   --card-radius: 1.25rem;
-}
-
-body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at 15% 10%, rgba(137,180,250,0.18), transparent 40%),
     radial-gradient(circle at 85% 15%, rgba(245,194,231,0.16), transparent 42%),
     linear-gradient(180deg, #1e1e2e 0%, #181825 100%);
   color: var(--text);
+  min-height: 100vh;
 }
-#app { background: transparent; }
 
-/* header：居中渐变标题 */
-header {
-  background: transparent;
+body[data-style-id="2"] header {
   text-align: center;
-  padding: 2.5rem 1rem 0.5rem;
+  padding: 2.5rem 1rem 0.4rem;
+  background: transparent;
 }
-h1 {
-  background: linear-gradient(90deg, #89b4fa, #f5c2e7);
+body[data-style-id="2"] h1 {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  font-size: 1.9rem;
+  font-size: 2rem;
   letter-spacing: 0.04rem;
 }
-.site-desc { color: var(--muted); font-size: 0.88rem; }
-.header-settings-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  backdrop-filter: blur(10px);
-}
-.header-settings-btn:hover { color: var(--text); border-color: var(--accent); }
+body[data-style-id="2"] .site-desc { color: var(--muted); font-size: 0.88rem; }
 
-/* navbar：玻璃胶囊 */
-.navbar { gap: 0.5rem; padding: 1rem; }
-.navbar button {
+/* navbar：居中玻璃胶囊 */
+body[data-style-id="2"] .navbar {
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.2rem 1rem;
+}
+body[data-style-id="2"] .navbar button {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--muted);
   border-radius: 9999px;
-  padding: 0.4rem 1rem;
+  padding: 0.42rem 1.1rem;
   backdrop-filter: blur(10px);
   transition: all 0.18s;
 }
-.navbar button:hover { color: var(--text); border-color: var(--accent); }
-.navbar button.active {
+body[data-style-id="2"] .navbar button:hover { color: var(--text); border-color: var(--accent); }
+body[data-style-id="2"] .navbar button.active {
   background: rgba(137,180,250,0.16);
   color: var(--text);
   border-color: var(--accent);
 }
 
-/* 搜索：玻璃胶囊 */
-.search-wrap input {
+/* 搜索：加宽玻璃胶囊 */
+body[data-style-id="2"] .search-wrap { max-width: 620px; }
+body[data-style-id="2"] .search-wrap input {
   background: var(--card-bg);
   border: 1px solid var(--border);
   color: var(--text);
   backdrop-filter: blur(10px);
+  border-radius: 9999px;
+  padding: 0.7rem 1.5rem;
 }
-.search-wrap input:focus {
+body[data-style-id="2"] .search-wrap input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(137,180,250,0.18);
+  box-shadow: 0 0 0 4px rgba(137,180,250,0.18);
 }
-.search-clear { color: var(--muted); }
-.search-info { color: var(--muted); }
+body[data-style-id="2"] .search-info { color: var(--muted); }
 
-/* 三种卡片布局：统一玻璃卡 */
-.container.cards-style1 .card,
-.container.cards-style2 .card,
-.container.cards-style3 .card {
+/* 卡片：玻璃网格，4 列，圆角玻璃 */
+body[data-style-id="2"] .container {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  max-width: 1200px;
+}
+body[data-style-id="2"] .container .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   backdrop-filter: blur(14px);
+  padding: 1rem;
+  min-height: 88px;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
-.container.cards-style1 .card:hover,
-.container.cards-style2 .card:hover,
-.container.cards-style3 .card:hover {
+body[data-style-id="2"] .container .card:hover {
   transform: translateY(-4px);
   border-color: var(--accent);
   box-shadow: 0 12px 30px rgba(0,0,0,0.35);
 }
-.container.cards-style1 .card-icon,
-.container.cards-style1 .card-icon-placeholder,
-.container.cards-style2 .card-icon,
-.container.cards-style2 .card-icon-placeholder,
-.container.cards-style3 .card-icon,
-.container.cards-style3 .card-icon-placeholder {
+body[data-style-id="2"] .container .card-icon,
+body[data-style-id="2"] .container .card-icon-placeholder {
   background: rgba(137,180,250,0.10);
-  border-radius: 0.6rem;
+  border-radius: 0.7rem;
+  margin-bottom: 0.6rem;
 }
-.container.cards-style1 .card-icon-placeholder,
-.container.cards-style2 .card-icon-placeholder,
-.container.cards-style3 .card-icon-placeholder {
-  background: var(--hover-bg);
-  color: var(--accent);
-}
-.container.cards-style1 .card-title,
-.container.cards-style2 .card-title,
-.container.cards-style3 .card-title { color: var(--text); }
-.container.cards-style1 .card-cat-badge,
-.container.cards-style2 .card-cat-badge,
-.container.cards-style3 .card-cat-badge,
-.container.cards-style2 .card-desc { color: var(--accent); }
+body[data-style-id="2"] .container .card-title { color: var(--text); }
+body[data-style-id="2"] .container .card-desc,
+body[data-style-id="2"] .container .card-cat-badge { color: var(--accent); font-size: 0.74rem; }
 
-/* Tooltip */
-#tooltip {
+/* tooltip + 弹窗玻璃化 */
+body[data-style-id="2"] #tooltip {
   background: rgba(30,30,46,0.92);
   color: var(--text);
   border: 1px solid var(--accent);
-  backdrop-filter: blur(10px);
 }
-#tooltip .tt-url { color: var(--accent); }
-#tooltip .tt-desc { color: var(--text); }
-
-/* 弹窗 */
-.settings-modal { background: rgba(24,24,37,0.5); backdrop-filter: blur(6px); }
-.settings-modal-box { background: #1e1e2e; border: 1px solid var(--border); box-shadow: 0 24px 64px rgba(0,0,0,0.5); }
-.settings-modal-header { border-bottom: 1px solid var(--border); color: var(--text); }
-.settings-modal-close { color: var(--muted); }
-.settings-modal-close:hover { color: var(--text); }
-.settings-group-title { color: var(--muted); }
-.settings-label { color: var(--text); }
-.settings-divider { background: var(--border); }
-.settings-select {
-  background: var(--card-bg); border-color: var(--border); color: var(--text);
-}
-.settings-select:focus { border-color: var(--accent); }
-.settings-music-url input {
-  background: var(--card-bg); border-color: var(--border); color: var(--text);
-}
-.settings-music-url input:focus { border-color: var(--accent); }
-.settings-console-btn {
-  background: var(--card-bg); border: 1px solid var(--border); color: var(--muted);
-}
-.settings-console-btn:hover { border-color: var(--accent); color: var(--accent); }
-.toggle-track { background: var(--border); }
-.toggle-switch input:checked + .toggle-track { background: var(--accent); }
-#back-to-nav-btn {
-  background: var(--card-bg); color: var(--accent); border: 1px solid var(--accent);
-}
-#back-to-nav-btn:hover { background: var(--hover-bg); }
+body[data-style-id="2"] #tooltip .tt-url { color: var(--accent); }
+body[data-style-id="2"] .settings-modal-box { background: #1e1e2e; border: 1px solid var(--border); }

@@ -13,10 +13,18 @@
 <script>
 (function() {
   // 风格选择只切换"皮肤"（CSS 文件），书签导航页主体内容不变
+  function cssToStyleId(cssFile) {
+    var m = (cssFile || '').match(/styles0*(\d+)\.css/);
+    return m ? m[1] : '';
+  }
   function applyStyleCSS(cssFile) {
     var link = document.getElementById('style-css');
     link.href = cssFile ? ('/css/' + cssFile) : '';
+    var id = cssToStyleId(cssFile);
+    if (id) document.body.setAttribute('data-style-id', id);
+    else document.body.removeAttribute('data-style-id');
   }
+  window.__applyStyleCSS = applyStyleCSS;
   // 页面加载时读取已保存的风格皮肤
   applyStyleCSS(localStorage.getItem('styleCSS') || '');
   // 监听其他标签页的 localStorage 变化（style-preview 应用后触发）
@@ -254,8 +262,7 @@
         var id = this.value;
         var cssFile = id ? styleIdToCss(id) : '';
         localStorage.setItem('styleCSS', cssFile);
-        var link = document.getElementById('style-css');
-        link.href = cssFile ? ('/css/' + cssFile) : '';
+        if (window.__applyStyleCSS) window.__applyStyleCSS(cssFile);
       });
     } catch(e) { console.warn('风格列表加载失败', e); }
   })();
