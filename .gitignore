@@ -22,3 +22,19 @@ backend/data/outputs/
 .env
 bookmarks.html
 操作说明.txt
+
+# 本地临时产物 / 历史残留（不提交）
+*.zip
+cf-nav/cf-nav-deployer*.zip
+!cf-nav/release/cf-nav-deployer.zip
+!download/cf-nav-deployer.zip
+cf-nav/deploy-panel-upload.zip
+cf-nav/temp.html
+temp.html
+cf-nav/导航页.txt
+pub_files_snippet.txt
+replacements.txt
+git_worker.js
+_fix_styles1.py
+fix_styles_data.py
+iori-nav-master/
