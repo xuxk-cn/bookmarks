@@ -1,7 +1,5 @@
 /* ===================================================================
-   风格 1 · 经典蓝白 双栏（左侧分类栏 + 右侧书签列表）
-   机制：body[data-style-id="1"] 作用域，用 CSS Grid 重排真实 DOM
-   #app 切成左右两栏：header+navbar 进左侧栏，search+main 进右侧
+   风格 1 · 经典蓝白（浅色侧栏 + 右侧网格卡片）
    =================================================================== */
 
 body[data-style-id="1"] {
@@ -12,10 +10,10 @@ body[data-style-id="1"] {
   --muted:     #6b7280;
   --accent:    #38a1d0;
   --hover-bg:  #eaf6fd;
-  --sidebar:   #1e1e23;
-  --sidebar-fg:#d4d4d8;
+  --sidebar:   #f0f2f5;
+  --sidebar-fg:#555;
   --radius:    0.5rem;
-  --card-radius: 8px;
+  --card-radius: 10px;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -23,21 +21,15 @@ body[data-style-id="1"] {
   overflow: hidden;
 }
 
-/* ── 主骨架：两列 + 两行 ────────────────────────────────────────────
-   col1(230px) = 左侧栏，col2(1fr) = 右侧内容
-   row1(auto)  = header 高度，row2(1fr) = 剩余空间
-   search-wrap / search-info 放进 row1 col2（利用 margin 撑开行高），
-   container   放进 row2 col2（填满剩余）。
-   关键：用 grid-row 让 header 和 navbar 分占两行，不再重叠。
-   ──────────────────────────────────────────────────────────────── */
+/* ── 主骨架 ─────────────────────────────────────────────────────── */
 body[data-style-id="1"] #app {
   display: grid;
-  grid-template-columns: 230px 1fr;
+  grid-template-columns: 200px 1fr;
   grid-template-rows: auto 1fr;
   height: 100vh;
 }
 
-/* ── 左栏 ───────────────────────────────────────────────────────── */
+/* ── 左栏（浅色背景）────────────────────────────────────────────── */
 body[data-style-id="1"] header,
 body[data-style-id="1"] .navbar {
   grid-column: 1;
@@ -47,9 +39,8 @@ body[data-style-id="1"] .navbar {
 body[data-style-id="1"] header {
   grid-row: 1;
   text-align: left;
-  padding: 1.4rem 1.3rem 1rem;
-  background: linear-gradient(180deg, #232329, #1e1e23);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 1.4rem 1.2rem 0.8rem;
+  border-bottom: 1px solid var(--border);
 }
 
 body[data-style-id="1"] .navbar {
@@ -62,8 +53,8 @@ body[data-style-id="1"] .navbar {
   overflow-y: auto;
 }
 
-body[data-style-id="1"] h1 { color: #fff; font-size: 1.2rem; letter-spacing: 1px; margin-bottom: 0.2rem; }
-body[data-style-id="1"] .site-desc { color: #a1a1aa; font-size: 0.78rem; }
+body[data-style-id="1"] h1 { color: var(--text); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.15rem; }
+body[data-style-id="1"] .site-desc { color: var(--muted); font-size: 0.75rem; }
 body[data-style-id="1"] .welcome { display: none; }
 
 body[data-style-id="1"] .navbar button {
@@ -72,29 +63,26 @@ body[data-style-id="1"] .navbar button {
   border: none;
   color: var(--sidebar-fg);
   border-radius: 6px;
-  padding: 0.6rem 1rem;
+  padding: 0.55rem 0.9rem;
   font-size: 0.88rem;
   transition: background 0.15s, color 0.15s;
   border-left: 3px solid transparent;
 }
-body[data-style-id="1"] .navbar button:hover { background: rgba(255,255,255,0.06); color: #fff; }
+body[data-style-id="1"] .navbar button:hover { background: rgba(0,0,0,0.04); color: var(--text); }
 body[data-style-id="1"] .navbar button.active {
-  background: rgba(56,161,208,0.16);
-  color: #6cc0e8;
+  background: rgba(56,161,208,0.1);
+  color: var(--accent);
   border-left: 3px solid var(--accent);
   font-weight: 600;
 }
 
-/* ── 右栏上部：搜索（row1, col2）──────────────────────────────────
-   search-wrap / search-info 放在 row1 col2，利用 margin 撑开 row1 高度
-   它们不会与 row2 的 container 重叠。
-   ──────────────────────────────────────────────────────────────── */
+/* ── 右栏上部：搜索 ────────────────────────────────────────────── */
 body[data-style-id="1"] .search-wrap {
   grid-column: 2;
   grid-row: 1;
   align-self: start;
   max-width: none;
-  margin: 1.2rem 2rem 0.4rem;
+  margin: 1rem 1.5rem 0.3rem;
   padding: 0;
 }
 body[data-style-id="1"] .search-info {
@@ -102,64 +90,72 @@ body[data-style-id="1"] .search-info {
   grid-row: 1;
   align-self: start;
   text-align: left;
-  margin-left: 2rem;
+  margin-left: 1.5rem;
 }
 body[data-style-id="1"] .search-wrap input {
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid var(--border);
   background: #fff;
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
-/* ── 右栏下部：书签列表（row2, col2）─────────────────────────────
-   container 占满 row2 剩余空间，内部自滚动。
-   ──────────────────────────────────────────────────────────────── */
+/* ── 右栏下部：卡片网格（3~4列自适应）───────────────────────────── */
 body[data-style-id="1"] .container {
   grid-column: 2;
   grid-row: 2;
   max-width: none;
-  margin: 0 2rem 2rem;
+  margin: 0 1.5rem 1.5rem;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.8rem;
   overflow-y: auto;
+  align-content: start;
 }
 
-/* ── 卡片样式 ───────────────────────────────────────────────────── */
+/* ── 卡片：纵向（图标居中 + 标题在下）────────────────────────────── */
 body[data-style-id="1"] .container .card {
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  text-align: left;
-  gap: 0.9rem;
+  text-align: center;
+  gap: 0.5rem;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
-  padding: 0.65rem 1rem;
-  min-height: 56px;
+  padding: 1rem 0.6rem 0.8rem;
+  min-height: 90px;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 body[data-style-id="1"] .container .card:hover {
   border-color: var(--accent);
-  box-shadow: 0 4px 14px rgba(56,161,208,0.12);
-  transform: translateX(3px);
+  box-shadow: 0 4px 16px rgba(56,161,208,0.1);
+  transform: translateY(-2px);
 }
 body[data-style-id="1"] .container .card-icon,
 body[data-style-id="1"] .container .card-icon-placeholder {
   margin: 0;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-body[data-style-id="1"] .container .card-body { flex: 1; min-width: 0; }
-body[data-style-id="1"] .container .card-title { color: #1f2937; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body[data-style-id="1"] .container .card-desc { color: #9ca3af; font-size: 0.74rem; }
+body[data-style-id="1"] .container .card-body { width: 100%; min-width: 0; }
+body[data-style-id="1"] .container .card-title {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-style-id="1"] .container .card-desc { color: var(--muted); font-size: 0.72rem; }
 body[data-style-id="1"] .container .card-cat-badge { color: var(--accent); }
 
-/* ── 响应式：窄屏塌成 60px 图标侧栏 ───────────────────────────── */
+/* ── 响应式 ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  body[data-style-id="1"] #app { grid-template-columns: 60px 1fr; }
-  body[data-style-id="1"] .navbar button { padding: 0.6rem 0.4rem; text-align: center; font-size: 0; }
+  body[data-style-id="1"] #app { grid-template-columns: 56px 1fr; }
+  body[data-style-id="1"] h1 { font-size: 0; }
+  body[data-style-id="1"] .site-desc { display: none; }
+  body[data-style-id="1"] .navbar button { padding: 0.6rem 0.3rem; text-align: center; font-size: 0; }
   body[data-style-id="1"] .navbar button::first-letter { font-size: 0.85rem; }
 }
