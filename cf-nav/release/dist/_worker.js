@@ -905,6 +905,14 @@ async function onRequestPost8({ request, env }) {
 }
 
 // functions/lib/hover.js
+const HOVER_UAS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15",
+  "Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+];
+function pickUA() { return HOVER_UAS[Math.floor(Math.random() * HOVER_UAS.length)]; }
+
 async function extractDescription(html2) {
   const metaDesc = html2.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)?.[1];
   const ogDesc = html2.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1];
@@ -912,34 +920,42 @@ async function extractDescription(html2) {
   const title = html2.match(/<title>([^<]+)<\/title>/i)?.[1];
   return (metaDesc || ogDesc || twitterDesc || title || "").trim().slice(0, 500);
 }
+
+async function fetchOne(tryUrl, ua) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(tryUrl, {
+      cf: { cacheTtl: 3600 },
+      headers: { "User-Agent": ua },
+      signal: ctrl.signal,
+    });
+    if (res.ok) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("text/html")) {
+        const html2 = await res.text();
+        const desc = await extractDescription(html2);
+        if (desc && desc.length > 5) return desc;
+      }
+    }
+  } catch {}
+  return "";
+}
+
 async function fetchHover(url) {
   const parsed = new URL(url);
-  const origin = parsed.origin;
-  const urlsToTry = [origin, url];
-  for (const tryUrl of urlsToTry) {
-    try {
-      const res = await fetch(tryUrl, {
-        cf: { cacheTtl: 3600 },
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; cf-nav-hover-bot/1.0)"
-        }
-      });
-      if (res.ok) {
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("text/html")) {
-          const html2 = await res.text();
-          const desc = await extractDescription(html2);
-          if (desc && desc.length > 5) {
-            return desc;
-          }
-        }
-      }
-    } catch {
+  const urlsToTry = [parsed.origin, url];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const ua = pickUA();
+    for (const tryUrl of urlsToTry) {
+      const desc = await fetchOne(tryUrl, ua);
+      if (desc) return desc;
     }
   }
   return "";
 }
-async function fetchHovers(urls, concurrency = 5) {
+
+async function fetchHovers(urls, concurrency = 3) {
   const results = {};
   const chunks = [];
   for (let i = 0; i < urls.length; i += concurrency) {
