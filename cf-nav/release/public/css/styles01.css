@@ -10,7 +10,7 @@ body[data-style-id="1"] {
   --muted:     #6b7280;
   --accent:    #38a1d0;
   --hover-bg:  #eaf6fd;
-  --sidebar:   #f0f2f5;
+  --sidebar:   transparent;
   --sidebar-fg:#555;
   --radius:    0.5rem;
   --card-radius: 10px;
@@ -40,7 +40,6 @@ body[data-style-id="1"] header {
   grid-row: 1;
   text-align: left;
   padding: 1.4rem 1.2rem 0.8rem;
-  border-bottom: 1px solid var(--border);
 }
 
 body[data-style-id="1"] .navbar {
