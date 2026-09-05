@@ -1,5 +1,5 @@
 /* ===================================================================
-   风格 1 · 经典蓝白（浅色侧栏 + 右侧网格卡片）
+   风格 1 · 经典蓝白（顶部居中标题 + 左侧分类 + 右侧网格卡片）
    =================================================================== */
 
 body[data-style-id="1"] {
@@ -21,29 +21,43 @@ body[data-style-id="1"] {
   overflow: hidden;
 }
 
-/* ── 主骨架 ─────────────────────────────────────────────────────── */
+/* ── 主骨架 ───────────────────────────────────────────────────────
+   row1 = header（跨两列，居中标题）
+   row2 = 左侧 navbar | 右侧搜索+卡片
+   ──────────────────────────────────────────────────────────────── */
 body[data-style-id="1"] #app {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 180px 1fr;
   grid-template-rows: auto 1fr;
   height: 100vh;
 }
 
-/* ── 左栏（浅色背景）────────────────────────────────────────────── */
-body[data-style-id="1"] header,
+/* ── header：跨两列居中 ─────────────────────────────────────────── */
+body[data-style-id="1"] header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  text-align: center;
+  padding: 1.6rem 1rem 0.9rem;
+}
+
+body[data-style-id="1"] h1 {
+  color: var(--text);
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.2rem;
+}
+body[data-style-id="1"] .site-desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem;
+}
+body[data-style-id="1"] .welcome { display: none; }
+
+/* ── 左栏：分类导航 ────────────────────────────────────────────── */
 body[data-style-id="1"] .navbar {
   grid-column: 1;
-  background: var(--sidebar);
-}
-
-body[data-style-id="1"] header {
-  grid-row: 1;
-  text-align: left;
-  padding: 1.4rem 1.2rem 0.8rem;
-}
-
-body[data-style-id="1"] .navbar {
   grid-row: 2;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -51,10 +65,6 @@ body[data-style-id="1"] .navbar {
   padding: 0.6rem 0.5rem;
   overflow-y: auto;
 }
-
-body[data-style-id="1"] h1 { color: var(--text); font-size: 1.15rem; font-weight: 700; margin-bottom: 0.15rem; }
-body[data-style-id="1"] .site-desc { color: var(--muted); font-size: 0.75rem; }
-body[data-style-id="1"] .welcome { display: none; }
 
 body[data-style-id="1"] .navbar button {
   text-align: left;
@@ -75,18 +85,18 @@ body[data-style-id="1"] .navbar button.active {
   font-weight: 600;
 }
 
-/* ── 右栏上部：搜索 ────────────────────────────────────────────── */
+/* ── 右栏：搜索 ────────────────────────────────────────────────── */
 body[data-style-id="1"] .search-wrap {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
   align-self: start;
   max-width: none;
-  margin: 1rem 1.5rem 0.3rem;
+  margin: 0.6rem 1.5rem 0.3rem;
   padding: 0;
 }
 body[data-style-id="1"] .search-info {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
   align-self: start;
   text-align: left;
   margin-left: 1.5rem;
@@ -99,13 +109,13 @@ body[data-style-id="1"] .search-wrap input {
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
-/* ── 右栏下部：卡片网格（3~4列自适应）───────────────────────────── */
+/* ── 右栏：卡片网格 ────────────────────────────────────────────── */
 body[data-style-id="1"] .container {
   grid-column: 2;
   grid-row: 2;
   max-width: none;
   margin: 0 1.5rem 1.5rem;
-  padding: 0;
+  padding: 3.2rem 0 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.8rem;
@@ -113,7 +123,7 @@ body[data-style-id="1"] .container {
   align-content: start;
 }
 
-/* ── 卡片：纵向（图标居中 + 标题在下）────────────────────────────── */
+/* ── 卡片 ──────────────────────────────────────────────────────── */
 body[data-style-id="1"] .container .card {
   flex-direction: column;
   align-items: center;
@@ -153,8 +163,8 @@ body[data-style-id="1"] .container .card-cat-badge { color: var(--accent); }
 /* ── 响应式 ─────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   body[data-style-id="1"] #app { grid-template-columns: 56px 1fr; }
-  body[data-style-id="1"] h1 { font-size: 0; }
-  body[data-style-id="1"] .site-desc { display: none; }
+  body[data-style-id="1"] h1 { font-size: 1.1rem; }
+  body[data-style-id="1"] .site-desc { font-size: 0.7rem; }
   body[data-style-id="1"] .navbar button { padding: 0.6rem 0.3rem; text-align: center; font-size: 0; }
   body[data-style-id="1"] .navbar button::first-letter { font-size: 0.85rem; }
 }
