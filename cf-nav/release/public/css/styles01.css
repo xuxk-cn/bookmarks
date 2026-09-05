@@ -23,20 +23,27 @@ body[data-style-id="1"] {
   overflow: hidden;
 }
 
-/* body 切成两栏主骨架 */
+/* ── 主骨架：两列 + 两行 ────────────────────────────────────────────
+   col1(230px) = 左侧栏，col2(1fr) = 右侧内容
+   row1(auto)  = header 高度，row2(1fr) = 剩余空间
+   search-wrap / search-info 放进 row1 col2（利用 margin 撑开行高），
+   container   放进 row2 col2（填满剩余）。
+   关键：用 grid-row 让 header 和 navbar 分占两行，不再重叠。
+   ──────────────────────────────────────────────────────────────── */
 body[data-style-id="1"] #app {
   display: grid;
   grid-template-columns: 230px 1fr;
-  grid-template-rows: 1fr;
+  grid-template-rows: auto 1fr;
   height: 100vh;
 }
 
-/* 左栏容器（header + navbar） */
+/* ── 左栏 ───────────────────────────────────────────────────────── */
 body[data-style-id="1"] header,
 body[data-style-id="1"] .navbar {
   grid-column: 1;
   background: var(--sidebar);
 }
+
 body[data-style-id="1"] header {
   grid-row: 1;
   text-align: left;
@@ -44,16 +51,9 @@ body[data-style-id="1"] header {
   background: linear-gradient(180deg, #232329, #1e1e23);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-body[data-style-id="1"] h1 { color: #fff; font-size: 1.2rem; letter-spacing: 1px; margin-bottom: 0.2rem; }
-body[data-style-id="1"] .site-desc { color: #a1a1aa; font-size: 0.78rem; }
-body[data-style-id="1"] .welcome { display: none; }
 
-/* navbar 变成侧边竖排分类菜单 */
 body[data-style-id="1"] .navbar {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  margin-top: 0;
+  grid-row: 2;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -61,6 +61,11 @@ body[data-style-id="1"] .navbar {
   padding: 0.6rem 0.5rem;
   overflow-y: auto;
 }
+
+body[data-style-id="1"] h1 { color: #fff; font-size: 1.2rem; letter-spacing: 1px; margin-bottom: 0.2rem; }
+body[data-style-id="1"] .site-desc { color: #a1a1aa; font-size: 0.78rem; }
+body[data-style-id="1"] .welcome { display: none; }
+
 body[data-style-id="1"] .navbar button {
   text-align: left;
   background: transparent;
@@ -80,18 +85,24 @@ body[data-style-id="1"] .navbar button.active {
   font-weight: 600;
 }
 
-/* 右栏（search + main） */
-body[data-style-id="1"] .search-wrap,
-body[data-style-id="1"] .search-info,
-body[data-style-id="1"] .container {
-  grid-column: 2;
-}
+/* ── 右栏上部：搜索（row1, col2）──────────────────────────────────
+   search-wrap / search-info 放在 row1 col2，利用 margin 撑开 row1 高度
+   它们不会与 row2 的 container 重叠。
+   ──────────────────────────────────────────────────────────────── */
 body[data-style-id="1"] .search-wrap {
+  grid-column: 2;
   grid-row: 1;
   align-self: start;
   max-width: none;
   margin: 1.2rem 2rem 0.4rem;
   padding: 0;
+}
+body[data-style-id="1"] .search-info {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  text-align: left;
+  margin-left: 2rem;
 }
 body[data-style-id="1"] .search-wrap input {
   border-radius: 6px;
@@ -100,20 +111,23 @@ body[data-style-id="1"] .search-wrap input {
   color: var(--text);
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-body[data-style-id="1"] .search-info { grid-row: 1; align-self: start; text-align: left; margin-left: 2rem; }
 
-/* 右侧卡片：垂直列表（一行一卡） */
+/* ── 右栏下部：书签列表（row2, col2）─────────────────────────────
+   container 占满 row2 剩余空间，内部自滚动。
+   ──────────────────────────────────────────────────────────────── */
 body[data-style-id="1"] .container {
-  grid-row: 1;
-  align-self: start;
+  grid-column: 2;
+  grid-row: 2;
   max-width: none;
-  margin: 1.2rem 2rem 2rem;
+  margin: 0 2rem 2rem;
   padding: 0;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.5rem;
   overflow-y: auto;
 }
+
+/* ── 卡片样式 ───────────────────────────────────────────────────── */
 body[data-style-id="1"] .container .card {
   flex-direction: row;
   align-items: center;
@@ -143,7 +157,7 @@ body[data-style-id="1"] .container .card-title { color: #1f2937; font-weight: 50
 body[data-style-id="1"] .container .card-desc { color: #9ca3af; font-size: 0.74rem; }
 body[data-style-id="1"] .container .card-cat-badge { color: var(--accent); }
 
-/* 响应式：窄屏自动塌成单栏 */
+/* ── 响应式：窄屏塌成 60px 图标侧栏 ───────────────────────────── */
 @media (max-width: 768px) {
   body[data-style-id="1"] #app { grid-template-columns: 60px 1fr; }
   body[data-style-id="1"] .navbar button { padding: 0.6rem 0.4rem; text-align: center; font-size: 0; }
