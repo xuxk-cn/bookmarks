@@ -1,0 +1,190 @@
+/* ===================================================================
+   风格 9 · 暗侧栏+浅内容区（类 Windows 11 / Edge 风格）
+   =================================================================== */
+
+body[data-style-id="9"] {
+  --bg:        #f0f2f5;
+  --card-bg:   #ffffff;
+  --border:    #e0e0e0;
+  --text:      #1a1a2e;
+  --muted:     #888;
+  --accent:    #2563eb;
+  --hover-bg:  #f5f5f5;
+  --sidebar:   #1a1a2e;
+  --sidebar-fg:#c0c0c0;
+  --sidebar-active: #ffffff;
+  --radius:    10px;
+  --card-radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── 主骨架 ─────────────────────────────────────────────────────── */
+body[data-style-id="9"] #app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+/* ── header：跨两列 ─────────────────────────────────────────────── */
+body[data-style-id="9"] header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  text-align: left;
+  padding: 1rem 1.5rem;
+  background: var(--sidebar);
+  color: #fff;
+}
+body[data-style-id="9"] h1 { font-size: 1.3rem; font-weight: 700; margin: 0; color: #fff; }
+body[data-style-id="9"] .site-desc { color: #aaa; font-size: 0.78rem; margin: 0.1rem 0 0; }
+body[data-style-id="9"] .welcome { display: block; color: #ccc; font-size: 0.85rem; margin-top: 0.3rem; }
+
+/* ── 左栏导航 ──────────────────────────────────────────────────── */
+body[data-style-id="9"] .navbar {
+  grid-column: 1;
+  grid-row: 2;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.5rem 0.4rem;
+  overflow-y: auto;
+}
+body[data-style-id="9"] .navbar button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--sidebar-fg);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  transition: background 0.15s, color 0.15s;
+}
+body[data-style-id="9"] .navbar button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+body[data-style-id="9"] .navbar button.active {
+  background: rgba(255,255,255,0.12);
+  color: var(--sidebar-active);
+  font-weight: 600;
+}
+
+/* ── 右栏搜索区 ────────────────────────────────────────────────── */
+body[data-style-id="9"] .search-wrap {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  max-width: none;
+  margin: 1rem 2rem 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+body[data-style-id="9"] .search-info {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin-left: 2rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+body[data-style-id="9"] .search-wrap input {
+  flex: 1;
+  max-width: 420px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+body[data-style-id="9"] .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+body[data-style-id="9"] .search-clear {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* ── 右栏内容区 ────────────────────────────────────────────────── */
+body[data-style-id="9"] .container {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: none;
+  margin: 0.8rem 2rem 2rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.8rem;
+  overflow-y: auto;
+  align-content: start;
+  padding-top: 0.5rem;
+}
+
+/* ── 卡片：横向（图标 + 标题/描述）────────────────────────────── */
+body[data-style-id="9"] .container .card {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  gap: 0.8rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 0.7rem 0.9rem;
+  min-height: 60px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+body[data-style-id="9"] .container .card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(37,99,235,0.08);
+  transform: translateY(-1px);
+}
+body[data-style-id="9"] .container .card-icon,
+body[data-style-id="9"] .container .card-icon-placeholder {
+  margin: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+body[data-style-id="9"] .container .card-body { flex: 1; min-width: 0; }
+body[data-style-id="9"] .container .card-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-style-id="9"] .container .card-desc {
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-style-id="9"] .container .card-cat-badge { color: var(--accent); font-size: 0.72rem; }
+
+/* ── 响应式 ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body[data-style-id="9"] #app { grid-template-columns: 56px 1fr; }
+  body[data-style-id="9"] h1 { font-size: 1rem; }
+  body[data-style-id="9"] .site-desc, body[data-style-id="9"] .welcome { display: none; }
+  body[data-style-id="9"] .navbar button { padding: 0.6rem 0.3rem; text-align: center; font-size: 0; justify-content: center; }
+  body[data-style-id="9"] .navbar button::first-letter { font-size: 0.85rem; }
+  body[data-style-id="9"] .container { grid-template-columns: 1fr; margin: 0.5rem 1rem; }
+}

@@ -65,14 +65,14 @@ const PUBLIC_FILES = [
   'css/main.css',
   'css/beauty.css',
   'css/styles01.css','css/styles02.css','css/styles03.css','css/styles04.css',
-  'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css',
+  'css/styles05.css','css/styles06.css','css/styles07.css','css/styles08.css','css/styles09.css',
   'index.html',
   'js/background.js','js/beauty.js','js/hover-module.js','js/main.js','js/search.js','js/shader-runner.js','js/sound.js',
   'style-preview.html',
 ];
 
-const BATCH_SIZE = 8;          // 每批从 GitHub 拉取并上传的文件数（控制单请求 body 体积）
-const FETCH_CONCURRENCY = 4;   // 单批内的并发 fetch 数
+const BATCH_SIZE = 4;          // 每批文件数（减小避免 Worker 超时）
+const FETCH_CONCURRENCY = 3;   // 单批内的并发 fetch 数
 
 async function deploy() {
   const adminPass = $('adminPassword').value.trim();
@@ -242,6 +242,19 @@ function fillSelect(select, items, emptyLabel) {
     select.append(o);
   }
   if (items.length === 1) select.value = items[0].id;
+}
+
+async function postWithRetry(url, body, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await post(url, body);
+    } catch (e) {
+      if (i === retries) throw e;
+      const delay = 1000 * Math.pow(2, i);
+      log(`  请求失败，${delay/1000}s 后重试 (${i+1}/${retries})...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
 }
 
 async function post(url, body) {
