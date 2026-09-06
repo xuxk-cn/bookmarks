@@ -1,0 +1,258 @@
+/* ===================================================================
+   风格 11 · Edge 新标签页风格（深色 + 新闻流 + 书签网格）
+   =================================================================== */
+
+body[data-style-id="11"] {
+  --bg:        #1a1a2e;
+  --card-bg:   #252540;
+  --card-bg2:  #2a2a45;
+  --border:    #3a3a55;
+  --text:      #e0e0e0;
+  --muted:     #888;
+  --accent:    #0078d4;
+  --accent2:   #e74c3c;
+  --hover-bg:  #303050;
+  --sidebar:   #12122a;
+  --sidebar-fg:#999;
+  --radius:    10px;
+  --card-radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── 主骨架 ─────────────────────────────────────────────────────── */
+body[data-style-id="11"] #app {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+/* ── header：顶栏 ──────────────────────────────────────────────── */
+body[data-style-id="11"] header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--sidebar);
+  border-bottom: 1px solid var(--border);
+}
+body[data-style-id="11"] h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+body[data-style-id="11"] .site-desc {
+  color: #aaa;
+  font-size: 0.78rem;
+  margin: 0;
+}
+body[data-style-id="11"] .welcome {
+  display: inline;
+  color: #bbb;
+  font-size: 0.82rem;
+  margin-left: auto;
+}
+
+/* ── 左栏导航 ──────────────────────────────────────────────────── */
+body[data-style-id="11"] .navbar {
+  grid-column: 1;
+  grid-row: 2;
+  background: var(--sidebar);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.5rem 0.4rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+body[data-style-id="11"] .navbar button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--sidebar-fg);
+  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.15s, color 0.15s;
+}
+body[data-style-id="11"] .navbar button:hover { background: rgba(255,255,255,0.06); color: #fff; }
+body[data-style-id="11"] .navbar button.active {
+  background: rgba(0,120,212,0.15);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── 搜索栏 ────────────────────────────────────────────────────── */
+body[data-style-id="11"] .search-wrap {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  max-width: none;
+  margin: 0.8rem 1.5rem 0;
+  padding: 0;
+}
+body[data-style-id="11"] .search-info {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin-left: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+body[data-style-id="11"] .search-wrap input {
+  width: 100%;
+  max-width: 500px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+body[data-style-id="11"] .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,120,212,0.2); }
+
+/* ── 右栏内容区 ────────────────────────────────────────────────── */
+body[data-style-id="11"] .container {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: none;
+  margin: 0.6rem 1.5rem 1.5rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.7rem;
+  overflow-y: auto;
+  align-content: start;
+}
+
+/* ── 卡片：暗色玻璃拟态 ────────────────────────────────────────── */
+body[data-style-id="11"] .container .card {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  gap: 0.7rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 0.65rem 0.8rem;
+  min-height: 56px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+body[data-style-id="11"] .container .card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(0,120,212,0.15);
+  transform: translateY(-1px);
+}
+body[data-style-id="11"] .container .card-icon,
+body[data-style-id="11"] .container .card-icon-placeholder {
+  margin: 0;
+  border-radius: 8px;
+  background: var(--card-bg2);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+}
+body[data-style-id="11"] .container .card-body { flex: 1; min-width: 0; }
+body[data-style-id="11"] .container .card-title {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-style-id="11"] .container .card-desc {
+  color: var(--muted);
+  font-size: 0.73rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body[data-style-id="11"] .container .card-cat-badge { color: var(--accent); font-size: 0.72rem; }
+
+/* ── 新闻区块样式（给 admin 后台或未来扩展用）────────────────── */
+body[data-style-id="11"] .news-section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+body[data-style-id="11"] .news-carousel {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 220px;
+  position: relative;
+}
+body[data-style-id="11"] .news-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+body[data-style-id="11"] .news-item {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
+  padding: 0.6rem;
+  transition: border-color 0.15s;
+}
+body[data-style-id="11"] .news-item:hover { border-color: var(--accent); }
+body[data-style-id="11"] .news-item img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+}
+body[data-style-id="11"] .news-item h4 {
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+body[data-style-id="11"] .news-sidebar {
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  border: 1px solid var(--border);
+  padding: 0.8rem;
+}
+body[data-style-id="11"] .news-sidebar h3 {
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+  color: #fff;
+}
+body[data-style-id="11"] .news-list-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+}
+body[data-style-id="11"] .news-list-item:last-child { border-bottom: none; }
+body[data-style-id="11"] .news-list-item .news-title { color: var(--text); }
+body[data-style-id="11"] .news-list-item .news-meta { color: var(--muted); font-size: 0.7rem; margin-top: 0.2rem; }
+
+/* ── 响应式 ─────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  body[data-style-id="11"] #app { grid-template-columns: 56px 1fr; }
+  body[data-style-id="11"] h1 { font-size: 0.95rem; }
+  body[data-style-id="11"] .site-desc, body[data-style-id="11"] .welcome { display: none; }
+  body[data-style-id="11"] .navbar button { padding: 0.6rem 0.3rem; text-align: center; font-size: 0; justify-content: center; }
+  body[data-style-id="11"] .navbar button::first-letter { font-size: 0.85rem; }
+  body[data-style-id="11"] .container { grid-template-columns: 1fr; margin: 0.5rem 1rem; }
+  body[data-style-id="11"] .news-section { grid-template-columns: 1fr; }
+}
