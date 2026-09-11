@@ -185,6 +185,26 @@
   }
   .card-apply:hover { background: #2ea043; }
   .card.active .card-apply { background: #1a7f37; }
+
+  /* 付费标记 */
+  .paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .card.paid-card {
+    opacity: 0.7;
+  }
+  .card.paid-card:hover {
+    opacity: 1;
+  }
 </style>
 </head>
 <body>
@@ -236,9 +256,9 @@
     if (target) target.classList.add('active');
   }
 
-  function makeCard(file, name) {
+  function makeCard(file, name, paid) {
     const card = document.createElement('div');
-    card.className = 'card' + (file === 'none' ? ' card-none' : '');
+    card.className = 'card' + (file === 'none' ? ' card-none' : '') + (paid ? ' paid-card' : '');
     card.dataset.file = file;
     if (file === chosen) card.classList.add('active');
 
@@ -274,14 +294,29 @@
 
       const footer = document.createElement('div');
       footer.className = 'card-footer';
-      footer.innerHTML = `
-        <span class="card-name">${name}</span>
-        <span class="card-file">${file}</span>
-        <button class="card-apply">应用</button>`;
-      footer.querySelector('.card-apply').addEventListener('click', function(e) {
-        e.stopPropagation();
-        applyBg(file, name);
-      });
+      if (paid) {
+        footer.innerHTML = `
+          <span class="card-name">${name} <span class="paid-badge">🔒 $0.99</span></span>
+          <span class="card-file">${file}</span>
+          <button class="card-apply">购买</button>`;
+        footer.querySelector('.card-apply').addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (window.opener && window.opener.__licenseShowPurchase) {
+            window.opener.__licenseShowPurchase('background', file);
+          } else {
+            alert('请在导航站页面购买此背景');
+          }
+        });
+      } else {
+        footer.innerHTML = `
+          <span class="card-name">${name}</span>
+          <span class="card-file">${file}</span>
+          <button class="card-apply">应用</button>`;
+        footer.querySelector('.card-apply').addEventListener('click', function(e) {
+          e.stopPropagation();
+          applyBg(file, name);
+        });
+      }
 
       card.appendChild(iframe);
       card.appendChild(footer);
@@ -305,8 +340,8 @@
     // 第一个：无背景
     grid.appendChild(makeCard('none', '无背景'));
 
-    list.forEach(({ file, name }) => {
-      grid.appendChild(makeCard(file, name));
+    list.forEach(({ file, name, paid }) => {
+      grid.appendChild(makeCard(file, name, paid));
     });
 
     // 更新底部显示

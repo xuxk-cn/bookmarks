@@ -73,6 +73,26 @@
   }
   .card-apply:hover { background: #2ea043; }
   .card.active .card-apply { background: #1a7f37; }
+
+  /* 付费标记 */
+  .paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .card.paid-card {
+    opacity: 0.7;
+  }
+  .card.paid-card:hover {
+    opacity: 1;
+  }
 </style>
 </head>
 <body>
@@ -169,9 +189,9 @@ async function buildPreviewDoc(cssFile, cssText) {
     }
   }
 
-  function makeCard(styleId, name, cssFile) {
+  function makeCard(styleId, name, cssFile, paid) {
     var card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card' + (paid ? ' paid-card' : '');
     card.dataset.styleId = styleId;
     if (styleId === chosenStyleId) card.classList.add('active');
 
@@ -200,12 +220,23 @@ async function buildPreviewDoc(cssFile, cssText) {
 
     var footer = document.createElement('div');
     footer.className = 'card-footer';
-    footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + cssFile + '</span><button class="card-apply">应用</button>';
-
-    footer.querySelector('.card-apply').addEventListener('click', function(e) {
-      e.stopPropagation();
-      applyStyle(styleId, cssFile);
-    });
+    if (paid) {
+      footer.innerHTML = '<span class="card-name">' + name + ' <span class="paid-badge">🔒 $0.99</span></span><span class="card-file">' + cssFile + '</span><button class="card-apply">购买</button>';
+      footer.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (window.opener && window.opener.__licenseShowPurchase) {
+          window.opener.__licenseShowPurchase('style', styleId);
+        } else {
+          alert('请在导航站页面购买此风格');
+        }
+      });
+    } else {
+      footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + cssFile + '</span><button class="card-apply">应用</button>';
+      footer.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyStyle(styleId, cssFile);
+      });
+    }
 
     card.appendChild(iframe);
     card.appendChild(footer);
@@ -232,7 +263,7 @@ async function buildPreviewDoc(cssFile, cssText) {
       var styleId = m[1];
       var cssFile = styleIdToCss(styleId);
       if (!cssFile) return;
-      grid.appendChild(makeCard(styleId, s.name || ('风格 ' + styleId), cssFile));
+      grid.appendChild(makeCard(styleId, s.name || ('风格 ' + styleId), cssFile, s.paid));
     });
 
     // 缓存首页 doc 以便后续快速预览（lazy 触发时已会自动加载）
