@@ -1,0 +1,412 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>背景特效选择</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .lang-bar{position:fixed;top:12px;right:16px;z-index:9999}
+  .lang-select{background:rgba(255,255,255,.08);color:#e6edf3;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 8px;font-size:.8rem;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px}
+  .lang-select:hover{border-color:rgba(255,255,255,.3)}
+  .lang-select option{background:#1a1a2e;color:#e0e0e0}
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 60px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #58a6ff;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .subtitle {
+    text-align: center;
+    color: #8b949e;
+    font-size: 0.85rem;
+    margin-bottom: 28px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #21262d;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    background: #161b22;
+  }
+  .card:hover {
+    border-color: #58a6ff;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(88,166,255,0.15);
+  }
+  .card.active {
+    border-color: #3fb950;
+    box-shadow: 0 0 0 2px rgba(63,185,80,0.3);
+  }
+
+  .preview {
+    width: 100%;
+    height: 180px;
+    border: none;
+    display: block;
+    pointer-events: none;
+    background: #0d1117;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(22,27,34,0.95);
+    border-top: 1px solid #21262d;
+  }
+  .card-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #e6edf3;
+  }
+  .card-file {
+    font-size: 0.8rem;
+    color: #58a6ff;
+    font-family: monospace;
+    font-weight: 600;
+    background: rgba(88,166,255,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(88,166,255,0.25);
+  }
+
+  .badge-active {
+    display: none;
+    font-size: 0.7rem;
+    background: #3fb950;
+    color: #0d1117;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .card.active .badge-active { display: inline-block; }
+
+  /* 选中覆盖层 */
+  .card.active::after {
+    content: '✓ 已选择';
+    position: absolute;
+    top: 8px; right: 8px;
+    background: #3fb950;
+    color: #0d1117;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  /* 无背景卡片 */
+  .card-none .preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #30363d;
+    background: repeating-linear-gradient(
+      45deg,
+      #161b22,
+      #161b22 10px,
+      #1c2128 10px,
+      #1c2128 20px
+    );
+  }
+
+  .loading {
+    text-align: center;
+    color: #8b949e;
+    padding: 60px 0;
+    font-size: 0.95rem;
+  }
+
+  /* 底部操作栏 */
+  .action-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(13,17,23,0.95);
+    border-top: 1px solid #21262d;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+  }
+  .action-bar .selected-name {
+    font-size: 0.9rem;
+    color: #8b949e;
+  }
+  .action-bar .selected-name span {
+    color: #58a6ff;
+    font-weight: 600;
+  }
+  .btn-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-apply:hover { background: #2ea043; }
+  .btn-apply:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+  /* 卡片内应用按钮 */
+  .card-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .card-apply:hover { background: #2ea043; }
+  .card.active .card-apply { background: #1a7f37; }
+
+  /* 付费标记 */
+  .paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .card.paid-card {
+    opacity: 0.7;
+  }
+  .card.paid-card:hover {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div class="lang-bar"><select class="lang-select" id="lang-select" onchange="setLang(this.value)"></select></div>
+
+<h1 data-i18n="bgPageTitle">🎨 背景特效库</h1>
+<p class="subtitle" data-i18n="bgPageSub">点击预览卡片选择背景，点击"应用"后返回导航页</p>
+
+<div class="grid" id="grid">
+  <div class="loading">正在加载背景列表...</div>
+</div>
+
+<div class="action-bar">
+  <div class="selected-name">当前选择：<span id="selected-label">无</span></div>
+  <button class="btn-apply" id="btn-apply" disabled data-i18n="applyToNav">应用到导航页</button>
+</div>
+
+<script>
+(async function() {
+  const grid = document.getElementById('grid');
+  const btnApply = document.getElementById('btn-apply');
+  const selectedLabel = document.getElementById('selected-label');
+
+  // 读取当前已选背景
+  let chosen = localStorage.getItem('bgChoice') || 'none';
+
+  function applyBg(file, name) {
+    updateSelected(file, name);
+    localStorage.setItem('bgChoice', file);
+    // 通知主页（如果从主页打开的）
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'applyBg', bgFile: file }, '*'); } catch(ex) {}
+      window.close();
+      return;
+    }
+    // 显示提示（直接访问时）
+    var tip = document.createElement('div');
+    tip.textContent = '✔ 已应用：' + (file === 'none' ? '无背景' : file);
+    tip.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:0.5rem 1.5rem;border-radius:1rem;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2500);
+  }
+
+  function updateSelected(file, name) {
+    chosen = file;
+    selectedLabel.textContent = name;
+    btnApply.disabled = false;
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+    const target = document.querySelector(`.card[data-file="${file}"]`);
+    if (target) target.classList.add('active');
+  }
+
+  function makeCard(file, name, paid) {
+    const card = document.createElement('div');
+    card.className = 'card' + (file === 'none' ? ' card-none' : '') + (paid ? ' paid-card' : '');
+    card.dataset.file = file;
+    if (file === chosen) card.classList.add('active');
+
+    if (file === 'none') {
+      card.innerHTML = `
+        <div class="preview">🚫</div>
+        <div class="card-footer">
+          <span class="card-name">${name}</span>
+          <span class="card-file">none</span>
+          <button class="card-apply">${tl('apply')}</button>
+        </div>`;
+      card.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyBg('none', name);
+      });
+    } else {
+      const iframe = document.createElement('iframe');
+      iframe.className = 'preview';
+      iframe.loading = 'lazy';
+      // 用 IntersectionObserver 懒加载，避免全部同时渲染
+            const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+              iframe.src = `/backgrounds/${file}`;
+            }
+          } else {
+            iframe.src = 'about:blank';
+          }
+        });
+      }, { rootMargin: '100px', threshold: 0 });
+      observer.observe(iframe);
+
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+      if (paid) {
+        footer.innerHTML = `
+          <span class="card-name">${name} <span class="paid-badge">🔒 $0.99</span></span>
+          <span class="card-file">${file}</span>
+          <button class="card-apply">${tl('buy')}</button>`;
+        footer.querySelector('.card-apply').addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (window.opener && window.opener.__licenseShowPurchase) {
+            window.opener.__licenseShowPurchase('background', file);
+          } else {
+            alert(tl('buyAlert'));
+          }
+        });
+      } else {
+        footer.innerHTML = `
+          <span class="card-name">${name}</span>
+          <span class="card-file">${file}</span>
+          <button class="card-apply">${tl('apply')}</button>`;
+        footer.querySelector('.card-apply').addEventListener('click', function(e) {
+          e.stopPropagation();
+          applyBg(file, name);
+        });
+      }
+
+      card.appendChild(iframe);
+      card.appendChild(footer);
+    }
+
+    card.addEventListener('click', function() {
+      updateSelected(file, name);
+      window.open('/backgrounds/' + file, '_blank');
+    });
+    return card;
+  }
+
+  // 加载列表
+  try {
+    const res = await fetch('/api/backgrounds');
+    const data = await res.json();
+    const list = (data.backgrounds || []).filter(b => b.file.startsWith('a'));
+
+    grid.innerHTML = '';
+
+    // 第一个：无背景
+    grid.appendChild(makeCard('none', '无背景'));
+
+    list.forEach(({ file, name, paid }) => {
+      grid.appendChild(makeCard(file, name, paid));
+    });
+
+    // 更新底部显示
+    if (chosen !== 'none') {
+      const item = list.find(b => b.file === chosen);
+      selectedLabel.textContent = item ? item.name : chosen;
+      btnApply.disabled = false;
+    } else {
+      selectedLabel.textContent = '无背景';
+      btnApply.disabled = false;
+    }
+
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">' + tl('bgLoadErr') + '</div>';
+  }
+
+  // 应用按钮
+  btnApply.addEventListener('click', () => {
+    localStorage.setItem('bgChoice', chosen);
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'applyBg', bgFile: chosen }, '*'); } catch(ex) {}
+      window.close();
+    } else {
+      window.location.href = '/';
+    }
+  });
+})();
+</script>
+
+<!-- 监听子窗口应用操作（由 inject_apply_button.py 注入） -->
+<!-- __patched_by_inject__ -->
+<script>
+window.addEventListener('storage', function(e) {
+  if (e.key === 'bgChoice' && e.newValue) {
+    var label = document.getElementById('selected-label');
+    if (label) label.textContent = e.newValue;
+    document.querySelectorAll('.card').forEach(function(c) {
+      c.classList.toggle('active', c.dataset.file === e.newValue);
+    });
+    var tip = document.createElement('div');
+    tip.textContent = tl('bgApplyTip') + e.newValue;
+    tip.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#238636;color:#fff;padding:0.5rem 1.5rem;border-radius:1rem;font-size:0.9rem;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+    document.body.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 3000);
+  }
+});
+</script>
+<script src="/js/i18n.js"></script>
+<script>
+(function(){
+  var sel=document.getElementById('lang-select');
+  if(!sel)return;
+  var langs=[['zh','中文'],['en','English'],['de','Deutsch'],['fr','Français'],['it','Italiano'],['es','Español'],['ja','日本語'],['ko','한국어']];
+  langs.forEach(function(l){var o=document.createElement('option');o.value=l[0];o.textContent=l[1];sel.appendChild(o)});
+  sel.value=_lang||'zh';
+  applyPreviewI18N();
+  var btn=document.getElementById('btn-apply');if(btn)btn.textContent=tl('applyToNav');
+  var lbl=document.querySelector('.selected-name');if(lbl){var t=lbl.getAttribute('data-i18n')||lbl.childNodes[0].textContent;lbl.setAttribute('data-i18n',t)}
+})();
+</script>
+
+</body>
+</html>

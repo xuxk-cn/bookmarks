@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>导航风格选择</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .lang-bar{position:fixed;top:12px;right:16px;z-index:9999}
+  .lang-select{background:rgba(255,255,255,.08);color:#e6edf3;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 8px;font-size:.8rem;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px}
+  .lang-select:hover{border-color:rgba(255,255,255,.3)}
+  .lang-select option{background:#1a1a2e;color:#e0e0e0}
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    padding: 24px 20px 24px;
+  }
+  h1 { text-align: center; font-size: 1.5rem; color: #f78166; margin-bottom: 8px; letter-spacing: 0.05em; }
+  .subtitle { text-align: center; color: #8b949e; font-size: 0.85rem; margin-bottom: 28px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  .card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #21262d;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    background: #161b22;
+  }
+  .card:hover { border-color: #f78166; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(247,129,102,0.15); }
+  .card.active { border-color: #3fb950; box-shadow: 0 0 0 2px rgba(63,185,80,0.3); }
+  .card.active::after {
+    content: '✓ 已选择';
+    position: absolute; top: 8px; right: 8px;
+    background: #3fb950; color: #0d1117;
+    font-size: 0.75rem; font-weight: 700;
+    padding: 3px 10px; border-radius: 12px; z-index: 10;
+  }
+  .preview {
+    width: 100%; height: 280px;
+    border: none; display: block;
+    pointer-events: none; background: #f5f6f8;
+  }
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    background: rgba(22,27,34,0.98);
+    border-top: 1px solid #21262d;
+  }
+  .card-name { font-size: 0.875rem; font-weight: 500; color: #e6edf3; }
+  .card-file {
+    font-size: 0.78rem; color: #f78166; font-family: monospace; font-weight: 600;
+    background: rgba(247,129,102,0.1); padding: 2px 7px; border-radius: 4px;
+    border: 1px solid rgba(247,129,102,0.25);
+  }
+  .loading { text-align: center; color: #8b949e; padding: 60px 0; font-size: 0.95rem; grid-column: 1/-1; }
+  .card-apply {
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .card-apply:hover { background: #2ea043; }
+  .card.active .card-apply { background: #1a7f37; }
+
+  /* 付费标记 */
+  .paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .card.paid-card {
+    opacity: 0.7;
+  }
+  .card.paid-card:hover {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div class="lang-bar"><select class="lang-select" id="lang-select" onchange="setLang(this.value)"></select></div>
+
+<h1 data-i18n="stylePageTitle">🎨 导航风格库</h1>
+<p class="subtitle" data-i18n="stylePageSub">每个预览卡片下都是同一张"书签导航页"，只换了不同的皮肤样式。点击"应用"将皮肤同步到导航页。</p>
+
+<div class="grid" id="grid">
+  <div class="loading">正在加载风格列表...</div>
+</div>
+
+<script>
+// 风格编号 → CSS 文件名（1-9 补零，10 起不补零）
+function styleIdToCss(id) {
+  var n = parseInt(id, 10);
+  if (isNaN(n)) return null;
+  return 'styles' + (n < 10 ? '0' + n : '' + n) + '.css';
+}
+function cssToStyleId(cssFile) {
+  var m = (cssFile || '').match(/styles0*(\d+)\.css/);
+  return m ? m[1] : '';
+}
+
+// 抓取真实的"书签导航页 index.html"作为预览主体（保留 SSR 注入的数据结构占位）
+var INDEX_DOC_CACHE = null;
+async function fetchIndexDoc() {
+  if (INDEX_DOC_CACHE) return INDEX_DOC_CACHE;
+  var res = await fetch('/');
+  INDEX_DOC_CACHE = await res.text();
+  return INDEX_DOC_CACHE;
+}
+
+// 抓取皮肤 CSS 文本
+var CSS_CACHE = {};
+async function fetchCss(cssFile) {
+  if (CSS_CACHE[cssFile] !== undefined) return CSS_CACHE[cssFile];
+  try {
+    var res = await fetch('/css/' + cssFile);
+    if (!res.ok) { CSS_CACHE[cssFile] = ''; return ''; }
+    CSS_CACHE[cssFile] = await res.text();
+    return CSS_CACHE[cssFile];
+  } catch(e) {
+    CSS_CACHE[cssFile] = '';
+    return '';
+  }
+}
+
+// 在 index.html 文本的 </head> 前注入：拦截动态背景、注入皮肤 CSS、打开弹窗与设置项
+async function buildPreviewDoc(cssFile, cssText) {
+  var indexHtml = await fetchIndexDoc();
+
+  // 注入代码片段
+  var inject = [
+    '<script>',
+    // 把背景相关样式隐藏，避免 iframe 里没有背景资源也跑动画
+    'document.addEventListener("DOMContentLoaded", function(){',
+    '  var cv = document.getElementById("bg-canvas"); if (cv) cv.style.display = "none";',
+    '  var bi = document.getElementById("bg-image"); if (bi) bi.style.display = "none";',
+    '  // 自动展开第一个分类，方便预览看到卡片',
+    '});',
+    '<\/script>',
+    // 皮肤 CSS 内联进 <head>
+    '<style id="injected-skin-css">' + (cssText || '') + '</style>'
+  ].join('\n');
+
+  // 把 </head> 替换为：注入 + </head>
+  var html = indexHtml.replace(/<\/head>/i, inject + '\n</head>');
+
+  return html;
+}
+
+(async function() {
+  var grid = document.getElementById('grid');
+  var chosenCss = localStorage.getItem('styleCSS') || '';
+  var chosenStyleId = cssToStyleId(chosenCss);
+
+  function updateSelected(styleId) {
+    document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
+    var t = document.querySelector('.card[data-style-id="' + styleId + '"]');
+    if (t) t.classList.add('active');
+  }
+
+  function applyStyle(styleId, cssFile) {
+    updateSelected(styleId);
+    localStorage.setItem('styleCSS', cssFile);
+    if (window.opener) {
+      try {
+        window.opener.postMessage({ type: 'applyStyle', styleCSS: cssFile, styleId: styleId }, '*');
+      } catch(ex) {}
+      window.close();
+    } else {
+      // 没有 opener（直接打开预览页）：让用户回到主页
+      window.location.href = '/';
+    }
+  }
+
+  function makeCard(styleId, name, cssFile, paid) {
+    var card = document.createElement('div');
+    card.className = 'card' + (paid ? ' paid-card' : '');
+    card.dataset.styleId = styleId;
+    if (styleId === chosenStyleId) card.classList.add('active');
+
+    var iframe = document.createElement('iframe');
+    iframe.className = 'preview';
+    iframe.sandbox = 'allow-scripts allow-same-origin';
+    iframe.loading = 'lazy';
+
+    var loaded = false;
+    var obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting && !loaded) {
+          loaded = true;
+          obs.unobserve(iframe);
+          fetchCss(cssFile).then(function(cssText) {
+            return buildPreviewDoc(cssFile, cssText);
+          }).then(function(doc) {
+            iframe.srcdoc = doc;
+          }).catch(function() {
+            iframe.srcdoc = '<!DOCTYPE html><html><body style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:13px">' + tl('stylePreviewErr') + '</body></html>';
+          });
+        }
+      });
+    }, { rootMargin: '200px' });
+    obs.observe(iframe);
+
+    var footer = document.createElement('div');
+    footer.className = 'card-footer';
+    if (paid) {
+      footer.innerHTML = '<span class="card-name">' + name + ' <span class="paid-badge">🔒 $0.99</span></span><span class="card-file">' + cssFile + '</span><button class="card-apply">' + tl('buy') + '</button>';
+      footer.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (window.opener && window.opener.__licenseShowPurchase) {
+          window.opener.__licenseShowPurchase('style', styleId);
+        } else {
+          alert(tl('buyAlert'));
+        }
+      });
+    } else {
+      footer.innerHTML = '<span class="card-name">' + name + '</span><span class="card-file">' + cssFile + '</span><button class="card-apply">' + tl('apply') + '</button>';
+      footer.querySelector('.card-apply').addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyStyle(styleId, cssFile);
+      });
+    }
+
+    card.appendChild(iframe);
+    card.appendChild(footer);
+    card.addEventListener('click', function() { updateSelected(styleId); });
+    return card;
+  }
+
+  try {
+    var res = await fetch('/api/backgrounds');
+    var data = await res.json();
+    var styles = data.styles || [];
+
+    grid.innerHTML = '';
+
+    if (!styles.length) {
+      grid.innerHTML = '<div class="loading">' + tl('styleLoadErr') + '</div>';
+      return;
+    }
+
+    // 为每个风格生成预览卡片
+    styles.forEach(function(s) {
+      var m = s.file.match(/styles(\d+)\.html/);
+      if (!m) return;
+      var styleId = m[1];
+      var cssFile = styleIdToCss(styleId);
+      if (!cssFile) return;
+      grid.appendChild(makeCard(styleId, s.name || ('风格 ' + styleId), cssFile, s.paid));
+    });
+
+    // 缓存首页 doc 以便后续快速预览（lazy 触发时已会自动加载）
+    fetchIndexDoc().catch(function(){});
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">' + tl('styleLoadErr') + '</div>';
+  }
+})();
+</script>
+<script src="/js/i18n.js"></script>
+<script>
+(function(){
+  var sel=document.getElementById('lang-select');
+  if(!sel)return;
+  var langs=[['zh','中文'],['en','English'],['de','Deutsch'],['fr','Français'],['it','Italiano'],['es','Español'],['ja','日本語'],['ko','한국어']];
+  langs.forEach(function(l){var o=document.createElement('option');o.value=l[0];o.textContent=l[1];sel.appendChild(o)});
+  sel.value=_lang||'zh';
+  applyPreviewI18N();
+})();
+</script>
+
+</body>
+</html>
