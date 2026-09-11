@@ -1,15 +1,154 @@
-// functions/constants.js
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __esm = (fn, res, err2) => function __init() {
+  if (err2) throw err2[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err2 = [e], e;
+  }
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// src/lib/utils.js
+function escapeHTML(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function sanitizeUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+    return u.href;
+  } catch {
+    return "";
+  }
+}
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+function err(msg, status = 400) {
+  return json({ error: msg }, status);
+}
+var init_utils = __esm({
+  "src/lib/utils.js"() {
+  }
+});
+
+// functions/api/backgrounds.js
+var backgrounds_exports = {};
+__export(backgrounds_exports, {
+  onRequestGet: () => onRequestGet3
+});
+function onRequestGet3() {
+  const files = Object.entries(NAME_MAP).map(([file, name]) => {
+    const num = parseInt(file.match(/\d+/)?.[0] || "0");
+    const isPaid = file !== "rain.html" && num > FREE_BG_MAX;
+    return { file, name, paid: isPaid };
+  });
+  files.sort((a, b) => {
+    if (a.file === "rain.html") return -1;
+    if (b.file === "rain.html") return 1;
+    const na = parseInt(a.file.match(/\d+/)?.[0] || "0");
+    const nb = parseInt(b.file.match(/\d+/)?.[0] || "0");
+    return na - nb;
+  });
+  const styleFiles = Object.entries(STYLES_MAP).map(([file, name]) => {
+    const num = parseInt(file.match(/\d+/)?.[0] || "0");
+    const isPaid = num > FREE_STYLE_MAX;
+    return { file, name, paid: isPaid };
+  }).sort((a, b) => {
+    const na = parseInt(a.file.match(/\d+/)?.[0] || "0");
+    const nb = parseInt(b.file.match(/\d+/)?.[0] || "0");
+    return na - nb;
+  });
+  return json({ backgrounds: files, styles: styleFiles });
+}
+var NAME_MAP, FREE_BG_MAX, STYLES_MAP, FREE_STYLE_MAX;
+var init_backgrounds = __esm({
+  "functions/api/backgrounds.js"() {
+    init_utils();
+    NAME_MAP = {
+      "rain.html": "\u{1F327} \u4E0B\u96E8(Canvas)",
+      "a1.html": "\u2728 \u7279\u65481",
+      "a2.html": "\u{1F525} \u7279\u65482",
+      "a3.html": "\u{1F300} \u7279\u65483",
+      "a4.html": "\u{1F30A} \u7279\u65484",
+      "a5.html": "\u2601\uFE0F \u7279\u65485",
+      "a6.html": "\u{1F4AB} \u7279\u65486",
+      "a7.html": "\u{1F3A8} \u7279\u65487",
+      "a8.html": "\u{1F324} \u7279\u65488",
+      "a9.html": "\u26A1 \u7279\u65489",
+      "a10.html": "\u{1F3AD} \u7279\u654810",
+      "a11.html": "\u{1F30C} \u7279\u654811",
+      "a12.html": "\u{1F52E} \u7279\u654812",
+      "a13.html": "\u{1F3AA} \u7279\u654813",
+      "a14.html": "\u{1F308} \u7279\u654814",
+      "a15.html": "\u{1F3C4} \u7279\u654815",
+      "a16.html": "\u{1F4A0} \u7279\u654816",
+      "a17.html": "\u{1F33A} \u7279\u654817",
+      "a18.html": "\u{1F32B} \u7279\u654818",
+      "a19.html": "\u{1F386} \u7279\u654819",
+      "a20.html": "\u{1F387} \u7279\u654820",
+      "a21.html": "\u2728 \u7279\u654821",
+      "a22.html": "\u2728 \u7279\u654822",
+      "a23.html": "\u2728 \u7279\u654823",
+      "a24.html": "\u2728 \u7279\u654824",
+      "a25.html": "\u2728 \u7279\u654825",
+      "a26.html": "\u2728 \u7279\u654826",
+      "a27.html": "\u2728 \u7279\u654827",
+      "a28.html": "\u2728 \u7279\u654828",
+      "a29.html": "\u2728 \u7279\u654829",
+      "a30.html": "\u2728 \u7279\u654830",
+      "a31.html": "\u2728 \u7279\u654831",
+      "a32.html": "\u2728 \u7279\u654832",
+      "a33.html": "\u2728 \u7279\u654833",
+      "a34.html": "\u2728 \u7279\u654834",
+      "a35.html": "\u2728 \u7279\u654835",
+      "a36.html": "\u2728 \u7279\u654836",
+      "a37.html": "\u2728 \u7279\u654837",
+      "a38.html": "\u2728 \u7279\u654838",
+      "a39.html": "\u2728 \u7279\u654839",
+      "a40.html": "\u2728 \u7279\u654840",
+      "a41.html": "\u2728 \u7279\u654841",
+      "a42.html": "\u2728 \u7279\u654842",
+      "a43.html": "\u2728 \u7279\u654843",
+      "a44.html": "\u2728 \u7279\u654844",
+      "a45.html": "\u2728 \u7279\u654845",
+      "a46.html": "\u2728 \u7279\u654846",
+      "a47.html": "\u2728 \u7279\u654847"
+    };
+    FREE_BG_MAX = 20;
+    STYLES_MAP = {
+      "styles1.html": "\u98CE\u683C 1 \xB7 \u7ECF\u5178\u84DD\u767D",
+      "styles2.html": "\u98CE\u683C 2 \xB7 Bento \u4FBF\u5F53\u76D2",
+      "styles3.html": "\u98CE\u683C 3 \xB7 \u5361\u7247\u4EEA\u8868\u76D8",
+      "styles4.html": "\u98CE\u683C 4 \xB7 \u65B0\u6807\u7B7E\u9875\u4E2D\u6027",
+      "styles5.html": "\u98CE\u683C 5 \xB7 \u8D5B\u535A\u9713\u8679",
+      "styles6.html": "\u98CE\u683C 6 \xB7 \u4E1C\u4EAC\u4E4B\u591C",
+      "styles7.html": "\u98CE\u683C 7 \xB7 \u6781\u7B80\u745E\u58EB",
+      "styles8.html": "\u98CE\u683C 8 \xB7 \u65E5\u7CFB\u6728\u6F0F",
+      "styles9.html": "\u98CE\u683C 9 \xB7 Edge \u4FA7\u8FB9\u680F",
+      "styles10.html": "\u98CE\u683C 10 \xB7 \u56FE\u6807\u5BFC\u822A",
+      "styles11.html": "\u98CE\u683C 11 \xB7 \u6697\u9ED1\u65B0\u6807\u7B7E\u9875"
+    };
+    FREE_STYLE_MAX = 10;
+  }
+});
+
+// src/constants.js
 var KV = {
   DATA: "nav_data",
-  // 全量书签 JSON
   SETTINGS: "nav_settings",
-  // 站点设置 JSON
   PENDING: "nav_pending",
-  // 待审核投稿 JSON
   CACHE_HOME: "nav_cache_home",
-  // 首页 HTML 缓存
   CACHE_DIRTY: "nav_cache_dirty",
-  // 缓存重建标记
+  LICENSE: "nav_license",
   SESSION: (tok) => `nav_session_${tok}`
 };
 var DEFAULT_SETTINGS = {
@@ -17,42 +156,26 @@ var DEFAULT_SETTINGS = {
   siteDesc: "\u4E2A\u4EBA\u4E66\u7B7E\u5BFC\u822A\u7AD9",
   footerText: "",
   defaultStyle: "1",
-  // 卡片风格 1/2/3
   defaultBg: "none",
-  // 默认背景
   enableSubmit: false,
-  // 是否开放用户投稿
   aiProvider: "workers",
-  // workers / gemini / openai
   aiModel: "@cf/google/gemma-4-26b-a4b-it",
   aiApiKey: "",
   aiDelay: 1500,
-  // 批量 AI 间隔 ms
   faviconApi: "https://faviconsnap.com/api/favicon?url=",
   sessionTtl: 86400,
-  // Session 有效期（秒），默认 1 天
-  // ── 站点美化设置（独立模块，出错不影响主程序） ──
   theme: "dark",
-  // dark | cyberpunk | minimal | forest | system
   glass: true,
-  // 毛玻璃卡片
   hoverFx: true,
-  // 图标悬停弹跳/变色/形态变换
   tilt: true,
-  // 3D 倾斜
   waterfall: true,
-  // 瀑布流错落淡入
   shared: true,
-  // 共享元素过渡（点击放大）
   searchFx: true,
-  // 搜索框呼吸光 + 展开
   welcome: true,
-  // 动态欢迎语
   weather: false
-  // 天气联动（结合欢迎语）
 };
 
-// functions/lib/auth.js
+// src/lib/auth.js
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -90,35 +213,17 @@ function sessionCookie(token, ttl = 86400, clear = false) {
   return `nav_session=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=${ttl}; Path=/`;
 }
 
-// functions/lib/utils.js
-function escapeHTML(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-function sanitizeUrl(url) {
-  try {
-    const u = new URL(url);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return "";
-    return u.href;
-  } catch {
-    return "";
-  }
-}
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json" }
-  });
-}
-function err(msg, status = 400) {
-  return json({ error: msg }, status);
-}
-
 // functions/_middleware.js
+init_utils();
 var PUBLIC_PATHS = [
   "/api/settings/public",
   "/api/submit",
   "/api/pending/submit",
-  "/api/backgrounds"
+  "/api/backgrounds",
+  "/api/license",
+  "/api/license/check",
+  "/api/license/remove",
+  "/api/webhook/paddle"
 ];
 async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
@@ -146,7 +251,7 @@ async function onRequest({ request, env, next }) {
   return next();
 }
 
-// functions/lib/kv.js
+// src/lib/kv.js
 async function getData(env) {
   const raw = await env.NAV_KV.get(KV.DATA);
   if (!raw) return { categories: [] };
@@ -172,72 +277,20 @@ async function getPending(env) {
 async function putPending(env, list) {
   await env.NAV_KV.put(KV.PENDING, JSON.stringify(list));
 }
-async function getHomeCache(env) {
-  const dirty = await env.NAV_KV.get(KV.CACHE_DIRTY);
-  if (dirty) return null;
-  return env.NAV_KV.get(KV.CACHE_HOME);
-}
-async function putHomeCache(env, html2) {
-  await env.NAV_KV.put(KV.CACHE_HOME, html2, { expirationTtl: 3600 });
-  await env.NAV_KV.delete(KV.CACHE_DIRTY);
-}
 async function markDirty(env) {
   await env.NAV_KV.put(KV.CACHE_DIRTY, "1", { expirationTtl: 3600 });
 }
 
-// functions/lib/renderer.js
-function renderHome(templateHtml, navData, settings) {
-  let beautyJson = "{}";
-  try {
-    beautyJson = JSON.stringify({
-      theme: settings.theme,
-      glass: settings.glass,
-      hoverFx: settings.hoverFx,
-      tilt: settings.tilt,
-      waterfall: settings.waterfall,
-      shared: settings.shared,
-      searchFx: settings.searchFx,
-      welcome: settings.welcome,
-      weather: settings.weather,
-      noLinkBorder: settings.noLinkBorder
-    }).replace(/</g, "\\u003c");
-  } catch (e) {
-    beautyJson = "{}";
-  }
-  return templateHtml.replace(/\{\{SITE_NAME\}\}/g, escHtml(settings.siteName)).replace(/\{\{SITE_DESC\}\}/g, escHtml(settings.siteDesc)).replace(/\{\{NAV_DATA\}\}/g, JSON.stringify(navData)).replace(/\{\{NAV_SETTINGS\}\}/g, JSON.stringify({
-    defaultStyle: settings.defaultStyle,
-    defaultBg: settings.defaultBg
-  })).replace(/\{\{NAV_BEAUTY\}\}/g, beautyJson);
-}
-function escHtml(s) {
-  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-// functions/index.js
-var cachedTemplate = null;
+// functions/admin/index.js
 async function onRequestGet({ request, env }) {
-  const cached = await getHomeCache(env);
-  if (cached) return html(cached);
-  const [navData, settings, templateHtml] = await Promise.all([
-    getData(env),
-    getSettings(env),
-    getTemplate(env)
-  ]);
-  const rendered = renderHome(templateHtml, navData, settings);
-  env.ctx?.waitUntil(putHomeCache(env, rendered));
-  return html(rendered);
-}
-async function getTemplate(env) {
-  if (cachedTemplate) return cachedTemplate;
-  const res = await env.ASSETS.fetch("https://placeholder/index.html");
-  cachedTemplate = await res.text();
-  return cachedTemplate;
-}
-function html(body) {
-  return new Response(body, {
+  const settings = await getSettings(env);
+  const csrf = crypto.randomUUID();
+  const res = await env.ASSETS.fetch(new Request("https://placeholder/admin/index.html"));
+  const html = (await res.text()).replace("{{SITE_NAME}}", settings.siteName || "\u5BFC\u822A\u540E\u53F0").replace("{{CSRF_TOKEN}}", csrf);
+  return new Response(html, {
     headers: {
       "Content-Type": "text/html;charset=utf-8",
-      "Cache-Control": "public, max-age=60"
+      "Set-Cookie": `nav_csrf=${csrf}; HttpOnly; Secure; SameSite=Lax; Path=/`
     }
   });
 }
@@ -324,100 +377,12 @@ async function onRequestPost2({ request, env }) {
   });
 }
 
-// functions/admin/index.js
-async function onRequestGet3({ request, env }) {
-  const settings = await getSettings(env);
-  const csrf = crypto.randomUUID();
-  const res = await env.ASSETS.fetch(new Request("https://placeholder/admin/index.html"));
-  const html2 = (await res.text()).replace("{{SITE_NAME}}", settings.siteName || "\u5BFC\u822A\u540E\u53F0").replace("{{CSRF_TOKEN}}", csrf);
-  return new Response(html2, {
-    headers: {
-      "Content-Type": "text/html;charset=utf-8",
-      "Set-Cookie": `nav_csrf=${csrf}; HttpOnly; Secure; SameSite=Lax; Path=/`
-    }
-  });
-}
-
-// functions/api/backgrounds.js
-var NAME_MAP = {
-  "rain.html": "\u{1F327} \u4E0B\u96E8(Canvas)",
-  "a1.html": "\u2728 \u7279\u65481",
-  "a2.html": "\u{1F525} \u7279\u65482",
-  "a3.html": "\u{1F300} \u7279\u65483",
-  "a4.html": "\u{1F30A} \u7279\u65484",
-  "a5.html": "\u2601\uFE0F \u7279\u65485",
-  "a6.html": "\u{1F4AB} \u7279\u65486",
-  "a7.html": "\u{1F3A8} \u7279\u65487",
-  "a8.html": "\u{1F324} \u7279\u65488",
-  "a9.html": "\u26A1 \u7279\u65489",
-  "a10.html": "\u{1F3AD} \u7279\u654810",
-  "a11.html": "\u{1F30C} \u7279\u654811",
-  "a12.html": "\u{1F52E} \u7279\u654812",
-  "a13.html": "\u{1F3AA} \u7279\u654813",
-  "a14.html": "\u{1F308} \u7279\u654814",
-  "a15.html": "\u{1F3C4} \u7279\u654815",
-  "a16.html": "\u{1F4A0} \u7279\u654816",
-  "a17.html": "\u{1F33A} \u7279\u654817",
-  "a18.html": "\u{1F32B} \u7279\u654818",
-  "a19.html": "\u{1F386} \u7279\u654819",
-  "a20.html": "\u{1F387} \u7279\u654820",
-  "a21.html": "\u2728 \u7279\u654821",
-  "a22.html": "\u2728 \u7279\u654822",
-  "a23.html": "\u2728 \u7279\u654823",
-  "a24.html": "\u2728 \u7279\u654824",
-  "a25.html": "\u2728 \u7279\u654825",
-  "a26.html": "\u2728 \u7279\u654826",
-  "a27.html": "\u2728 \u7279\u654827",
-  "a28.html": "\u2728 \u7279\u654828",
-  "a29.html": "\u2728 \u7279\u654829",
-  "a30.html": "\u2728 \u7279\u654830",
-  "a31.html": "\u2728 \u7279\u654831",
-  "a32.html": "\u2728 \u7279\u654832",
-  "a33.html": "\u2728 \u7279\u654833",
-  "a34.html": "\u2728 \u7279\u654834",
-  "a35.html": "\u2728 \u7279\u654835",
-  "a36.html": "\u2728 \u7279\u654836",
-  "a37.html": "\u2728 \u7279\u654837",
-  "a38.html": "\u2728 \u7279\u654838",
-  "a39.html": "\u2728 \u7279\u654839",
-  "a40.html": "\u2728 \u7279\u654840",
-  "a41.html": "\u2728 \u7279\u654841",
-  "a42.html": "\u2728 \u7279\u654842",
-  "a43.html": "\u2728 \u7279\u654843",
-  "a44.html": "\u2728 \u7279\u654844",
-  "a45.html": "\u2728 \u7279\u654845",
-  "a46.html": "\u2728 \u7279\u654846",
-  "a47.html": "\u2728 \u7279\u654847"
-};
-var STYLES_MAP = {
-  "styles1.html": "\u98CE\u683C 1 \xB7 \u7ECF\u5178\u84DD\u767D",
-  "styles2.html": "\u98CE\u683C 2 \xB7 Bento \u4FBF\u5F53\u76D2",
-  "styles3.html": "\u98CE\u683C 3 \xB7 \u5361\u7247\u4EEA\u8868\u76D8",
-  "styles4.html": "\u98CE\u683C 4 \xB7 \u65B0\u6807\u7B7E\u9875\u4E2D\u6027",
-  "styles5.html": "\u98CE\u683C 5 \xB7 \u8D5B\u535A\u9713\u8679",
-  "styles6.html": "\u98CE\u683C 6 \xB7 \u4E1C\u4EAC\u4E4B\u591C",
-  "styles7.html": "\u98CE\u683C 7 \xB7 \u6781\u7B80\u745E\u58EB",
-  "styles8.html": "\u98CE\u683C 8 \xB7 \u65E5\u7CFB\u6728\u6F0F"
-};
-function onRequestGet4() {
-  const files = Object.entries(NAME_MAP).map(([file, name]) => ({ file, name }));
-  files.sort((a, b) => {
-    if (a.file === "rain.html") return -1;
-    if (b.file === "rain.html") return 1;
-    const na = parseInt(a.file.match(/\d+/)?.[0] || "0");
-    const nb = parseInt(b.file.match(/\d+/)?.[0] || "0");
-    return na - nb;
-  });
-  const styleFiles = Object.entries(STYLES_MAP).map(([file, name]) => ({ file, name })).sort((a, b) => {
-    const na = parseInt(a.file.match(/\d+/)?.[0] || "0");
-    const nb = parseInt(b.file.match(/\d+/)?.[0] || "0");
-    return na - nb;
-  });
-  return json({ backgrounds: files, styles: styleFiles });
-}
+// worker.js
+init_backgrounds();
 
 // functions/api/bookmarks.js
-async function onRequestGet5({ env }) {
+init_utils();
+async function onRequestGet4({ env }) {
   const data = await getData(env);
   return json(data);
 }
@@ -486,7 +451,8 @@ async function onRequestReorder({ request, env }) {
 }
 
 // functions/api/categories.js
-async function onRequestGet6({ env }) {
+init_utils();
+async function onRequestGet5({ env }) {
   const data = await getData(env);
   const cats = data.categories.map((c, i) => ({
     index: i,
@@ -537,7 +503,8 @@ async function onRequestReorder2({ request, env }) {
 }
 
 // functions/api/settings.js
-async function onRequestGet7({ env }) {
+init_utils();
+async function onRequestGet6({ env }) {
   const settings = await getSettings(env);
   const { aiApiKey, ...safe } = settings;
   return json(safe);
@@ -557,11 +524,12 @@ async function onRequestPost5({ request, env }) {
   return json({ ok: true });
 }
 
-// functions/lib/parser.js
-function parseBookmarks(html2) {
+// src/lib/parser.js
+init_utils();
+function parseBookmarks(html) {
   const categories = [];
   let currentCat = null;
-  const lines = html2.replace(/\r\n/g, "\n").split("\n");
+  const lines = html.replace(/\r\n/g, "\n").split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
     const h3 = trimmed.match(/<H3[^>]*>(.*?)<\/H3>/i);
@@ -593,13 +561,14 @@ function decodeEntities(s) {
 }
 
 // functions/api/import.js
+init_utils();
 async function onRequestPost6({ request, env }) {
   const formData = await request.formData().catch(() => null);
   if (!formData) return err("\u65E0\u6548\u7684\u8868\u5355\u6570\u636E");
   const file = formData.get("file");
   if (!file) return err("\u672A\u627E\u5230\u6587\u4EF6");
-  const html2 = await file.text();
-  const categories = parseBookmarks(html2);
+  const html = await file.text();
+  const categories = parseBookmarks(html);
   if (!categories.length) return err("\u672A\u89E3\u6790\u5230\u4EFB\u4F55\u4E66\u7B7E\uFF0C\u8BF7\u68C0\u67E5\u6587\u4EF6\u683C\u5F0F");
   const mode = formData.get("mode") || "merge";
   if (mode === "replace") {
@@ -628,13 +597,14 @@ async function onRequestPost6({ request, env }) {
 }
 
 // functions/api/export.js
-async function onRequestGet8({ request, env }) {
+init_utils();
+async function onRequestGet7({ request, env }) {
   const url = new URL(request.url);
   const format = url.searchParams.get("format") || "json";
   const data = await getData(env);
   if (format === "html") {
-    const html2 = toBookmarkHtml(data.categories);
-    return new Response(html2, {
+    const html = toBookmarkHtml(data.categories);
+    return new Response(html, {
       headers: {
         "Content-Type": "text/html;charset=utf-8",
         "Content-Disposition": 'attachment; filename="bookmarks.html"'
@@ -670,7 +640,8 @@ function toBookmarkHtml(categories) {
 }
 
 // functions/api/pending.js
-async function onRequestGet9({ env }) {
+init_utils();
+async function onRequestGet8({ env }) {
   const list = await getPending(env);
   return json(list);
 }
@@ -726,6 +697,7 @@ async function onRequestDelete3({ env, params }) {
 }
 
 // functions/api/ai.js
+init_utils();
 var PROMPT = (title, url) => `\u7528\u4E0D\u5C11\u4E8E50\u5B57\u7684\u4E2D\u6587\u4ECB\u7ECD\u8BE5\u7F51\u7AD9\u7684\u7528\u9014\u548C\u6838\u5FC3\u529F\u80FD\u3002\u8981\u6C42\uFF1A\u52A1\u5B9E\u3001\u7B80\u6D01\u3001\u7A81\u51FA\u529F\u80FD\uFF0C\u4E0D\u8981\u8425\u9500\u8BDD\u672F\u3002\u7F51\u7AD9\u6807\u9898\uFF1A${title}\uFF0C\u7F51\u5740\uFF1A${url}\u3002\u76F4\u63A5\u8F93\u51FA\u4ECB\u7ECD\u5185\u5BB9\uFF0C\u4E0D\u8981\u4EFB\u4F55\u524D\u7F00\u3002`;
 async function onRequestPost7({ request, env }) {
   const body = await request.json().catch(() => null);
@@ -804,7 +776,7 @@ function cleanDesc(text) {
   return (text || "").replace(/<[^>]+>/g, "").replace(/^(介绍|描述|说明|网站介绍|功能介绍)[:：]\s*/i, "").trim().split("\n")[0].trim();
 }
 
-// functions/lib/favicon.js
+// src/lib/favicon.js
 async function fetchFavicon(url, apiPrefix = "https://faviconsnap.com/api/favicon?url=") {
   const parsed = new URL(url);
   const origin = parsed.origin;
@@ -860,6 +832,7 @@ function toDataUri(buf, mimeType) {
 }
 
 // functions/api/favicon.js
+init_utils();
 async function onRequestPost8({ request, env }) {
   const body = await request.json().catch(() => null);
   if (!body?.urls?.length && body?.all !== true) {
@@ -904,58 +877,42 @@ async function onRequestPost8({ request, env }) {
   return json({ ok: true, updated, total: targets.length });
 }
 
-// functions/lib/hover.js
-const HOVER_UAS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15",
-  "Mozilla/5.0 (X11; Linux x86_64; rv:134.0) Gecko/20100101 Firefox/134.0",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
-];
-function pickUA() { return HOVER_UAS[Math.floor(Math.random() * HOVER_UAS.length)]; }
-
-async function extractDescription(html2) {
-  const metaDesc = html2.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)?.[1];
-  const ogDesc = html2.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1];
-  const twitterDesc = html2.match(/<meta\s+name=["']twitter:description["']\s+content=["']([^"']+)["']/i)?.[1];
-  const title = html2.match(/<title>([^<]+)<\/title>/i)?.[1];
+// src/lib/hover.js
+async function extractDescription(html) {
+  const metaDesc = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const ogDesc = html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const twitterDesc = html.match(/<meta\s+name=["']twitter:description["']\s+content=["']([^"']+)["']/i)?.[1];
+  const title = html.match(/<title>([^<]+)<\/title>/i)?.[1];
   return (metaDesc || ogDesc || twitterDesc || title || "").trim().slice(0, 500);
 }
-
-async function fetchOne(tryUrl, ua) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 10000);
-  try {
-    const res = await fetch(tryUrl, {
-      cf: { cacheTtl: 3600 },
-      headers: { "User-Agent": ua },
-      signal: ctrl.signal,
-    });
-    if (res.ok) {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.includes("text/html")) {
-        const html2 = await res.text();
-        const desc = await extractDescription(html2);
-        if (desc && desc.length > 5) return desc;
-      }
-    }
-  } catch {}
-  return "";
-}
-
 async function fetchHover(url) {
   const parsed = new URL(url);
-  const urlsToTry = [parsed.origin, url];
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const ua = pickUA();
-    for (const tryUrl of urlsToTry) {
-      const desc = await fetchOne(tryUrl, ua);
-      if (desc) return desc;
+  const origin = parsed.origin;
+  const urlsToTry = [origin, url];
+  for (const tryUrl of urlsToTry) {
+    try {
+      const res = await fetch(tryUrl, {
+        cf: { cacheTtl: 3600 },
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; cf-nav-hover-bot/1.0)"
+        }
+      });
+      if (res.ok) {
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("text/html")) {
+          const html = await res.text();
+          const desc = await extractDescription(html);
+          if (desc && desc.length > 5) {
+            return desc;
+          }
+        }
+      }
+    } catch {
     }
   }
   return "";
 }
-
-async function fetchHovers(urls, concurrency = 3) {
+async function fetchHovers(urls, concurrency = 5) {
   const results = {};
   const chunks = [];
   for (let i = 0; i < urls.length; i += concurrency) {
@@ -970,6 +927,7 @@ async function fetchHovers(urls, concurrency = 3) {
 }
 
 // functions/api/hover.js
+init_utils();
 async function onRequestPost9({ request, env }) {
   const body = await request.json().catch(() => null);
   if (!body?.urls?.length && body?.all !== true && body?.catIndex == null) {
@@ -1012,66 +970,339 @@ async function onRequestPost9({ request, env }) {
   return json({ ok: true, updated, total: targets.length });
 }
 
-// functions/styles/[id].js
-function onRequestGet10() {
-  return new Response(
-    "\u6B64\u8DEF\u7531\u5DF2\u505C\u7528\u3002\u98CE\u683C\u76AE\u80A4\u73B0\u901A\u8FC7 index.html \u7684 style-css link \u5207\u6362\uFF0C\u8BF7\u76F4\u63A5\u8BBF\u95EE /\u3002",
-    { status: 410, headers: { "Content-Type": "text/plain; charset=utf-8" } }
-  );
+// functions/api/license/index.js
+init_utils();
+
+// src/lib/paddle.js
+var PADDLE_API = "https://api.paddle.com";
+async function validatePaddleLicense(key, env) {
+  const apiKey = env.PADDLE_API_KEY;
+  if (!apiKey) {
+    return { valid: false, error: "Paddle API key not configured" };
+  }
+  try {
+    const res = await fetch(`${PADDLE_API}/licenses/verify`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ license_key: key })
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { valid: false, error: `API error ${res.status}: ${text}` };
+    }
+    const data = await res.json();
+    if (!data || !data.data) {
+      return { valid: false, error: "Invalid response format" };
+    }
+    const license = data.data;
+    return {
+      valid: license.status === "active",
+      licenseKey: key,
+      createdAt: license.created_at,
+      expiresAt: license.expires_at,
+      productId: license.product_id,
+      variantId: license.variant_id,
+      transactionId: license.transaction_id,
+      error: license.status !== "active" ? `License status: ${license.status}` : null
+    };
+  } catch (e) {
+    return { valid: false, error: `Network error: ${e.message}` };
+  }
+}
+function verifyWebhookSignature(body, signature, secret) {
+  const parts = {};
+  signature.split(";").forEach((part) => {
+    const idx = part.indexOf("=");
+    if (idx !== -1) {
+      parts[part.substring(0, idx)] = part.substring(idx + 1);
+    }
+  });
+  const timestamp = parts.ts;
+  const hash = parts.h1;
+  if (!timestamp || !hash) return Promise.resolve(false);
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const bodyData = encoder.encode(timestamp + ":" + body);
+  function hexToBytes(hex) {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
+  }
+  return crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["verify"]
+  ).then((cryptoKey) => {
+    const signatureData = hexToBytes(hash);
+    return crypto.subtle.verify(
+      "HMAC",
+      cryptoKey,
+      signatureData,
+      bodyData
+    );
+  });
 }
 
-// functions/worker-entry.js
-var worker_entry_default = {
+// functions/api/license/index.js
+var VARIANT_MAP = {
+  "pri_01m1wsybd5v9h5shryd1pcmq6r": { type: "style", id: "11" },
+  "pri_01m1wsyc0wq2axhrjn8m0e2rkp": { type: "background", id: "a21" },
+  "pri_01m1wsycn05r6yqdeq9hjn336w": { type: "background", id: "a22" },
+  "pri_01m1wsyd8apgsn81rf21zese3a": { type: "background", id: "a23" },
+  "pri_01m1wsydvg73v94y2ytjht26ch": { type: "background", id: "a24" },
+  "pri_01m1wsyezye4x72ahcer0wxrt4": { type: "background", id: "a25" },
+  "pri_01m1wsyfkmbvnnmwc8xqm6dhjy": { type: "background", id: "a26" },
+  "pri_01m1wsygrywkcecbrepav2j1q0": { type: "background", id: "a27" },
+  "pri_01m1wsyhckj6n4m3aps9esh4bc": { type: "background", id: "a28" },
+  "pri_01m1wsyhzvw82v4gmgmke8gs1v": { type: "background", id: "a29" },
+  "pri_01m1wsyjk5bf2fgb7dzdkvtrbd": { type: "background", id: "a30" },
+  "pri_01m1wsyk6a5rxver0evaxr9dnt": { type: "background", id: "a31" },
+  "pri_01m1wsyksbx8whhs1zdzrmwzg5": { type: "background", id: "a32" },
+  "pri_01m1wsymd1svt8699nw7kh2j5b": { type: "background", id: "a33" },
+  "pri_01m1wsyn283tf623xk301xd5jg": { type: "background", id: "a34" },
+  "pri_01m1wsynpz3axh9mx6gdyj218a": { type: "background", id: "a35" },
+  "pri_01m1wsypag90mrj1f22v3jkp09": { type: "background", id: "a36" },
+  "pri_01m1wsypzjkcpqztst8trrnv4x": { type: "background", id: "a37" },
+  "pri_01m1wsyqmmk7jhsgjgdjhfjmjy": { type: "background", id: "a38" },
+  "pri_01m1wsys2hbqsrh16s7ec0vhkp": { type: "background", id: "a39" },
+  "pri_01m1wsysp1310tw3sbtx87qy10": { type: "background", id: "a40" },
+  "pri_01m1wsyt9me1abzhyvn4wf4atg": { type: "background", id: "a41" },
+  "pri_01m1wsytwvwe3af924py5a0t8q": { type: "background", id: "a42" },
+  "pri_01m1wsyvg1rf96x9qhgjays0b4": { type: "background", id: "a43" },
+  "pri_01m1wsyw3gv8w3w0kga4f927cc": { type: "background", id: "a44" },
+  "pri_01m1wsywpscmwccx8f0a208bq3": { type: "background", id: "a45" },
+  "pri_01m1wsyxh00n3zqs7b6ah0673b": { type: "background", id: "a46" },
+  "pri_01m1wsyy4g00gjbw2fmg3vcmvq": { type: "background", id: "a47" }
+};
+async function hashKey(key) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function onRequestPost10(ctx) {
+  const { request, env } = ctx;
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return err("Invalid JSON body", 400);
+  }
+  const { licenseKey } = body;
+  if (!licenseKey || typeof licenseKey !== "string") return err("licenseKey is required", 400);
+  const result = await validatePaddleLicense(licenseKey.trim(), env);
+  if (!result.valid) return json({ valid: false, error: result.error || "Invalid license key" }, 400);
+  const purchased = [];
+  const variantId = String(result.variantId);
+  const mapping = VARIANT_MAP[variantId];
+  if (mapping) {
+    purchased.push(mapping);
+  } else {
+    const productId = String(result.productId);
+    const PRODUCT_MAP = {
+      "pro_01m1wsyas32x41rrpkzayt42ez": { type: "style", id: "11" },
+      "pro_01m1wsybqwpqcv56a9zj0qcz7s": { type: "background", id: "a21" },
+      "pro_01m1wsycc376zvg9rz39q63bt8": { type: "background", id: "a22" },
+      "pro_01m1wsyczcmwr0amb3rv2db49t": { type: "background", id: "a23" },
+      "pro_01m1wsydjh4p1x4v4fkvq09afd": { type: "background", id: "a24" },
+      "pro_01m1wsye62fsf14edwr9w96gvb": { type: "background", id: "a25" },
+      "pro_01m1wsyfahcj1t4cnawz782azs": { type: "background", id: "a26" },
+      "pro_01m1wsygg39fv7m8dxqbrwjprq": { type: "background", id: "a27" },
+      "pro_01m1wsyh3sgxyefwa7bs6r7ptz": { type: "background", id: "a28" },
+      "pro_01m1wsyhpzbdmasrezx91kknn3": { type: "background", id: "a29" },
+      "pro_01m1wsyja3fbgvg1zgf9jytz42": { type: "background", id: "a30" },
+      "pro_01m1wsyjxhs59nkcrdey4e88dn": { type: "background", id: "a31" },
+      "pro_01m1wsykgdd02e1ncjyaver535": { type: "background", id: "a32" },
+      "pro_01m1wsym43ww2hza5mhm50jmt4": { type: "background", id: "a33" },
+      "pro_01m1wsymqm0g0vd8ja8trj4bsk": { type: "background", id: "a34" },
+      "pro_01m1wsyne0tk69d32kgzp1edcm": { type: "background", id: "a35" },
+      "pro_01m1wsyp1hfa5kd9ze42dwyz01": { type: "background", id: "a36" },
+      "pro_01m1wsypnh9ptwez4f1r02bzeh": { type: "background", id: "a37" },
+      "pro_01m1wsyqay360fktvmfjhhzk7b": { type: "background", id: "a38" },
+      "pro_01m1wsyrh2c5a4jpc8a0mebsv1": { type: "background", id: "a39" },
+      "pro_01m1wsysd9jatd2gvqgqtvbzy7": { type: "background", id: "a40" },
+      "pro_01m1wsyt0sxwtdygdce7s62b0d": { type: "background", id: "a41" },
+      "pro_01m1wsytm35nw4f03xf7cq1bsf": { type: "background", id: "a42" },
+      "pro_01m1wsyv76k36pvgvg1y0wq3hx": { type: "background", id: "a43" },
+      "pro_01m1wsyvtksfv448mk514s8abr": { type: "background", id: "a44" },
+      "pro_01m1wsywdyvwv1xacxa9h7svpz": { type: "background", id: "a45" },
+      "pro_01m1wsyx7a8h8h696eak3hm5qs": { type: "background", id: "a46" },
+      "pro_01m1wsyxv92q59cdervye03a5k": { type: "background", id: "a47" }
+    };
+    const productMapping = PRODUCT_MAP[productId];
+    if (productMapping) purchased.push({ type: productMapping.type, id: variantId });
+  }
+  const siteKey = env.SITE_KEY || "default";
+  const kvKey = `nav_license_${siteKey}`;
+  const existing = await env.KV?.get(kvKey, "json") || { keys: [] };
+  const keyHash = await hashKey(licenseKey.trim());
+  if (!existing.keys.find((k) => k.hash === keyHash)) {
+    existing.keys.push({
+      hash: keyHash,
+      variantId,
+      productId: result.productId,
+      transactionId: result.transactionId,
+      purchased,
+      activatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    await env.KV?.put(kvKey, JSON.stringify(existing));
+  }
+  return json({ valid: true, purchased, licenseKey: licenseKey.trim(), activatedAt: (/* @__PURE__ */ new Date()).toISOString() });
+}
+
+// functions/api/license/check.js
+init_utils();
+async function onRequestPost11(ctx) {
+  const { request, env } = ctx;
+  const url = new URL(request.url);
+  const siteKey = env.SITE_KEY || url.hostname || "default";
+  const kvKey = `nav_license_${siteKey}`;
+  const existing = await env.KV?.get(kvKey, "json") || { keys: [] };
+  const purchased = [];
+  for (const k of existing.keys) purchased.push(...k.purchased);
+  const unique = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const p of purchased) {
+    const key = `${p.type}:${p.id}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(p);
+    }
+  }
+  return json({ valid: existing.keys.length > 0, purchased: unique });
+}
+
+// functions/api/license/remove.js
+init_utils();
+async function hashKey2(key) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function onRequestPost12(ctx) {
+  const { request, env } = ctx;
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return err("Invalid JSON body", 400);
+  }
+  const { licenseKey } = body;
+  if (!licenseKey) return err("licenseKey is required", 400);
+  const siteKey = env.SITE_KEY || "default";
+  const kvKey = `nav_license_${siteKey}`;
+  const existing = await env.KV?.get(kvKey, "json") || { keys: [] };
+  const keyHash = await hashKey2(licenseKey.trim());
+  existing.keys = existing.keys.filter((k) => k.hash !== keyHash);
+  await env.KV?.put(kvKey, JSON.stringify(existing));
+  return json({ ok: true });
+}
+
+// functions/api/webhook/paddle.js
+init_utils();
+async function hashKey3(key) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function onRequestPost13(ctx) {
+  const { request, env } = ctx;
+  const signature = request.headers.get("paddle-signature");
+  if (!signature) return err("Missing paddle-signature header", 400);
+  const body = await request.text();
+  const webhookSecret = env.PADDLE_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const isValid = await verifyWebhookSignature(body, signature, webhookSecret);
+    if (!isValid) return err("Invalid webhook signature", 403);
+  }
+  let event;
+  try {
+    event = JSON.parse(body);
+  } catch {
+    return err("Invalid JSON", 400);
+  }
+  if (event.event_type === "transaction.completed") {
+    const transaction = event.data;
+    const customData = transaction.custom_data || {};
+    const siteKey = customData.site_key || env.SITE_KEY || "default";
+    const itemId = customData.item_id;
+    const itemType = customData.item_type;
+    if (itemId && itemType) {
+      const kvKey = `nav_license_${siteKey}`;
+      const existing = await env.KV?.get(kvKey, "json") || { keys: [] };
+      const txHash = await hashKey3(transaction.id);
+      if (!existing.keys.find((k) => k.hash === txHash)) {
+        existing.keys.push({
+          hash: txHash,
+          transactionId: transaction.id,
+          variantId: String(transaction.items?.[0]?.price_id || ""),
+          productId: String(transaction.items?.[0]?.product_id || ""),
+          purchased: [{ type: itemType, id: itemId }],
+          activatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        });
+        await env.KV?.put(kvKey, JSON.stringify(existing));
+      }
+    }
+  }
+  return json({ ok: true });
+}
+
+// worker.js
+var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method;
-    const makeCtx = (handler) => ({
+    const makeCtx = (extra = {}) => ({
       request,
       env: { ...env, ctx },
+      params: extra,
       next: () => new Response("Not Found", { status: 404 }),
-      params: {},
-      data: {},
-      functionPath: path,
-      waitUntil: ctx.waitUntil?.bind(ctx),
-      passThroughOnException: ctx.passThroughOnException?.bind(ctx)
+      data: {}
     });
     const mwCtx = {
-      ...makeCtx(null),
-      next: () => routeRequest(request, env, ctx, url, path, method)
+      ...makeCtx(),
+      next: () => route(request, env, ctx, path, method)
     };
     return onRequest(mwCtx);
   }
 };
-async function routeRequest(request, env, ctx, url, path, method) {
-  const make = (extraParams = {}) => ({
+async function route(request, env, ctx, path, method) {
+  const make = (p = {}) => ({
     request,
     env: { ...env, ctx },
-    params: extraParams,
+    params: p,
     next: () => new Response("Not Found", { status: 404 }),
     data: {}
   });
   if (path === "/" || path === "/index.html") {
-    if (method === "GET") return onRequestGet(make());
+    if (env.ASSETS) return env.ASSETS.fetch(request);
   }
   if (path === "/admin" || path === "/admin/") {
-    if (method === "GET") return onRequestGet3(make());
+    if (method === "GET") return onRequestGet(make());
   }
   if (path === "/admin/login") {
-    if (method === "POST") return onRequestPost(make());
     if (method === "GET") return onRequestGet2(make());
+    if (method === "POST") return onRequestPost(make());
   }
   if (path === "/admin/logout") {
     if (method === "POST") return onRequestPost2(make());
   }
-  if (path === "/api/backgrounds") {
-    if (method === "GET") return onRequestGet4(make());
-  }
+  if (path === "/api/backgrounds" && method === "GET") return onRequestGet3(make());
   if (path === "/api/bookmarks/reorder" && method === "POST") return onRequestReorder(make());
   if (path.startsWith("/api/bookmarks")) {
     const m = path.match(/^\/api\/bookmarks\/(.+)$/);
     const p = m ? { id: m[1] } : {};
-    if (method === "GET") return onRequestGet5(make());
+    if (method === "GET") return onRequestGet4(make());
     if (method === "POST") return onRequestPost3(make());
     if (method === "PUT") return onRequestPut(make(p));
     if (method === "DELETE") return onRequestDelete(make(p));
@@ -1080,46 +1311,40 @@ async function routeRequest(request, env, ctx, url, path, method) {
   if (path.startsWith("/api/categories")) {
     const m = path.match(/^\/api\/categories\/(.+)$/);
     const p = m ? { id: m[1] } : {};
-    if (method === "GET") return onRequestGet6(make());
+    if (method === "GET") return onRequestGet5(make());
     if (method === "POST") return onRequestPost4(make());
     if (method === "PUT") return onRequestPut2(make(p));
     if (method === "DELETE") return onRequestDelete2(make(p));
   }
   if (path.startsWith("/api/settings")) {
-    if (method === "GET") return onRequestGet7(make());
+    if (method === "GET") return onRequestGet6(make());
     if (method === "POST") return onRequestPost5(make());
   }
-  if (path === "/api/import") {
-    if (method === "POST") return onRequestPost6(make());
-  }
-  if (path === "/api/export") {
-    if (method === "GET") return onRequestGet8(make());
-  }
+  if (path === "/api/import" && method === "POST") return onRequestPost6(make());
+  if (path === "/api/export" && method === "GET") return onRequestGet7(make());
   if (path === "/api/pending/submit" && method === "POST") return onRequestPostSubmit(make());
   if (path.startsWith("/api/pending")) {
     const m = path.match(/^\/api\/pending\/(.+)$/);
     const p = m ? { id: m[1] } : {};
-    if (method === "GET") return onRequestGet9(make());
-    if (method === "POST") return onRequestPostSubmit(make());
+    if (method === "GET") return onRequestGet8(make());
     if (method === "PUT") return onRequestPut3(make(p));
     if (method === "DELETE") return onRequestDelete3(make(p));
   }
-  if (path === "/api/ai") {
-    if (method === "POST") return onRequestPost7(make());
+  if (path === "/api/ai" && method === "POST") return onRequestPost7(make());
+  if (path === "/api/favicon" && method === "POST") return onRequestPost8(make());
+  if (path === "/api/hover" && method === "POST") return onRequestPost9(make());
+  if (path === "/api/license" && method === "POST") return onRequestPost10(make());
+  if (path === "/api/license/check" && method === "POST") return onRequestPost11(make());
+  if (path === "/api/license/remove" && method === "POST") return onRequestPost12(make());
+  if (path === "/api/webhook/paddle" && method === "POST") return onRequestPost13(make());
+  const sm = path.match(/^\/api\/styles\/(.+)$/);
+  if (sm) {
+    const { default: stylesGet } = await Promise.resolve().then(() => (init_backgrounds(), backgrounds_exports));
+    return onRequestGet3(make({ id: sm[1] }));
   }
-  if (path === "/api/favicon") {
-    if (method === "POST") return onRequestPost8(make());
-  }
-  if (path === "/api/hover") {
-    if (method === "POST") return onRequestPost9(make());
-  }
-  const stylesMatch = path.match(/^\/api\/styles\/(.+)$/);
-  if (stylesMatch) {
-    if (method === "GET") return onRequestGet10(make({ id: stylesMatch[1] }));
-  }
-  if (env?.ASSETS?.fetch) return env.ASSETS.fetch(request);
+  if (env.ASSETS) return env.ASSETS.fetch(request);
   return new Response("Not Found", { status: 404 });
 }
 export {
-  worker_entry_default as default
+  worker_default as default
 };
