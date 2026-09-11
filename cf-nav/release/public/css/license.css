@@ -1,0 +1,192 @@
+/* License 弹窗样式 */
+.license-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: licenseFadeIn 0.2s ease;
+}
+
+@keyframes licenseFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.license-dialog {
+  background: var(--card-bg, #1e1e2e);
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: licenseSlideUp 0.3s ease;
+}
+
+@keyframes licenseSlideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.license-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted, #888);
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.license-dialog-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #fff);
+}
+
+.license-dialog-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.license-dialog h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+  color: var(--text, #fff);
+}
+
+.license-dialog p {
+  margin: 0.25rem 0;
+  color: var(--text-muted, #888);
+  font-size: 0.9rem;
+}
+
+.license-price {
+  font-size: 1.8rem !important;
+  font-weight: 700;
+  color: var(--accent, #6c5ce7) !important;
+  margin: 0.75rem 0 !important;
+}
+
+.license-input-group {
+  margin: 1rem 0;
+}
+
+.license-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  background: var(--input-bg, rgba(0,0,0,0.2));
+  color: var(--text, #fff);
+  font-size: 1rem;
+  text-align: center;
+  letter-spacing: 2px;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.license-input:focus {
+  border-color: var(--accent, #6c5ce7);
+}
+
+.license-msg {
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+  min-height: 1.2em;
+}
+
+.license-msg-success {
+  color: #2ecc71;
+}
+
+.license-msg-error {
+  color: #e74c3c;
+}
+
+.license-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.license-btn-buy {
+  display: block;
+  padding: 0.85rem 1.5rem;
+  background: var(--accent, #6c5ce7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.license-btn-buy:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.license-btn-activate {
+  display: block;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: var(--text-muted, #888);
+  border: 1px solid var(--border, rgba(255,255,255,0.15));
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.license-btn-activate:hover {
+  color: var(--text, #fff);
+  border-color: var(--text-muted, #888);
+}
+
+/* 付费标记样式 */
+.paid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.paid-badge::before {
+  content: '🔒';
+  font-size: 0.65rem;
+}
+
+/* 选项禁用样式 */
+option.paid-option {
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
